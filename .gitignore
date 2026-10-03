@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Secrets (database URI, JWT secret) — never commit
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+
+# Logs and editor files
+*.log
+.vscode/
+.idea/
+.DS_Store
