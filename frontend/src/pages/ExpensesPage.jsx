@@ -6,6 +6,7 @@ import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import { LoadingState, EmptyState } from '../components/States';
 import { Plus, Trash2, Loader2, Wallet } from 'lucide-react';
+import { NON_NEGATIVE } from '../lib/number';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -170,7 +171,7 @@ export default function ExpensesPage() {
           <div className="space-y-3 md:space-y-4">
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
-              <div><label className="label">Amount (₹)</label><input type="number" className="input font-semibold" placeholder="Amount" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
+              <div><label className="label">Amount (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="Amount" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
             </div>
             <div><label className="label">Category</label>
               <select className="input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>

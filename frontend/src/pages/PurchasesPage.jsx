@@ -5,6 +5,7 @@ import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import { LoadingState, EmptyState } from '../components/States';
 import { Plus, Trash2, Loader2, ShoppingCart } from 'lucide-react';
+import { NON_NEGATIVE } from '../lib/number';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -219,7 +220,7 @@ export default function PurchasesPage() {
                     <div>
                       <label className="label">{unit ? `How many ${unit}?` : 'Quantity'}</label>
                       <div className="relative">
-                        <input type="number" className="input pr-14 font-semibold" placeholder="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} />
+                        <input type="number" {...NON_NEGATIVE} className="input pr-14 font-semibold" placeholder="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} />
                         <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-500">{unit || 'unit'}</span>
                       </div>
                     </div>
@@ -227,7 +228,7 @@ export default function PurchasesPage() {
                       <label className="label">{unit ? `Rate per ${unit}` : 'Rate per unit'}</label>
                       <div className="relative">
                         <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
-                        <input type="number" className="input pl-7 pr-14 font-semibold" placeholder="0" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} />
+                        <input type="number" {...NON_NEGATIVE} className="input pl-7 pr-14 font-semibold" placeholder="0" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} />
                         <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-500">/ {unit || 'unit'}</span>
                       </div>
                     </div>
@@ -244,8 +245,8 @@ export default function PurchasesPage() {
 
           <ModalSection number={3} title="Payment Information" tone="purple">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
-              <div><label className="label">Transport Charges (₹)</label><input type="number" className="input font-semibold" value={form.transportCharges} onChange={e => setForm({ ...form, transportCharges: e.target.value })} /></div>
-              <div><label className="label">Amount Paid (₹)</label><input type="number" className="input font-semibold" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} /></div>
+              <div><label className="label">Transport Charges (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" value={form.transportCharges} onChange={e => setForm({ ...form, transportCharges: e.target.value })} /></div>
+              <div><label className="label">Amount Paid (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} /></div>
               <div><label className="label">Payment Mode</label>
                 <select className="input" value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value })}>
                   <option value="credit">Credit</option>
