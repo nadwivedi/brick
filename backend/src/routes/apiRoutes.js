@@ -11,6 +11,7 @@ const ExpenseCategory = require('../models/ExpenseCategory');
 const Plant = require('../models/Plant');
 const Purchase = require('../models/Purchase');
 const ProductionEntry = require('../models/ProductionEntry');
+const Invoice = require('../models/Invoice');
 const Expense = require('../models/Expense');
 const Payment = require('../models/Payment');
 const StockMovement = require('../models/StockMovement');
@@ -284,6 +285,154 @@ router.get('/stock/ledger/:materialId', async (req, res, next) => {
         entries,
       }
     });
+  } catch (e) { next(e); }
+});
+
+// Account ledger for a customer or a vendor, oldest first, with a running balance.
+//  - customer: invoices raise what they owe us, payments received lower it
+//  - vendor:   purchases raise what we owe them, amounts paid lower it
+// The balance starts from the opening balance saved on the customer/vendor.
+// Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD limits the rows; the opening balance is then the
+// balance just before `from`.
+router.get('/party-ledger/:type/:id', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const { type, id } = req.params;
+    if (!['customer', 'vendor'].includes(type)) return res.status(404).json({ success: false, message: 'Not found' });
+    const party = await (type === 'customer' ? Customer : Vendor).findOne({ _id: id, organization });
+    if (!party) return res.status(404).json({ success: false, message: `${type === 'customer' ? 'Customer' : 'Vendor'} not found` });
+
+    const money = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
+    const words = (s) => (s || '').replace(/_/g, ' ');
+    const join = (parts) => parts.filter(Boolean).join(' · ');
+    let rows;
+
+    if (type === 'customer') {
+      const [invoices, payments] = await Promise.all([
+        Invoice.find({ organization, customer: id, status: { $nin: ['draft', 'cancelled'] } })
+          .populate('plant', 'name').populate('items.product', 'name').lean(),
+        Payment.find({ organization, customer: id }).populate('plant', 'name').populate('invoice', 'invoiceNumber').lean(),
+      ]);
+      rows = [
+        ...invoices.map(i => ({
+          type: 'sale', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
+          title: `Invoice ${i.invoiceNumber}`,
+          detail: join([
+            (i.items || []).map(it => `${(it.quantity || 0).toLocaleString('en-IN')} pcs ${it.product?.name || ''} @ ${money(it.rate)}`.trim()).join(', '),
+            i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : '',
+          ]),
+          increase: i.totalAmount || 0, decrease: 0,
+        })),
+        ...payments.map(p => ({
+          type: 'payment', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+          title: 'Payment received',
+          detail: join([words(p.mode), p.invoice?.invoiceNumber ? `for ${p.invoice.invoiceNumber}` : '', p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
+          increase: 0, decrease: p.amount || 0,
+        })),
+      ];
+    } else {
+      const purchases = await Purchase.find({ organization, vendor: id })
+        .populate('plant', 'name').populate('items.material', 'name').lean();
+      rows = purchases.flatMap(p => [
+        {
+          type: 'purchase', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+          title: p.billNumber ? `Purchase · Bill ${p.billNumber}` : 'Purchase',
+          detail: join([
+            (p.items || []).map(i => `${i.quantity} ${i.unit || ''} ${i.material?.name || ''} @ ${money(i.rate)}`.replace(/\s+/g, ' ').trim()).join(', '),
+            p.transportCharges ? `Transport ${money(p.transportCharges)}` : '',
+          ]),
+          increase: (p.totalAmount || 0) + (p.transportCharges || 0), decrease: 0, order: 0,
+        },
+        ...(p.paidAmount > 0 ? [{
+          type: 'payment', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+          title: 'Payment made',
+          detail: join([words(p.paymentMode), p.billNumber ? `for Bill ${p.billNumber}` : '']),
+          increase: 0, decrease: p.paidAmount, order: 1,
+        }] : []),
+      ]);
+    }
+
+    rows.sort((a, b) => (new Date(a.date) - new Date(b.date)) || (new Date(a.createdAt) - new Date(b.createdAt)) || ((a.order || 0) - (b.order || 0)));
+    const start = party.openingBalance || 0;
+    let balance = start;
+    const all = rows.map(({ order, ...r }) => ({ ...r, balance: (balance += r.increase - r.decrease) }));
+
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const from = DATE_RE.test(req.query.from || '') ? req.query.from : null;
+    const to = DATE_RE.test(req.query.to || '') ? req.query.to : null;
+    const dayOf = (r) => new Date(r.date).toISOString().slice(0, 10);
+    const before = from ? all.filter(r => dayOf(r) < from) : [];
+    const entries = all.filter(r => (!from || dayOf(r) >= from) && (!to || dayOf(r) <= to));
+    const sum = (list, key) => list.reduce((s, r) => s + r[key], 0);
+    const opening = start + sum(before, 'increase') - sum(before, 'decrease');
+    const totalIncrease = sum(entries, 'increase');
+    const totalDecrease = sum(entries, 'decrease');
+
+    res.json({
+      success: true,
+      data: {
+        type,
+        party: { _id: party._id, name: party.name, mobile: party.mobile, address: party.address, gstin: party.gstin },
+        from, to,
+        opening, totalIncrease, totalDecrease, closing: opening + totalIncrease - totalDecrease,
+        currentBalance: balance,
+        entries,
+      }
+    });
+  } catch (e) { next(e); }
+});
+
+// Totals per customer or vendor for the list screens: how much was billed, how much was paid,
+// and the balance still due (opening balance + billed - paid), keyed by id.
+router.get('/party-balances/:type', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const { type } = req.params;
+    if (!['customer', 'vendor'].includes(type)) return res.status(404).json({ success: false, message: 'Not found' });
+    const byId = (rows) => Object.fromEntries(rows.map(r => [String(r._id), r]));
+
+    let parties, billed, paid;
+    if (type === 'customer') {
+      [parties, billed, paid] = await Promise.all([
+        Customer.find({ organization }).select('openingBalance').lean(),
+        Invoice.aggregate([
+          { $match: { organization, status: { $nin: ['draft', 'cancelled'] } } },
+          { $group: { _id: '$customer', total: { $sum: '$totalAmount' }, count: { $sum: 1 }, lastDate: { $max: '$date' } } },
+        ]),
+        Payment.aggregate([
+          { $match: { organization } },
+          { $group: { _id: '$customer', total: { $sum: '$amount' } } },
+        ]),
+      ]);
+    } else {
+      [parties, billed] = await Promise.all([
+        Vendor.find({ organization }).select('openingBalance').lean(),
+        Purchase.aggregate([
+          { $match: { organization } },
+          { $group: {
+            _id: '$vendor',
+            total: { $sum: { $add: ['$totalAmount', { $ifNull: ['$transportCharges', 0] }] } },
+            paid: { $sum: { $ifNull: ['$paidAmount', 0] } },
+            count: { $sum: 1 }, lastDate: { $max: '$date' },
+          } },
+        ]),
+      ]);
+      paid = billed.map(b => ({ _id: b._id, total: b.paid }));
+    }
+
+    const billedById = byId(billed);
+    const paidById = byId(paid);
+    const data = Object.fromEntries(parties.map(p => {
+      const b = billedById[String(p._id)];
+      const billedTotal = b?.total || 0;
+      const paidTotal = paidById[String(p._id)]?.total || 0;
+      return [String(p._id), {
+        billed: billedTotal, paid: paidTotal,
+        balance: (p.openingBalance || 0) + billedTotal - paidTotal,
+        count: b?.count || 0, lastDate: b?.lastDate || null,
+      }];
+    }));
+    res.json({ success: true, data });
   } catch (e) { next(e); }
 });
 

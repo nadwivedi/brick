@@ -15,8 +15,11 @@ import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
  * - fields: [{ key, label, type, options? }] — for the form
  * - defaultValues: {} — initial form state
  * - canDelete: (item) => bool — hide the delete button for rows that can't be deleted
+ * - rowActions: (item) => node — extra buttons shown before Edit/Delete on each row
+ * - summary: (items) => node — shown above the list, e.g. stat cards
+ * - searchKeys: [key] — fields the search box looks in (defaults to the column keys)
  */
-export default function CRUDPage({ title, subtitle, endpoint, columns, fields, defaultValues, canDelete = () => true }) {
+export default function CRUDPage({ title, subtitle, endpoint, columns, fields, defaultValues, canDelete = () => true, rowActions, summary, searchKeys }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -73,15 +76,17 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
     } catch (e) { alert(e.message || 'Delete failed'); }
   };
 
+  const keys = searchKeys || columns.map(col => col.key);
   const filtered = items.filter(item =>
-    columns.some(col => String(item[col.key] || '').toLowerCase().includes(search.toLowerCase()))
+    keys.some(key => String(item[key] || '').toLowerCase().includes(search.toLowerCase()))
   );
 
   const singular = title.endsWith('ies') ? `${title.slice(0, -3)}y` : title.endsWith('s') ? title.slice(0, -1) : title;
   const twoColumns = fields.length > 3;
 
   return (
-    <div className="space-y-4 fade-in">
+    <div className="space-y-4 fade-in md:space-y-5">
+      {summary?.(items)}
       <section className="panel">
         <div className="panel-header">
           <div className="page-header">
@@ -126,7 +131,8 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
                       </td>
                     ))}
                     <td className="table-cell">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1">
+                        {rowActions?.(item)}
                         <button className="icon-btn hover:bg-blue-50 hover:text-blue-600" title="Edit" onClick={() => openForm(item)}>
                           <Edit2 size={16} />
                         </button>

@@ -14,6 +14,7 @@ import SalesPage from './pages/SalesPage';
 import PurchasesPage from './pages/PurchasesPage';
 import ExpensesPage from './pages/ExpensesPage';
 import MastersPage from './pages/MastersPage';
+import PartyLedgerPage from './pages/PartyLedgerPage';
 import ReportsPage from './pages/ReportsPage';
 import LowStockPage from './pages/LowStockPage';
 import SettingsPage from './pages/SettingsPage';
@@ -52,6 +53,8 @@ function AppRoutes() {
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="masters" element={<MastersPage />} />
         <Route path="masters/:tab" element={<MastersPage />} />
+        <Route path="masters/customers/:id/ledger" element={<PartyLedgerPage key="customer" type="customer" />} />
+        <Route path="masters/vendors/:id/ledger" element={<PartyLedgerPage key="vendor" type="vendor" />} />
         {/* Old links to the individual master screens */}
         <Route path="customers" element={<Navigate to="/masters/customers" replace />} />
         <Route path="vendors" element={<Navigate to="/masters/vendors" replace />} />
