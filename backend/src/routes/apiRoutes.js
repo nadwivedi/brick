@@ -225,6 +225,38 @@ router.get('/stock/summary', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Manual stock adjustment: add to or take away from a material's stock by hand, with a reason.
+// Recorded as a stock movement so it shows in the material's ledger.
+router.post('/stock/adjust', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const { material: materialId, type, reason, notes, date } = req.body;
+    const quantity = Number(req.body.quantity);
+    if (!['increase', 'decrease'].includes(type)) return res.status(400).json({ success: false, message: 'Choose increase or decrease' });
+    if (!(quantity > 0)) return res.status(400).json({ success: false, message: 'Enter a quantity above zero' });
+    const material = await Material.findOne({ _id: materialId, organization });
+    if (!material) return res.status(404).json({ success: false, message: 'Material not found' });
+    if (type === 'decrease' && quantity > (material.currentStock || 0)) {
+      return res.status(400).json({ success: false, message: `Only ${material.currentStock || 0} ${material.unit} in stock` });
+    }
+
+    const change = type === 'increase' ? quantity : -quantity;
+    const updated = await Material.findByIdAndUpdate(material._id, { $inc: { currentStock: change } }, { new: true });
+    const movement = await StockMovement.create({
+      date: /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : new Date().toISOString().slice(0, 10),
+      itemType: 'material',
+      itemId: material._id,
+      qtyIn: type === 'increase' ? quantity : 0,
+      qtyOut: type === 'decrease' ? quantity : 0,
+      unit: material.unit,
+      refType: 'adjustment',
+      notes: [(reason || '').trim() || 'Stock adjustment', (notes || '').trim()].filter(Boolean).join(' — '),
+      organization,
+    });
+    res.status(201).json({ success: true, data: { material: updated, movement } });
+  } catch (e) { next(e); }
+});
+
 // Stock ledger for one material: every purchase (in) and production use (out), oldest first,
 // with a running balance. Built from the purchase and production records themselves so the
 // whole history is covered. Whatever the records don't explain (opening stock entered on the
@@ -235,11 +267,12 @@ router.get('/stock/ledger/:materialId', async (req, res, next) => {
     const material = await Material.findOne({ _id: req.params.materialId, organization });
     if (!material) return res.status(404).json({ success: false, message: 'Material not found' });
 
-    const [purchases, production] = await Promise.all([
+    const [purchases, production, adjustments] = await Promise.all([
       Purchase.find({ organization, 'items.material': material._id })
         .populate('vendor', 'name').populate('plant', 'name').lean(),
       ProductionEntry.find({ organization, 'materials.material': material._id })
         .populate('product', 'name').populate('plant', 'name').lean(),
+      StockMovement.find({ organization, itemType: 'material', itemId: material._id, refType: 'adjustment' }).lean(),
     ]);
 
     const isThis = (row) => String(row.material) === String(material._id);
@@ -256,6 +289,13 @@ router.get('/stock/ledger/:materialId', async (req, res, next) => {
         detail: `Used to make ${(p.quantityProduced || 0).toLocaleString('en-IN')} pcs`,
         qtyIn: 0, qtyOut: m.quantity || 0,
       }))),
+      // Manual stock adjustments: notes hold "reason — extra note"
+      ...adjustments.map(a => ({
+        type: 'adjustment', refId: a._id, date: a.date, createdAt: a.createdAt, plant: '',
+        party: (a.notes || '').split(' — ')[0] || 'Stock adjustment',
+        detail: (a.notes || '').split(' — ').slice(1).join(' — '),
+        qtyIn: a.qtyIn || 0, qtyOut: a.qtyOut || 0,
+      })),
     ].sort((a, b) => (new Date(a.date) - new Date(b.date)) || (new Date(a.createdAt) - new Date(b.createdAt)));
 
     const sumIn = (list) => list.reduce((s, r) => s + r.qtyIn, 0);

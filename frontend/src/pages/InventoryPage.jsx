@@ -3,27 +3,34 @@ import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import StatCard from '../components/StatCard';
 import { LoadingState, EmptyState } from '../components/States';
-import { Package, AlertTriangle, CircleCheck, BookOpen } from 'lucide-react';
+import StockAdjustModal from '../components/StockAdjustModal';
+import { Package, AlertTriangle, CircleCheck, BookOpen, SlidersHorizontal } from 'lucide-react';
 
 export default function InventoryPage() {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [adjustFor, setAdjustFor] = useState(null); // material id being adjusted, or '' for "pick one"
 
-  useEffect(() => {
-    api.get('/stock/summary')
-      .then(res => setMaterials(res.data || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const fetchStock = () => api.get('/stock/summary')
+    .then(res => setMaterials(res.data || []))
+    .catch(console.error)
+    .finally(() => setLoading(false));
+
+  useEffect(() => { fetchStock(); }, []);
 
   const lowStock = materials.filter(m => m.currentStock <= m.lowStockThreshold);
   const okStock = materials.filter(m => m.currentStock > m.lowStockThreshold);
 
   return (
     <div className="space-y-4 fade-in md:space-y-5">
-      <div>
-        <h1 className="page-title">Inventory</h1>
-        <p className="page-subtitle">Raw material stock levels</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Inventory</h1>
+          <p className="page-subtitle">Raw material stock levels</p>
+        </div>
+        <button className="btn-primary self-start" onClick={() => setAdjustFor('')} disabled={materials.length === 0}>
+          <SlidersHorizontal size={16} /> Adjust Stock
+        </button>
       </div>
 
       {/* Summary */}
@@ -89,7 +96,7 @@ export default function InventoryPage() {
                 <th className="table-header">Current Stock</th>
                 <th className="table-header">Min Threshold</th>
                 <th className="table-header">Status</th>
-                <th className="table-header text-right">Stock Ledger</th>
+                <th className="table-header text-right">Actions</th>
               </tr></thead>
               <tbody>
                 {materials.map(m => {
@@ -113,7 +120,10 @@ export default function InventoryPage() {
                       <td className="table-cell">
                         <span className={isLow ? 'badge-red' : 'badge-green'}>{isLow ? 'Low' : 'OK'}</span>
                       </td>
-                      <td className="table-cell text-right">
+                      <td className="table-cell whitespace-nowrap text-right">
+                        <button className="btn-secondary btn-sm mr-1" onClick={() => setAdjustFor(m._id)}>
+                          <SlidersHorizontal size={14} /> Adjust
+                        </button>
                         <Link className="btn-secondary btn-sm" to={`/inventory/ledger/${m._id}`}>
                           <BookOpen size={14} /> See Ledger
                         </Link>
@@ -126,6 +136,15 @@ export default function InventoryPage() {
           </div>
         )}
       </section>
+
+      {adjustFor !== null && (
+        <StockAdjustModal
+          materials={materials}
+          materialId={adjustFor}
+          onClose={() => setAdjustFor(null)}
+          onSaved={fetchStock}
+        />
+      )}
     </div>
   );
 }

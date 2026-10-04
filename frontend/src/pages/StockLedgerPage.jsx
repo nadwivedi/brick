@@ -4,7 +4,8 @@ import api from '../lib/api';
 import Segmented from '../components/Segmented';
 import StatCard from '../components/StatCard';
 import { LoadingState, EmptyState } from '../components/States';
-import { ShoppingCart, Hammer, BookOpen, ChevronLeft, Package, ArrowDownToLine, ArrowUpFromLine, Boxes } from 'lucide-react';
+import StockAdjustModal from '../components/StockAdjustModal';
+import { ShoppingCart, Hammer, BookOpen, ChevronLeft, Package, ArrowDownToLine, ArrowUpFromLine, Boxes, SlidersHorizontal } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const num = (n) => (n || 0).toLocaleString('en-IN');
@@ -21,6 +22,7 @@ const RANGES = [
 const TYPES = {
   purchase: { label: 'Purchased', icon: ShoppingCart, tile: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
   production: { label: 'Used in production', icon: Hammer, tile: 'bg-rose-50 text-rose-700 ring-rose-100' },
+  adjustment: { label: 'Stock adjusted', icon: SlidersHorizontal, tile: 'bg-amber-50 text-amber-700 ring-amber-100' },
 };
 
 /** Stock ledger for one material: when it was purchased, when it was used, and the balance after each. */
@@ -34,10 +36,12 @@ export default function StockLedgerPage() {
   const [rangeKey, setRangeKey] = useState('all');
   const [range, setRange] = useState(null); // null = all time, else { from, to }
   const [custom, setCustom] = useState({ from: dayjs().startOf('month').format(DATE_FMT), to: dayjs().format(DATE_FMT) });
+  const [adjusting, setAdjusting] = useState(false);
+  const [reload, setReload] = useState(0); // bumped after an adjustment to refetch
 
   useEffect(() => {
     api.get('/stock/summary').then(res => setMaterials(res.data || [])).catch(console.error);
-  }, []);
+  }, [reload]);
 
   useEffect(() => {
     setLoading(true);
@@ -46,7 +50,7 @@ export default function StockLedgerPage() {
       .then(res => setLedger(res.data))
       .catch(e => { setLedger(null); setError(e.message || 'Could not load the ledger'); })
       .finally(() => setLoading(false));
-  }, [materialId, range]);
+  }, [materialId, range, reload]);
 
   const selectRange = (key) => {
     setRangeKey(key);
@@ -74,13 +78,18 @@ export default function StockLedgerPage() {
           </Link>
           <div>
             <h1 className="page-title">Stock Ledger{ledger ? ` — ${ledger.material.name}` : ''}</h1>
-            <p className="page-subtitle">When it was purchased, when it was used, and the balance after each · {periodText}</p>
+            <p className="page-subtitle">Purchases, production use and adjustments, with the balance after each · {periodText}</p>
           </div>
         </div>
-        <select className="input md:w-56 md:shrink-0" value={materialId} onChange={e => navigate(`/inventory/ledger/${e.target.value}`)} aria-label="Material">
-          {!materials.some(m => m._id === materialId) && <option value={materialId}>Select Material</option>}
-          {materials.map(m => <option key={m._id} value={m._id}>{m.name} ({m.unit})</option>)}
-        </select>
+        <div className="flex gap-2 md:shrink-0">
+          <select className="input min-w-0 flex-1 md:w-56 md:flex-none" value={materialId} onChange={e => navigate(`/inventory/ledger/${e.target.value}`)} aria-label="Material">
+            {!materials.some(m => m._id === materialId) && <option value={materialId}>Select Material</option>}
+            {materials.map(m => <option key={m._id} value={m._id}>{m.name} ({m.unit})</option>)}
+          </select>
+          <button className="btn-primary flex-shrink-0" onClick={() => setAdjusting(true)} disabled={materials.length === 0}>
+            <SlidersHorizontal size={16} /> Adjust Stock
+          </button>
+        </div>
       </div>
 
       {/* Date range */}
@@ -112,8 +121,8 @@ export default function StockLedgerPage() {
         <div className={`space-y-4 transition-opacity md:space-y-5 ${loading ? 'pointer-events-none opacity-50' : ''}`}>
           <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-4">
             <StatCard icon={Package} label="Opening" hint={range ? `Stock before ${dayjs(range.from).format('D MMM')}` : 'Before the first entry'} value={`${num(ledger.opening)} ${unit}`} tone="slate" />
-            <StatCard icon={ArrowDownToLine} label="Purchased" hint="Came in during this period" value={`+ ${num(ledger.totalIn)} ${unit}`} tone="emerald" />
-            <StatCard icon={ArrowUpFromLine} label="Used" hint="Went out during this period" value={`− ${num(ledger.totalOut)} ${unit}`} tone="rose" />
+            <StatCard icon={ArrowDownToLine} label="Stock In" hint="Purchases and increases" value={`+ ${num(ledger.totalIn)} ${unit}`} tone="emerald" />
+            <StatCard icon={ArrowUpFromLine} label="Stock Out" hint="Usage and decreases" value={`− ${num(ledger.totalOut)} ${unit}`} tone="rose" />
             <StatCard icon={Boxes} label="Closing" hint={`In stock now: ${num(ledger.currentStock)} ${unit}`} value={`${num(ledger.closing)} ${unit}`} tone="blue" />
           </section>
 
@@ -150,7 +159,11 @@ export default function StockLedgerPage() {
                               <Icon size={18} />
                             </span>
                             <div className="min-w-0">
-                              <p className="font-semibold text-slate-800">{t.label} <span className="font-medium text-slate-400">·</span> {e.party}</p>
+                              <p className="font-semibold text-slate-800">
+                                {e.type === 'adjustment' ? (e.qtyIn ? 'Stock increased' : 'Stock decreased') : t.label}{' '}
+                                <span className="font-medium text-slate-400">·</span> {e.party}
+                                {e.type === 'adjustment' && <span className="badge-orange ml-2">Adjustment</span>}
+                              </p>
                               <p className="text-xs text-slate-500">{[e.plant, e.detail].filter(Boolean).join(' · ')}</p>
                             </div>
                           </div>
@@ -181,6 +194,15 @@ export default function StockLedgerPage() {
             </p>
           </section>
         </div>
+      )}
+
+      {adjusting && (
+        <StockAdjustModal
+          materials={materials}
+          materialId={materialId}
+          onClose={() => setAdjusting(false)}
+          onSaved={() => setReload(n => n + 1)}
+        />
       )}
     </div>
   );
