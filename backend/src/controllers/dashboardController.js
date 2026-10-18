@@ -4,6 +4,7 @@ const Payment = require('../models/Payment');
 const Expense = require('../models/Expense');
 const Material = require('../models/Material');
 const Purchase = require('../models/Purchase');
+const VendorPayment = require('../models/VendorPayment');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -117,7 +118,7 @@ const words = (s) => (s || '').replace(/_/g, ' ');
 
 // @route GET /api/activity?from=YYYY-MM-DD&to=YYYY-MM-DD&plant=
 // Every operation in the period (production, purchases, sales, payments received,
-// expenses) as one list, newest first, with the period totals.
+// payments made to vendors, expenses) as one list, newest first, with the period totals.
 exports.getActivity = async (req, res, next) => {
   try {
     const { plant, from, to } = req.query;
@@ -125,12 +126,14 @@ exports.getActivity = async (req, res, next) => {
     const query = { organization: req.user.organization._id, date: { $gte: start, $lte: end } };
     if (plant) query.plant = plant;
 
-    const [production, purchases, invoices, payments, expenses] = await Promise.all([
+    const [production, purchases, invoices, payments, expenses, vendorPayments] = await Promise.all([
       ProductionEntry.find(query).populate('plant', 'name').populate('product', 'name').populate('materials.material', 'name').lean(),
       Purchase.find(query).populate('plant', 'name').populate('vendor', 'name').populate('items.material', 'name').lean(),
       Invoice.find(query).populate('plant', 'name').populate('customer', 'name').populate('items.product', 'name').lean(),
       Payment.find(query).populate('plant', 'name').populate('customer', 'name').populate('invoice', 'invoiceNumber').lean(),
       Expense.find(query).populate('plant', 'name').lean(),
+      // Payments to vendors are not tied to a plant, so they are left out when one is selected
+      plant ? [] : VendorPayment.find(query).populate('vendor', 'name').lean(),
     ]);
 
     const base = (type, doc) => ({ id: doc._id, type, date: doc.date, createdAt: doc.createdAt, plant: doc.plant?.name || '' });
@@ -173,6 +176,12 @@ exports.getActivity = async (req, res, next) => {
         ...base('payment', p),
         title: p.customer?.name || 'Payment received',
         detail: join([words(p.mode), p.invoice?.invoiceNumber ? `for ${p.invoice.invoiceNumber}` : '', p.referenceNumber ? `Ref ${p.referenceNumber}` : '']),
+        amount: p.amount,
+      })),
+      ...vendorPayments.map(p => ({
+        ...base('vendor_payment', p),
+        title: p.vendor?.name || 'Payment made',
+        detail: join([words(p.mode), p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
         amount: p.amount,
       })),
       ...expenses.map(e => ({

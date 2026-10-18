@@ -4,7 +4,7 @@ import StatCard from '../components/StatCard';
 import Segmented from '../components/Segmented';
 import SearchInput from '../components/SearchInput';
 import { LoadingState, EmptyState } from '../components/States';
-import { Hammer, ShoppingCart, FileText, TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { Hammer, ShoppingCart, FileText, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -25,6 +25,7 @@ const TYPES = {
   purchase: { label: 'Purchase', icon: ShoppingCart, tile: 'bg-indigo-50 text-indigo-700 ring-indigo-100', value: 'text-rose-600' },
   sale: { label: 'Sale', icon: FileText, tile: 'bg-emerald-50 text-emerald-700 ring-emerald-100', value: 'text-slate-800' },
   payment: { label: 'Payment Received', icon: TrendingUp, tile: 'bg-teal-50 text-teal-700 ring-teal-100', value: 'text-emerald-700' },
+  vendor_payment: { label: 'Payment Made', icon: TrendingDown, tile: 'bg-rose-50 text-rose-700 ring-rose-100', value: 'text-rose-600' },
   expense: { label: 'Expense', icon: DollarSign, tile: 'bg-amber-50 text-amber-700 ring-amber-100', value: 'text-rose-600' },
 };
 

@@ -3,8 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import Segmented from '../components/Segmented';
 import StatCard from '../components/StatCard';
+import PartyPaymentModal from '../components/PartyPaymentModal';
 import { LoadingState, EmptyState } from '../components/States';
-import { FileText, ShoppingCart, TrendingUp, Wallet, BookOpen, ChevronLeft, Receipt, Scale } from 'lucide-react';
+import { FileText, ShoppingCart, TrendingUp, Wallet, BookOpen, ChevronLeft, Receipt, Scale, Plus } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -27,6 +28,7 @@ const KINDS = {
     decreaseLabel: 'Received', decreaseHint: 'Received in this period',
     increaseHead: 'Sale', decreaseHead: 'Received',
     owes: 'will pay you', advance: 'advance with you', settled: 'Nothing due',
+    payLabel: 'Receive Money', payShort: 'Receive',
   },
   vendor: {
     listPath: '/masters/vendors', listEndpoint: '/vendors', listLabel: 'Vendors',
@@ -35,6 +37,7 @@ const KINDS = {
     decreaseLabel: 'Paid', decreaseHint: 'Paid in this period',
     increaseHead: 'Purchase', decreaseHead: 'Paid',
     owes: 'you have to pay', advance: 'advance with vendor', settled: 'Nothing due',
+    payLabel: 'Pay Money', payShort: 'Pay',
   },
 };
 
@@ -56,6 +59,8 @@ export default function PartyLedgerPage({ type }) {
   const [rangeKey, setRangeKey] = useState('all');
   const [range, setRange] = useState(null); // null = all time, else { from, to }
   const [custom, setCustom] = useState({ from: dayjs().startOf('month').format(DATE_FMT), to: dayjs().format(DATE_FMT) });
+  const [paying, setPaying] = useState(false);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     api.get(kind.listEndpoint).then(res => setParties(res.data || [])).catch(console.error);
@@ -68,7 +73,7 @@ export default function PartyLedgerPage({ type }) {
       .then(res => setLedger(res.data))
       .catch(e => { setLedger(null); setError(e.message || 'Could not load the ledger'); })
       .finally(() => setLoading(false));
-  }, [type, id, range]);
+  }, [type, id, range, reload]);
 
   const selectRange = (key) => {
     setRangeKey(key);
@@ -104,10 +109,17 @@ export default function PartyLedgerPage({ type }) {
             </p>
           </div>
         </div>
-        <select className="input md:w-64 md:shrink-0" value={id} onChange={e => navigate(`${kind.listPath}/${e.target.value}/ledger`)} aria-label={kind.listLabel}>
-          {!parties.some(p => p._id === id) && <option value={id}>Select</option>}
-          {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-        </select>
+        <div className="flex gap-2 md:shrink-0">
+          <select className="input flex-1 md:w-64 md:flex-none" value={id} onChange={e => navigate(`${kind.listPath}/${e.target.value}/ledger`)} aria-label={kind.listLabel}>
+            {!parties.some(p => p._id === id) && <option value={id}>Select</option>}
+            {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+          </select>
+          <button className="btn-primary flex-shrink-0" onClick={() => setPaying(true)} disabled={parties.length === 0}>
+            <Plus size={18} />
+            <span className="hidden sm:inline">{kind.payLabel}</span>
+            <span className="sm:hidden">{kind.payShort}</span>
+          </button>
+        </div>
       </div>
 
       {/* Date range */}
@@ -219,6 +231,16 @@ export default function PartyLedgerPage({ type }) {
             </p>
           </section>
         </div>
+      )}
+
+      {paying && (
+        <PartyPaymentModal
+          type={type}
+          parties={parties}
+          partyId={id}
+          onClose={() => setPaying(false)}
+          onSaved={() => setReload(n => n + 1)}
+        />
       )}
     </div>
   );

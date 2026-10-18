@@ -14,6 +14,7 @@ const ProductionEntry = require('../models/ProductionEntry');
 const Invoice = require('../models/Invoice');
 const Expense = require('../models/Expense');
 const Payment = require('../models/Payment');
+const VendorPayment = require('../models/VendorPayment');
 const StockMovement = require('../models/StockMovement');
 const { getSummary, getActivity } = require('../controllers/dashboardController');
 
@@ -138,6 +139,124 @@ router.use('/materials', makeCRUD(Material));
 router.use('/plants', makeCRUD(Plant));
 router.use('/expenses', makeCRUD(Expense));
 router.use('/payments', makeCRUD(Payment));
+
+// Money received from customers. Every receipt is a Payment, so it shows up in the customer's
+// ledger, the customer balances, the dashboard collection and the activity center.
+// The list also includes payments taken on the Sales screen against an invoice.
+const RECEIPT_MODES = ['cash', 'upi', 'bank_transfer', 'cheque'];
+
+router.get('/receipts', async (req, res, next) => {
+  try {
+    const receipts = await Payment.find({ organization: req.user.organization._id })
+      .populate('customer', 'name mobile')
+      .populate('invoice', 'invoiceNumber')
+      .sort({ date: -1, createdAt: -1 });
+    res.json({ success: true, data: receipts });
+  } catch (e) { next(e); }
+});
+
+router.post('/receipts', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const { customer: customerId, mode, date, referenceNumber, notes } = req.body;
+    const amount = Number(req.body.amount);
+    if (!customerId) return res.status(400).json({ success: false, message: 'Select a customer' });
+    if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
+    if (!RECEIPT_MODES.includes(mode)) return res.status(400).json({ success: false, message: 'Choose how the money was received' });
+    const customer = await Customer.findOne({ _id: customerId, organization });
+    if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+    const receipt = await Payment.create({
+      date: /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : new Date().toISOString().slice(0, 10),
+      customer: customer._id,
+      amount,
+      mode,
+      referenceNumber: (referenceNumber || '').trim() || undefined,
+      notes: (notes || '').trim() || undefined,
+      createdBy: req.user._id,
+      organization,
+    });
+    res.status(201).json({ success: true, data: receipt });
+  } catch (e) { next(e); }
+});
+
+router.delete('/receipts/:id', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const receipt = await Payment.findOne({ _id: req.params.id, organization });
+    if (!receipt) return res.status(404).json({ success: false, message: 'Not found' });
+    // A payment taken against an invoice: the invoice goes back to being unpaid by that much
+    if (receipt.invoice) {
+      const invoice = await Invoice.findOne({ _id: receipt.invoice, organization });
+      if (invoice) {
+        invoice.paidAmount = Math.max(0, (invoice.paidAmount || 0) - receipt.amount);
+        invoice.balanceDue = invoice.totalAmount - invoice.paidAmount;
+        if (!['draft', 'cancelled'].includes(invoice.status)) {
+          invoice.status = invoice.balanceDue <= 0 ? 'paid' : invoice.paidAmount > 0 ? 'partial' : 'issued';
+        }
+        await invoice.save();
+      }
+    }
+    await receipt.deleteOne();
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) { next(e); }
+});
+
+// Money paid to vendors. Every payment shows up in the vendor's ledger, the vendor balances
+// and the activity center. The list also includes the amount paid on the Purchases screen
+// along with a purchase; those rows carry `purchase` and are changed from the purchase itself.
+router.get('/vendor-payments', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const [payments, purchases] = await Promise.all([
+      VendorPayment.find({ organization }).populate('vendor', 'name mobile').lean(),
+      Purchase.find({ organization, paidAmount: { $gt: 0 } }).populate('vendor', 'name mobile').lean(),
+    ]);
+    const rows = [
+      ...payments,
+      ...purchases.map(p => ({
+        _id: p._id, date: p.date, createdAt: p.createdAt, vendor: p.vendor,
+        amount: p.paidAmount, mode: p.paymentMode,
+        purchase: { _id: p._id, billNumber: p.billNumber },
+      })),
+    ].sort((a, b) => (new Date(b.date) - new Date(a.date)) || (new Date(b.createdAt) - new Date(a.createdAt)));
+    res.json({ success: true, data: rows });
+  } catch (e) { next(e); }
+});
+
+router.post('/vendor-payments', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const { vendor: vendorId, mode, date, referenceNumber, notes } = req.body;
+    const amount = Number(req.body.amount);
+    if (!vendorId) return res.status(400).json({ success: false, message: 'Select a vendor' });
+    if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
+    if (!RECEIPT_MODES.includes(mode)) return res.status(400).json({ success: false, message: 'Choose how the money was paid' });
+    const vendor = await Vendor.findOne({ _id: vendorId, organization });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+
+    const payment = await VendorPayment.create({
+      date: /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : new Date().toISOString().slice(0, 10),
+      vendor: vendor._id,
+      amount,
+      mode,
+      referenceNumber: (referenceNumber || '').trim() || undefined,
+      notes: (notes || '').trim() || undefined,
+      createdBy: req.user._id,
+      organization,
+    });
+    res.status(201).json({ success: true, data: payment });
+  } catch (e) { next(e); }
+});
+
+router.delete('/vendor-payments/:id', async (req, res, next) => {
+  try {
+    const payment = await VendorPayment.findOne({ _id: req.params.id, organization: req.user.organization._id });
+    if (!payment) return res.status(404).json({ success: false, message: 'Not found' });
+    await payment.deleteOne();
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) { next(e); }
+});
 
 // Purchases with material stock update
 router.get('/purchases', async (req, res, next) => {
@@ -371,8 +490,11 @@ router.get('/party-ledger/:type/:id', async (req, res, next) => {
         })),
       ];
     } else {
-      const purchases = await Purchase.find({ organization, vendor: id })
-        .populate('plant', 'name').populate('items.material', 'name').lean();
+      const [purchases, payments] = await Promise.all([
+        Purchase.find({ organization, vendor: id })
+          .populate('plant', 'name').populate('items.material', 'name').lean(),
+        VendorPayment.find({ organization, vendor: id }).lean(),
+      ]);
       rows = purchases.flatMap(p => [
         {
           type: 'purchase', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
@@ -389,7 +511,12 @@ router.get('/party-ledger/:type/:id', async (req, res, next) => {
           detail: join([words(p.paymentMode), p.billNumber ? `for Bill ${p.billNumber}` : '']),
           increase: 0, decrease: p.paidAmount, order: 1,
         }] : []),
-      ]);
+      ]).concat(payments.map(p => ({
+        type: 'payment', refId: p._id, date: p.date, createdAt: p.createdAt, plant: '',
+        title: 'Payment made',
+        detail: join([words(p.mode), p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
+        increase: 0, decrease: p.amount || 0,
+      })));
     }
 
     rows.sort((a, b) => (new Date(a.date) - new Date(b.date)) || (new Date(a.createdAt) - new Date(b.createdAt)) || ((a.order || 0) - (b.order || 0)));
@@ -445,7 +572,8 @@ router.get('/party-balances/:type', async (req, res, next) => {
         ]),
       ]);
     } else {
-      [parties, billed] = await Promise.all([
+      let paidOnAccount;
+      [parties, billed, paidOnAccount] = await Promise.all([
         Vendor.find({ organization }).select('openingBalance').lean(),
         Purchase.aggregate([
           { $match: { organization } },
@@ -456,8 +584,18 @@ router.get('/party-balances/:type', async (req, res, next) => {
             count: { $sum: 1 }, lastDate: { $max: '$date' },
           } },
         ]),
+        VendorPayment.aggregate([
+          { $match: { organization } },
+          { $group: { _id: '$vendor', total: { $sum: '$amount' } } },
+        ]),
       ]);
-      paid = billed.map(b => ({ _id: b._id, total: b.paid }));
+      // Paid along with purchases + paid on account
+      const onAccount = byId(paidOnAccount);
+      const withPurchase = byId(billed);
+      paid = parties.map(p => ({
+        _id: p._id,
+        total: (withPurchase[String(p._id)]?.paid || 0) + (onAccount[String(p._id)]?.total || 0),
+      }));
     }
 
     const billedById = byId(billed);
