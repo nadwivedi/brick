@@ -49,6 +49,7 @@ export default function ProductionPage() {
   const [saving, setSaving] = useState(false);
   const [cement, setCement] = useState(null); // cement ratios as of today
   const [formCement, setFormCement] = useState(null); // cement ratios as of the date in the form
+  const [settings, setSettings] = useState({ platesEnabled: false, bricksPerPlate: 0 }); // production entered by plates?
 
   useEscapeKey(showForm, () => setShowForm(false));
 
@@ -56,7 +57,7 @@ export default function ProductionPage() {
     setLoading(true);
     try {
       const today = dayjs().format('YYYY-MM-DD');
-      const [entriesRes, productsRes, plantsRes, materialsRes, allRes, monthRes, todayRes, cementRes] = await Promise.all([
+      const [entriesRes, productsRes, plantsRes, materialsRes, allRes, monthRes, todayRes, cementRes, settingsRes] = await Promise.all([
         api.get(`/production?page=${page}`),
         api.get('/products'),
         api.get('/plants'),
@@ -65,8 +66,10 @@ export default function ProductionPage() {
         api.get('/production/summary', { params: { from: dayjs().startOf('month').format('YYYY-MM-DD'), to: today } }),
         api.get('/production/summary', { params: { from: today, to: today } }),
         api.get('/production/cement-ratio', { params: { asOf: today } }),
+        api.get('/settings'),
       ]);
       setCement(cementRes.data || null);
+      setSettings(settingsRes.data || { platesEnabled: false, bricksPerPlate: 0 });
       setTotals({ all: sumSummary(allRes.data), month: sumSummary(monthRes.data), today: sumSummary(todayRes.data) });
       setEntries(entriesRes.data || []);
       setTotalPages(entriesRes.pages || 1);
@@ -100,6 +103,10 @@ export default function ProductionPage() {
         product: entry.product?._id || '',
         quantityProduced: entry.quantityProduced,
         quantityDamaged: entry.quantityDamaged || 0,
+        // An entry keeps the way it was made: by plates (with that day's bricks per plate) or as a count
+        byPlates: entry.plates > 0,
+        plates: entry.plates || '',
+        bricksPerPlate: entry.bricksPerPlate || settings.bricksPerPlate || '',
         shift: entry.shift,
         notes: entry.notes || '',
         materials: (entry.materials || []).map(m => {
@@ -109,12 +116,23 @@ export default function ProductionPage() {
       });
     } else {
       setEditing(null);
-      setForm({ date: dayjs().format('YYYY-MM-DD'), plant: defaultPlantId(plants), product: '', quantityProduced: '', quantityDamaged: 0, shift: 'full_day', notes: '', materials: [] });
+      setForm({
+        date: dayjs().format('YYYY-MM-DD'), plant: defaultPlantId(plants), product: '', quantityProduced: '', quantityDamaged: 0,
+        byPlates: settings.platesEnabled, plates: '', bricksPerPlate: settings.bricksPerPlate || '',
+        shift: 'full_day', notes: '', materials: [],
+      });
     }
     setShowForm(true);
   };
 
   useOpenOnNew(!loading, () => openForm());
+
+  // Plates or bricks per plate changed: the brick count follows (plates × bricks per plate)
+  const setPlates = (changes) => setForm(f => {
+    const next = { ...f, ...changes };
+    const total = (Number(next.plates) || 0) * (Number(next.bricksPerPlate) || 0);
+    return { ...next, quantityProduced: total > 0 ? total : '' };
+  });
 
   const handleSave = async () => {
     // Blank rows are ignored; a chosen material must have a quantity
@@ -126,10 +144,16 @@ export default function ProductionPage() {
     const problem =
       !form.plant ? 'Select a plant' :
       !form.product ? 'Select a product' :
+      form.byPlates && !(Number(form.plates) > 0) ? 'Enter the number of plates' :
+      form.byPlates && !(Number(form.bricksPerPlate) > 0) ? 'Enter how many bricks one plate makes' :
       form.quantityProduced === '' || Number(form.quantityProduced) < 0 ? 'Enter the quantity produced' : '';
     if (problem) { alert(problem); return; }
+    const { byPlates, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
+      // Sent as null when the entry is not by plates, so an edited entry drops old plate figures
+      plates: byPlates ? Number(form.plates) : null,
+      bricksPerPlate: byPlates ? Number(form.bricksPerPlate) : null,
       materials: used.map(m => ({ material: m.material, quantity: Number(m.quantity), unit: unitOf(m.material) || m.unit }))
     };
     setSaving(true);
@@ -260,6 +284,7 @@ export default function ProductionPage() {
                       </td>
                       <td className="table-cell whitespace-nowrap">
                         <span className="text-base font-bold text-slate-900">{num(produced)}</span> <span className="text-xs font-semibold text-slate-400">pcs</span>
+                        {entry.plates > 0 && <p className="text-xs text-slate-400">{num(entry.plates)} plates × {num(entry.bricksPerPlate)}</p>}
                       </td>
                       <td className="table-cell">
                         <div className="w-36">
@@ -368,10 +393,29 @@ export default function ProductionPage() {
 
           <ModalSection number={2} title="Quantity" tone="emerald">
             <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div>
-                <label className="label">Quantity Produced</label>
-                <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 5000" value={form.quantityProduced} onChange={e => setForm({ ...form, quantityProduced: e.target.value })} />
-              </div>
+              {form.byPlates ? (
+                <>
+                  <div>
+                    <label className="label">Number of Plates</label>
+                    <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 120" value={form.plates} onChange={e => setPlates({ plates: e.target.value })} autoFocus />
+                  </div>
+                  <div>
+                    <label className="label">Bricks per Plate</label>
+                    <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 105" value={form.bricksPerPlate} onChange={e => setPlates({ bricksPerPlate: e.target.value })} />
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2.5 ring-1 ring-inset ring-emerald-200">
+                    <span className="text-sm text-slate-600">
+                      {num(Number(form.plates) || 0)} plates × {num(Number(form.bricksPerPlate) || 0)} bricks
+                    </span>
+                    <span className="text-lg font-bold text-emerald-700">= {num(Number(form.quantityProduced) || 0)} bricks</span>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="label">Quantity Produced</label>
+                  <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 5000" value={form.quantityProduced} onChange={e => setForm({ ...form, quantityProduced: e.target.value })} />
+                </div>
+              )}
               <div>
                 <label className="label">Damaged / Broken</label>
                 <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.quantityDamaged} onChange={e => setForm({ ...form, quantityDamaged: e.target.value })} />

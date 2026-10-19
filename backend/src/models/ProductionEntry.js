@@ -6,6 +6,9 @@ const productionEntrySchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   quantityProduced: { type: Number, required: true, min: 0 },
   quantityDamaged: { type: Number, default: 0 },
+  // When entered by plates: quantityProduced = plates × bricksPerPlate (the rate used that day)
+  plates: { type: Number, min: 0 },
+  bricksPerPlate: { type: Number, min: 0 },
   shift: { type: String, enum: ['morning', 'evening', 'night', 'full_day'], default: 'full_day' },
   notes: { type: String },
   materials: [{

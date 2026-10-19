@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const Party = require('../models/Party');
+const Organization = require('../models/Organization');
 const Worker = require('../models/Worker');
 const Product = require('../models/Product');
 const Material = require('../models/Material');
@@ -63,6 +64,31 @@ const makeCRUD = (Model, orgField = 'organization') => {
   });
   return router;
 };
+
+// Business settings
+router.get('/settings', async (req, res, next) => {
+  try {
+    const org = await Organization.findById(req.user.organization._id).select('settings').lean();
+    res.json({ success: true, data: { platesEnabled: false, bricksPerPlate: 0, ...(org?.settings || {}) } });
+  } catch (e) { next(e); }
+});
+
+router.put('/settings', async (req, res, next) => {
+  try {
+    const platesEnabled = req.body.platesEnabled === true || req.body.platesEnabled === 'true';
+    const bricksPerPlate = Number(req.body.bricksPerPlate) || 0;
+    if (platesEnabled && !(bricksPerPlate > 0)) {
+      return res.status(400).json({ success: false, message: 'Enter how many bricks one plate makes' });
+    }
+    if (bricksPerPlate < 0) return res.status(400).json({ success: false, message: 'Bricks per plate cannot be negative' });
+    const org = await Organization.findByIdAndUpdate(
+      req.user.organization._id,
+      { 'settings.platesEnabled': platesEnabled, 'settings.bricksPerPlate': bricksPerPlate },
+      { new: true, runValidators: true }
+    ).select('settings').lean();
+    res.json({ success: true, data: org.settings });
+  } catch (e) { next(e); }
+});
 
 // Units (default units are created automatically for each organization)
 router.get('/units', async (req, res, next) => {

@@ -1,6 +1,85 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { User, Building2, Bell, Shield } from 'lucide-react';
+import { NON_NEGATIVE } from '../lib/number';
+import { User, Building2, Bell, Shield, Hammer, Loader2 } from 'lucide-react';
+
+const num = (n) => (n || 0).toLocaleString('en-IN');
+
+/** Business settings for production: whether bricks are counted by plates, and how many a plate makes. */
+function ProductionSettings() {
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/settings')
+      .then(res => setForm({ platesEnabled: !!res.data?.platesEnabled, bricksPerPlate: res.data?.bricksPerPlate || '' }))
+      .catch(e => toast.error(e.message || 'Could not load settings'));
+  }, []);
+
+  const save = async () => {
+    if (form.platesEnabled && !(Number(form.bricksPerPlate) > 0)) {
+      toast.error('Enter how many bricks one plate makes');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put('/settings', { platesEnabled: form.platesEnabled, bricksPerPlate: Number(form.bricksPerPlate) || 0 });
+      toast.success('Production settings saved');
+    } catch (e) { toast.error(e.message || 'Could not save settings'); }
+    setSaving(false);
+  };
+
+  if (!form) return <div className="card text-sm text-slate-400">Loading…</div>;
+  const perPlate = Number(form.bricksPerPlate) || 0;
+
+  return (
+    <div className="card space-y-4">
+      <div>
+        <h2 className="text-base font-bold text-slate-900">Production</h2>
+        <p className="text-xs text-slate-500">How bricks are counted on production entries. This applies to everyone in your business.</p>
+      </div>
+
+      <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-slate-200 p-3 md:p-4">
+        <span>
+          <span className="block text-sm font-semibold text-slate-800">Count production by plates</span>
+          <span className="block text-xs text-slate-500">Enter the number of plates on each production entry; the bricks are worked out from bricks per plate.</span>
+        </span>
+        <span className="relative mt-0.5 inline-flex shrink-0">
+          <input type="checkbox" className="peer sr-only" checked={form.platesEnabled}
+            onChange={e => setForm({ ...form, platesEnabled: e.target.checked })} />
+          <span className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-primary-600 peer-focus-visible:ring-4 peer-focus-visible:ring-primary-600/20" />
+          <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+        </span>
+      </label>
+
+      {form.platesEnabled && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4">
+          <div>
+            <label className="label">Bricks per plate <span className="text-rose-500">*</span></label>
+            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 105" value={form.bricksPerPlate}
+              onChange={e => setForm({ ...form, bricksPerPlate: e.target.value })} />
+          </div>
+          <div className="flex items-end">
+            <p className="w-full rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-600 ring-1 ring-inset ring-slate-200">
+              {perPlate > 0
+                ? <>Example: 120 plates × {num(perPlate)} = <span className="font-bold text-slate-900">{num(120 * perPlate)} bricks</span></>
+                : 'Enter how many bricks one plate makes'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="pt-2">
+        <button className="btn-primary" onClick={save} disabled={saving}>
+          {saving && <Loader2 size={16} className="animate-spin" />}
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -9,6 +88,7 @@ export default function SettingsPage() {
   const tabs = [
     { key: 'profile', label: 'My Profile', icon: User },
     { key: 'organization', label: 'Organization', icon: Building2 },
+    { key: 'production', label: 'Production', icon: Hammer },
     { key: 'notifications', label: 'Notifications', icon: Bell },
     { key: 'security', label: 'Security', icon: Shield },
   ];
@@ -88,6 +168,8 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          {activeTab === 'production' && <ProductionSettings />}
 
           {activeTab === 'organization' && (
             <div className="card space-y-4">

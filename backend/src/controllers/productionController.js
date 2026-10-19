@@ -42,6 +42,14 @@ const readMaterials = async (materials, organization) => {
   return rows.map(r => ({ ...r, unit: units.get(String(r.material)) }));
 };
 
+// An entry made by plates gets its brick count from them; one made without plates drops them
+const readPlates = (body) => {
+  const plates = Number(body.plates);
+  const perPlate = Number(body.bricksPerPlate);
+  if (plates > 0 && perPlate > 0) return { plates, bricksPerPlate: perPlate, quantityProduced: plates * perPlate };
+  return { plates: undefined, bricksPerPlate: undefined };
+};
+
 // @route POST /api/production
 exports.create = async (req, res, next) => {
   try {
@@ -49,6 +57,7 @@ exports.create = async (req, res, next) => {
     const materials = await readMaterials(req.body.materials, organization);
     const entry = await ProductionEntry.create({
       ...req.body,
+      ...readPlates(req.body),
       materials,
       createdBy: req.user._id,
       organization
@@ -89,6 +98,14 @@ exports.getOne = async (req, res, next) => {
 exports.update = async (req, res, next) => {
   try {
     const body = { ...req.body };
+    if ('plates' in body) {
+      const plates = readPlates(body);
+      delete body.plates;
+      delete body.bricksPerPlate;
+      // Entered without plates this time: the old plate figures are removed from the entry
+      if (plates.plates === undefined) body.$unset = { plates: 1, bricksPerPlate: 1 };
+      else Object.assign(body, plates);
+    }
     if (Array.isArray(body.materials)) {
       body.materials = await readMaterials(body.materials, req.user.organization._id);
     }
