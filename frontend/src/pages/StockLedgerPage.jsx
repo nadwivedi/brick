@@ -139,13 +139,6 @@ export default function StockLedgerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-slate-100 bg-slate-50">
-                    <td className="table-cell whitespace-nowrap text-slate-400">{range ? dayjs(range.to).format('DD MMM YYYY') : '—'}</td>
-                    <td className="table-cell font-bold text-slate-900">Closing balance</td>
-                    <td className="table-cell whitespace-nowrap text-right font-bold text-emerald-700">{ledger.totalIn ? `+ ${num(ledger.totalIn)}` : ''}</td>
-                    <td className="table-cell whitespace-nowrap text-right font-bold text-rose-600">{ledger.totalOut ? `− ${num(ledger.totalOut)}` : ''}</td>
-                    <td className="table-cell whitespace-nowrap text-right font-bold text-primary-700">{num(ledger.closing)} {unit}</td>
-                  </tr>
                   {/* Newest first: the latest purchase or use is on top, the oldest at the bottom */}
                   {[...ledger.entries].reverse().map((e, i) => {
                     const t = TYPES[e.type];
