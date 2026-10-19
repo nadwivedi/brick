@@ -5,6 +5,7 @@ const Expense = require('../models/Expense');
 const Material = require('../models/Material');
 const Purchase = require('../models/Purchase');
 const VendorPayment = require('../models/VendorPayment');
+const Product = require('../models/Product');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -29,15 +30,8 @@ const sumInRange = async (Model, match, field) => {
   return result[0]?.total || 0;
 };
 
-// Totals per day (or per month for long ranges), with empty periods filled with 0
-const trendInRange = async (Model, match, field, byMonth, start, end) => {
-  const format = byMonth ? '%Y-%m' : '%Y-%m-%d';
-  const rows = await Model.aggregate([
-    { $match: match },
-    { $group: { _id: { $dateToString: { format, date: '$date' } }, total: { $sum: `$${field}` } } }
-  ]);
-  const totals = Object.fromEntries(rows.map(r => [r._id, r.total]));
-
+// Every day (or month, for long ranges) from start to end, as the keys the trends are grouped by
+const periodKeys = (byMonth, start, end) => {
   const keys = [];
   if (byMonth) {
     const d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
@@ -50,7 +44,34 @@ const trendInRange = async (Model, match, field, byMonth, start, end) => {
       keys.push(new Date(t).toISOString().slice(0, 10));
     }
   }
-  return keys.map(k => ({ _id: k, total: totals[k] || 0 }));
+  return keys;
+};
+
+// Totals per day (or per month for long ranges), with empty periods filled with 0
+const trendInRange = async (Model, match, field, byMonth, start, end) => {
+  const format = byMonth ? '%Y-%m' : '%Y-%m-%d';
+  const rows = await Model.aggregate([
+    { $match: match },
+    { $group: { _id: { $dateToString: { format, date: '$date' } }, total: { $sum: `$${field}` } } }
+  ]);
+  const totals = Object.fromEntries(rows.map(r => [r._id, r.total]));
+  return periodKeys(byMonth, start, end).map(k => ({ _id: k, total: totals[k] || 0 }));
+};
+
+// Bricks produced per period, split by brick type: [{ _id: period, total, [productId]: qty }]
+const productionTrendByType = async (match, byMonth, start, end) => {
+  const format = byMonth ? '%Y-%m' : '%Y-%m-%d';
+  const rows = await ProductionEntry.aggregate([
+    { $match: match },
+    { $group: { _id: { period: { $dateToString: { format, date: '$date' } }, product: '$product' }, total: { $sum: '$quantityProduced' } } }
+  ]);
+  const byPeriod = {};
+  for (const r of rows) {
+    const row = (byPeriod[r._id.period] ||= { total: 0 });
+    row[String(r._id.product)] = r.total;
+    row.total += r.total;
+  }
+  return periodKeys(byMonth, start, end).map(k => ({ _id: k, total: 0, ...byPeriod[k] }));
 };
 
 // @route GET /api/dashboard/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&plant=
@@ -79,10 +100,13 @@ exports.getSummary = async (req, res, next) => {
       sumInRange(Purchase, inRange, 'totalAmount'),
       // Outstanding dues are the current balance, not limited to the date range
       sumInRange(Invoice, { ...baseQuery, status: { $in: ['issued', 'partial'] } }, 'balanceDue'),
-      trendInRange(ProductionEntry, inRange, 'quantityProduced', byMonth, start, end),
+      productionTrendByType(inRange, byMonth, start, end),
       trendInRange(Invoice, inRange, 'totalAmount', byMonth, start, end),
       trendInRange(Payment, inRange, 'amount', byMonth, start, end),
     ]);
+
+    // Brick types in the order they were created, so each keeps the same chart colour
+    const productionTypes = await Product.find({ organization: orgId }).sort({ createdAt: 1, _id: 1 }).select('name').lean();
 
     // Low stock materials (current stock, not date based)
     const lowStock = await Material.find({
@@ -107,6 +131,7 @@ exports.getSummary = async (req, res, next) => {
         lowStockCount: lowStock.length,
         lowStockItems: lowStock,
         productionTrend,
+        productionTypes,
         salesTrend: salesTrend.map(r => ({ _id: r._id, sales: r.total, collection: collectionByKey[r._id] || 0 })),
       }
     });

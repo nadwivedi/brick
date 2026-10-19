@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import StatCard from '../components/StatCard';
+import ProductionTrendChart from '../components/ProductionTrendChart';
 import Segmented from '../components/Segmented';
 import { LoadingState } from '../components/States';
 import {
@@ -9,7 +10,7 @@ import {
   AlertTriangle, Users, ShoppingCart, ChevronRight, HandCoins, Send, Layers
 } from 'lucide-react';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import dayjs from 'dayjs';
@@ -184,28 +185,13 @@ export default function DashboardPage() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2">
-        <section className="panel">
-          <div className="panel-header">
-            <h3 className="text-sm font-bold text-slate-900">Production Trend</h3>
-            <p className="text-xs text-slate-500">Bricks produced {byMonth ? 'by month' : 'by day'}</p>
-          </div>
-          <div className="p-3 md:p-4">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={data?.productionTrend || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="_id" tick={AXIS_TICK} tickFormatter={tickFormat} axisLine={false} tickLine={false} />
-                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={44} />
-                <Tooltip
-                  cursor={{ fill: '#f1f5f9' }}
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={(v) => [fmtNum(v) + ' pcs', 'Production']}
-                  labelFormatter={labelFormat}
-                />
-                <Bar dataKey="total" fill={CHART_BLUE} radius={[4, 4, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+        <ProductionTrendChart
+          rows={data?.productionTrend || []}
+          types={data?.productionTypes || []}
+          byMonth={byMonth}
+          tickFormat={tickFormat}
+          labelFormat={labelFormat}
+        />
 
         <section className="panel">
           <div className="panel-header">
