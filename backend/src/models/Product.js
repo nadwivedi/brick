@@ -10,6 +10,7 @@ const productSchema = new mongoose.Schema({
   size: { type: String, trim: true }, // size label, e.g. "9 x 4 x 3 inch"
   unit: { type: String, default: 'pcs' },
   defaultRate: { type: Number, default: 0 },
+  openingStock: { type: Number, default: 0, min: 0 }, // bricks in hand before entries started here
   hsnCode: { type: String },
   gstPercent: { type: Number, default: 0 },
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },

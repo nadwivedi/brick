@@ -33,6 +33,7 @@ export default function SalesPage() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [plants, setPlants] = useState([]);
+  const [brickStock, setBrickStock] = useState({}); // pcs available per brick type id
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showPayModal, setShowPayModal] = useState(null);
@@ -54,12 +55,14 @@ export default function SalesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [invRes, custRes, prodRes, plantRes] = await Promise.all([
+      const [invRes, custRes, prodRes, plantRes, stockRes] = await Promise.all([
         api.get('/invoices', { params: { limit: 1000 } }),
         api.get('/customers'),
         api.get('/products'),
         api.get('/plants'),
+        api.get('/stock/bricks'),
       ]);
+      setBrickStock(Object.fromEntries((stockRes.data || []).map(r => [r.product._id, Math.max(r.available, 0)])));
       setInvoices(invRes.data || []);
       setCustomers(custRes.data || []);
       setProducts(prodRes.data || []);
@@ -106,15 +109,21 @@ export default function SalesPage() {
     setForm(f => ({ ...f, items, ...totals }));
   };
 
+  // Pieces of each brick type on this invoice, across all its rows
+  const qtyByProduct = form.items.reduce((m, i) => (i.product ? { ...m, [i.product]: (m[i.product] || 0) + (Number(i.quantity) || 0) } : m), {});
+  const overStock = Object.keys(qtyByProduct).filter(id => qtyByProduct[id] > (brickStock[id] || 0));
+
   const handleSave = async () => {
     // Blank rows are ignored; everything the invoice needs must be filled in
     const items = form.items.filter(i => i.product);
+    const shortName = products.find(p => p._id === overStock[0])?.name;
     const problem =
       !form.plant ? 'Select a plant' :
       !form.customer ? 'Select a customer' :
       items.length === 0 ? 'Add at least one product' :
       items.some(i => !(Number(i.quantity) > 0)) ? 'Enter the quantity for each product' :
-      items.some(i => i.rate === '' || Number(i.rate) < 0) ? 'Enter the rate for each product' : '';
+      items.some(i => i.rate === '' || Number(i.rate) < 0) ? 'Enter the rate for each product' :
+      overStock.length ? `Not enough stock: only ${(brickStock[overStock[0]] || 0).toLocaleString('en-IN')} pcs of ${shortName} available` : '';
     if (problem) { alert(problem); return; }
     setSaving(true);
     try {
@@ -303,7 +312,7 @@ export default function SalesPage() {
           maxWidth="max-w-4xl"
           footer={<>
             <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
+            <button className="btn-primary px-8" onClick={handleSave} disabled={saving || overStock.length > 0}>
               {saving ? <Loader2 size={16} className="animate-spin" /> : null}
               {saving ? 'Saving...' : 'Create Invoice'}
             </button>
@@ -355,8 +364,13 @@ export default function SalesPage() {
                       <td className="px-2 py-1.5">
                         <select className="input min-w-36 py-1.5" value={item.product} onChange={e => updateItem(idx, 'product', e.target.value)}>
                           <option value="">Select</option>
-                          {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                          {products.map(p => <option key={p._id} value={p._id}>{p.name} ({(brickStock[p._id] || 0).toLocaleString('en-IN')} pcs)</option>)}
                         </select>
+                        {item.product && (
+                          <p className={`mt-0.5 whitespace-nowrap text-[11px] font-semibold ${overStock.includes(item.product) ? 'text-rose-600' : 'text-slate-400'}`}>
+                            {overStock.includes(item.product) ? 'Not enough stock · ' : ''}{(brickStock[item.product] || 0).toLocaleString('en-IN')} pcs available
+                          </p>
+                        )}
                       </td>
                       <td className="px-2 py-1.5"><input type="number" {...NON_NEGATIVE} className="input w-24 py-1.5" placeholder="Qty" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} /></td>
                       <td className="px-2 py-1.5"><input type="number" {...NON_NEGATIVE} className="input w-28 py-1.5" placeholder="Rate" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} /></td>

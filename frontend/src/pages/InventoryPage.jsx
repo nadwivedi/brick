@@ -1,15 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import StatCard from '../components/StatCard';
+import Segmented from '../components/Segmented';
+import BrickStock from '../components/BrickStock';
 import { LoadingState, EmptyState } from '../components/States';
 import StockAdjustModal from '../components/StockAdjustModal';
-import { Package, AlertTriangle, CircleCheck, BookOpen, SlidersHorizontal } from 'lucide-react';
+import { Package, AlertTriangle, CircleCheck, BookOpen, SlidersHorizontal, Layers, Boxes } from 'lucide-react';
+
+const TABS = [
+  { key: 'bricks', label: 'Bricks', icon: Layers },
+  { key: 'materials', label: 'Raw Materials', icon: Boxes },
+];
 
 export default function InventoryPage() {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adjustFor, setAdjustFor] = useState(null); // material id being adjusted, or '' for "pick one"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'materials' ? 'materials' : 'bricks';
 
   const fetchStock = () => api.get('/stock/summary')
     .then(res => setMaterials(res.data || []))
@@ -26,12 +35,18 @@ export default function InventoryPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Inventory</h1>
-          <p className="page-subtitle">Raw material stock levels</p>
+          <p className="page-subtitle">{tab === 'bricks' ? 'Bricks produced, sold and left, by brick type' : 'Raw material stock levels'}</p>
         </div>
-        <button className="btn-primary self-start" onClick={() => setAdjustFor('')} disabled={materials.length === 0}>
-          <SlidersHorizontal size={16} /> Adjust Stock
-        </button>
+        {tab === 'materials' && (
+          <button className="btn-primary self-start" onClick={() => setAdjustFor('')} disabled={materials.length === 0}>
+            <SlidersHorizontal size={16} /> Adjust Stock
+          </button>
+        )}
       </div>
+
+      <Segmented options={TABS} value={tab} onChange={key => setSearchParams(key === 'bricks' ? {} : { tab: key }, { replace: true })} />
+
+      {tab === 'bricks' ? <BrickStock /> : <>
 
       {/* Summary */}
       <section className="grid grid-cols-3 gap-2.5 md:gap-4">
@@ -136,6 +151,8 @@ export default function InventoryPage() {
           </div>
         )}
       </section>
+
+      </>}
 
       {adjustFor !== null && (
         <StockAdjustModal

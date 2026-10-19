@@ -1,5 +1,6 @@
 const Invoice = require('../models/Invoice');
 const Payment = require('../models/Payment');
+const { checkBrickStock, NOT_SOLD } = require('../utils/brickStock');
 
 // @route GET /api/invoices
 exports.getAll = async (req, res, next) => {
@@ -28,6 +29,12 @@ exports.getAll = async (req, res, next) => {
 // @route POST /api/invoices
 exports.create = async (req, res, next) => {
   try {
+    // Bricks can't be sold beyond what is in stock
+    if (!NOT_SOLD.includes(req.body.status)) {
+      const shortage = await checkBrickStock(req.user.organization._id, req.body.items);
+      if (shortage) return res.status(400).json({ success: false, message: shortage });
+    }
+
     // Generate invoice number
     const count = await Invoice.countDocuments({ organization: req.user.organization._id });
     const invoiceNumber = `INV-${String(count + 1).padStart(4, '0')}`;
@@ -71,8 +78,20 @@ exports.getOne = async (req, res, next) => {
 // @route PUT /api/invoices/:id
 exports.update = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!invoice) return res.status(404).json({ success: false, message: 'Not found' });
+    const organization = req.user.organization._id;
+    const existing = await Invoice.findOne({ _id: req.params.id, organization });
+    if (!existing) return res.status(404).json({ success: false, message: 'Not found' });
+
+    // Re-check stock when the edit changes what is sold (new items, or a draft/cancelled invoice issued)
+    const status = req.body.status || existing.status;
+    const itemsChanged = Array.isArray(req.body.items);
+    const nowSold = NOT_SOLD.includes(existing.status) && !NOT_SOLD.includes(status);
+    if (!NOT_SOLD.includes(status) && (itemsChanged || nowSold)) {
+      const shortage = await checkBrickStock(organization, itemsChanged ? req.body.items : existing.items, { excludeInvoice: existing._id });
+      if (shortage) return res.status(400).json({ success: false, message: shortage });
+    }
+
+    const invoice = await Invoice.findByIdAndUpdate(existing._id, req.body, { new: true, runValidators: true });
     res.json({ success: true, data: invoice });
   } catch (error) { next(error); }
 };

@@ -17,6 +17,7 @@ const Payment = require('../models/Payment');
 const VendorPayment = require('../models/VendorPayment');
 const StockMovement = require('../models/StockMovement');
 const { getSummary, getActivity } = require('../controllers/dashboardController');
+const { getBrickStock } = require('../utils/brickStock');
 
 router.use(protect);
 
@@ -341,6 +342,14 @@ router.get('/stock/summary', async (req, res, next) => {
     if (plant) query.plant = plant;
     const materials = await Material.find(query);
     res.json({ success: true, data: materials });
+  } catch (e) { next(e); }
+});
+
+// Brick stock per brick type (opening + good bricks produced - sold). Optional ?plant= limits it to one plant.
+router.get('/stock/bricks', async (req, res, next) => {
+  try {
+    const data = await getBrickStock(req.user.organization._id, { plant: req.query.plant });
+    res.json({ success: true, data });
   } catch (e) { next(e); }
 });
 
