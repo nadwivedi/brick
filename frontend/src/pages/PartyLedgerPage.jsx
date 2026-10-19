@@ -22,7 +22,7 @@ const RANGES = [
 // Wording and links for each kind of account
 const KINDS = {
   customer: {
-    listPath: '/masters/customers', listEndpoint: '/customers', listLabel: 'Customers',
+    listPath: '/masters/customers', backPath: '/masters/parties?type=customer', listEndpoint: '/customers', listLabel: 'Customers',
     subtitle: 'Every sale and every payment received, with the balance after each',
     increaseLabel: 'Sales', increaseHint: 'Invoiced in this period', increaseIcon: FileText,
     decreaseLabel: 'Received', decreaseHint: 'Received in this period',
@@ -31,7 +31,7 @@ const KINDS = {
     payLabel: 'Receive Money', payShort: 'Receive',
   },
   vendor: {
-    listPath: '/masters/vendors', listEndpoint: '/vendors', listLabel: 'Vendors',
+    listPath: '/masters/vendors', backPath: '/masters/parties?type=vendor', listEndpoint: '/vendors', listLabel: 'Vendors',
     subtitle: 'Every purchase and every payment made, with the balance after each',
     increaseLabel: 'Purchases', increaseHint: 'Bought in this period', increaseIcon: ShoppingCart,
     decreaseLabel: 'Paid', decreaseHint: 'Paid in this period',
@@ -99,7 +99,7 @@ export default function PartyLedgerPage({ type }) {
       {/* Header */}
       <div className="page-header">
         <div className="flex items-center gap-3">
-          <Link to={kind.listPath} className="icon-btn hidden bg-white ring-1 ring-slate-200 lg:block" title={`Back to ${kind.listLabel}`} aria-label={`Back to ${kind.listLabel}`}>
+          <Link to={kind.backPath} className="icon-btn hidden bg-white ring-1 ring-slate-200 lg:block" title="Back to Parties" aria-label="Back to Parties">
             <ChevronLeft size={18} />
           </Link>
           <div>

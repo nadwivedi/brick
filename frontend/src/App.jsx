@@ -59,8 +59,9 @@ function AppRoutes() {
         <Route path="masters/customers/:id/ledger" element={<PartyLedgerPage key="customer" type="customer" />} />
         <Route path="masters/vendors/:id/ledger" element={<PartyLedgerPage key="vendor" type="vendor" />} />
         {/* Old links to the individual master screens */}
-        <Route path="customers" element={<Navigate to="/masters/customers" replace />} />
-        <Route path="vendors" element={<Navigate to="/masters/vendors" replace />} />
+        <Route path="customers" element={<Navigate to="/masters/parties?type=customer" replace />} />
+        <Route path="vendors" element={<Navigate to="/masters/parties?type=vendor" replace />} />
+        <Route path="parties" element={<Navigate to="/masters/parties" replace />} />
         <Route path="workers" element={<Navigate to="/masters/labour" replace />} />
         <Route path="products" element={<Navigate to="/masters/brick-types" replace />} />
         <Route path="materials" element={<Navigate to="/masters/raw-materials" replace />} />

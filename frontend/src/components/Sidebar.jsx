@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Activity, Hammer, Package, ShoppingCart, FileText,
-  Users, Building2, Truck, HardHat, DollarSign, BarChart3,
+  Users, Building2, HardHat, DollarSign, BarChart3,
   Settings, LogOut, Layers, AlertTriangle, Ruler, Tags, Boxes, HandCoins, Send, X
 } from 'lucide-react';
 import Logo from './Logo';
@@ -38,8 +38,7 @@ const navGroups = [
   {
     label: 'Masters',
     items: [
-      { to: '/masters/customers', icon: Users, label: 'Customers' },
-      { to: '/masters/vendors', icon: Truck, label: 'Vendors' },
+      { to: '/masters/parties', icon: Users, label: 'Parties' },
       { to: '/masters/labour', icon: HardHat, label: 'Labour' },
       { to: '/masters/plants', icon: Building2, label: 'Plants' },
       { to: '/masters/brick-types', icon: Layers, label: 'Brick Types' },
