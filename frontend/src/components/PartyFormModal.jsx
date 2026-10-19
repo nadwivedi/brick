@@ -41,9 +41,12 @@ const formFor = (party, type) => {
  * Add or edit a customer or vendor from one form.
  * - party: the party being edited (with its `type`), or null to add one
  * - defaultType: type picked when adding
+ * - fixedType: only this type can be added (e.g. a customer from the sale form)
+ * - onSaved(party): called with the saved party, including its `type`
  */
-export default function PartyFormModal({ party, defaultType = 'customer', onClose, onSaved }) {
-  const [form, setForm] = useState(() => formFor(party, defaultType));
+export default function PartyFormModal({ party, defaultType = 'customer', fixedType, onClose, onSaved }) {
+  const [form, setForm] = useState(() => formFor(party, fixedType || defaultType));
+  const typeLocked = !!party || !!fixedType;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -54,7 +57,7 @@ export default function PartyFormModal({ party, defaultType = 'customer', onClos
   const side = BALANCE_SIDES.find(s => s.value === form.balanceSide);
 
   const pickType = (type) => {
-    if (party) return; // the type is fixed once saved
+    if (typeLocked) return; // fixed once saved, or by the form that opened this
     // Follow the usual side for the new type until the user picks one for an amount
     setForm(f => ({ ...f, type, balanceSide: hasBalance ? f.balanceSide : defaultSide(type) }));
   };
@@ -78,10 +81,9 @@ export default function PartyFormModal({ party, defaultType = 'customer', onClos
     setSaving(true);
     try {
       const { endpoint } = PARTY_TYPES[form.type];
-      if (party) await api.put(`${endpoint}/${party._id}`, payload);
-      else await api.post(endpoint, payload);
+      const res = party ? await api.put(`${endpoint}/${party._id}`, payload) : await api.post(endpoint, payload);
       toast.success(party ? 'Party updated' : 'Party added');
-      onSaved();
+      onSaved({ ...res.data, type: form.type });
       onClose();
     } catch (err) {
       setError(err.message || 'Could not save the party');
@@ -120,7 +122,7 @@ export default function PartyFormModal({ party, defaultType = 'customer', onClos
                       type="button"
                       onClick={() => pickType(value)}
                       aria-pressed={active}
-                      disabled={!!party && !active}
+                      disabled={typeLocked && !active}
                       className={`rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${active ? 'border-primary-600 bg-primary-600 text-white' : INACTIVE}`}
                     >
                       <span className="flex items-center gap-1.5 text-sm font-semibold">

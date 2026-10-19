@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
+import PartyFormModal from '../components/PartyFormModal';
 import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
@@ -40,7 +41,8 @@ export default function SalesPage() {
   const [showPayModal, setShowPayModal] = useState(null);
   // Esc closes the top-most popup first (payment popup, then invoice form)
   useEscapeKey(!!showPayModal, () => setShowPayModal(null));
-  useEscapeKey(showForm && !showPayModal, () => setShowForm(false));
+  const [addingCustomer, setAddingCustomer] = useState(false); // inline "+ New Party" popup over the invoice form
+  useEscapeKey(showForm && !showPayModal && !addingCustomer, () => setShowForm(false));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [saving, setSaving] = useState(false);
@@ -339,7 +341,10 @@ export default function SalesPage() {
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="label">Customer</label>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="label mb-0">Customer</label>
+                  <button type="button" onClick={() => setAddingCustomer(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+                </div>
                 <select className="input" value={form.customer} onChange={e => setForm({ ...form, customer: e.target.value })}>
                   <option value="">Select Customer</option>
                   {customers.map(c => <option key={c._id} value={c._id}>{c.name} ({c.mobile})</option>)}
@@ -494,6 +499,18 @@ export default function SalesPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* New customer from the invoice form; it is selected once saved */}
+      {addingCustomer && (
+        <PartyFormModal
+          fixedType="customer"
+          onClose={() => setAddingCustomer(false)}
+          onSaved={party => {
+            setCustomers(list => [...list, party].sort((a, b) => a.name.localeCompare(b.name)));
+            setForm(f => ({ ...f, customer: party._id }));
+          }}
+        />
       )}
     </div>
   );

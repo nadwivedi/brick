@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
+import PartyFormModal from '../components/PartyFormModal';
 import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import { LoadingState, EmptyState } from '../components/States';
@@ -18,7 +19,8 @@ export default function PurchasesPage() {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  useEscapeKey(showForm, () => setShowForm(false));
+  const [addingVendor, setAddingVendor] = useState(false); // inline "+ New Party" popup over the purchase form
+  useEscapeKey(showForm && !addingVendor, () => setShowForm(false));
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({
@@ -180,7 +182,11 @@ export default function PurchasesPage() {
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
               <div><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
               <div><label className="label">Bill Number</label><input className="input" placeholder="Bill no." value={form.billNumber} onChange={e => setForm({ ...form, billNumber: e.target.value })} /></div>
-              <div><label className="label">Vendor</label>
+              <div>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="label mb-0">Vendor</label>
+                  <button type="button" onClick={() => setAddingVendor(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+                </div>
                 <select className="input" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })}>
                   <option value="">Select Vendor</option>
                   {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
@@ -267,6 +273,18 @@ export default function PurchasesPage() {
             </div>
           </ModalSection>
         </Modal>
+      )}
+
+      {/* New vendor from the purchase form; it is selected once saved */}
+      {addingVendor && (
+        <PartyFormModal
+          fixedType="vendor"
+          onClose={() => setAddingVendor(false)}
+          onSaved={party => {
+            setVendors(list => [...list, party].sort((a, b) => a.name.localeCompare(b.name)));
+            setForm(f => ({ ...f, vendor: party._id }));
+          }}
+        />
       )}
     </div>
   );
