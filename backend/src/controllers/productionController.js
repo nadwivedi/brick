@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const ProductionEntry = require('../models/ProductionEntry');
+const Product = require('../models/Product');
 const Material = require('../models/Material');
 const StockMovement = require('../models/StockMovement');
 
@@ -127,5 +129,63 @@ exports.summary = async (req, res, next) => {
       { $unwind: '$product' }
     ]);
     res.json({ success: true, data: agg });
+  } catch (error) { next(error); }
+};
+
+// @route GET /api/production/cement-ratio?asOf=YYYY-MM-DD&exclude=<entry id>
+// Bricks made per bag of cement, per brick type. Any material with "cement" in its name counts.
+// The averages (last 30 days, last 365 days, lifetime) are total bricks / total bags over batches
+// before `asOf`, so the day being checked never pulls its own average; `today` is the `asOf` day.
+// `exclude` leaves one entry out (the one being edited).
+exports.cementRatio = async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const asOf = DATE_RE.test(req.query.asOf || '') ? req.query.asOf : new Date().toISOString().slice(0, 10);
+    const daysBefore = (n) => {
+      const d = new Date(asOf);
+      d.setUTCDate(d.getUTCDate() - n);
+      return d.toISOString().slice(0, 10);
+    };
+    const from30 = daysBefore(30);
+    const from365 = daysBefore(365);
+
+    const cement = await Material.find({ organization, name: /cement/i }).select('name unit').lean();
+    if (cement.length === 0) return res.json({ success: true, data: { asOf, cement: [], products: [] } });
+
+    const query = { organization, 'materials.material': { $in: cement.map(c => c._id) } };
+    if (mongoose.isValidObjectId(req.query.exclude)) query._id = { $ne: req.query.exclude };
+    const [entries, products] = await Promise.all([
+      ProductionEntry.find(query).select('date product quantityProduced materials').lean(),
+      Product.find({ organization }).select('name size').sort({ name: 1 }).lean(),
+    ]);
+
+    const isCement = new Set(cement.map(c => String(c._id)));
+    const blank = () => ({ bricks: 0, bags: 0, entries: 0 });
+    const byProduct = {};
+    for (const e of entries) {
+      const bags = e.materials.filter(m => isCement.has(String(m.material))).reduce((s, m) => s + (m.quantity || 0), 0);
+      const day = new Date(e.date).toISOString().slice(0, 10);
+      if (!(bags > 0) || !(e.quantityProduced > 0) || day > asOf) continue;
+      const p = (byProduct[String(e.product)] ||= { today: blank(), last30: blank(), last365: blank(), lifetime: blank() });
+      const add = (key) => { p[key].bricks += e.quantityProduced; p[key].bags += bags; p[key].entries += 1; };
+      if (day === asOf) { add('today'); continue; }
+      add('lifetime');
+      if (day >= from365) add('last365');
+      if (day >= from30) add('last30');
+    }
+
+    const withRatio = (t) => ({ ...t, bricksPerBag: t.bags > 0 ? t.bricks / t.bags : null });
+    const data = products
+      .filter(p => byProduct[String(p._id)])
+      .map(p => {
+        const t = byProduct[String(p._id)];
+        return {
+          product: p,
+          today: withRatio(t.today), last30: withRatio(t.last30),
+          last365: withRatio(t.last365), lifetime: withRatio(t.lifetime),
+        };
+      });
+    res.json({ success: true, data: { asOf, cement, products: data } });
   } catch (error) { next(error); }
 };

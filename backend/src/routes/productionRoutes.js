@@ -5,6 +5,7 @@ const { protect } = require('../middleware/auth');
 
 router.use(protect);
 router.get('/summary', ctrl.summary);
+router.get('/cement-ratio', ctrl.cementRatio);
 router.get('/', ctrl.getAll);
 router.post('/', ctrl.create);
 router.get('/:id', ctrl.getOne);

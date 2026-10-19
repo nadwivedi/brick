@@ -7,6 +7,8 @@ import StatCard from '../components/StatCard';
 import { LoadingState, EmptyState } from '../components/States';
 import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight, Loader2, Hammer, CalendarDays, CircleCheck, TriangleAlert, Sun, Sunrise, Sunset, Moon, MapPin } from 'lucide-react';
 import { NON_NEGATIVE } from '../lib/number';
+import CementRatioPanel, { CementCheck } from '../components/CementRatio';
+import { isCement, bricksPerBag, cementDiff, cementStatus, CEMENT_STATUS, fmtRatio, diffText, baselineOf } from '../lib/cement';
 import dayjs from 'dayjs';
 
 const SHIFTS = ['full_day', 'morning', 'evening', 'night'];
@@ -42,6 +44,8 @@ export default function ProductionPage() {
     shift: 'full_day', notes: '', materials: []
   });
   const [saving, setSaving] = useState(false);
+  const [cement, setCement] = useState(null); // cement ratios as of today
+  const [formCement, setFormCement] = useState(null); // cement ratios as of the date in the form
 
   useEscapeKey(showForm, () => setShowForm(false));
 
@@ -49,7 +53,7 @@ export default function ProductionPage() {
     setLoading(true);
     try {
       const today = dayjs().format('YYYY-MM-DD');
-      const [entriesRes, productsRes, plantsRes, materialsRes, allRes, monthRes, todayRes] = await Promise.all([
+      const [entriesRes, productsRes, plantsRes, materialsRes, allRes, monthRes, todayRes, cementRes] = await Promise.all([
         api.get(`/production?page=${page}`),
         api.get('/products'),
         api.get('/plants'),
@@ -57,7 +61,9 @@ export default function ProductionPage() {
         api.get('/production/summary'),
         api.get('/production/summary', { params: { from: dayjs().startOf('month').format('YYYY-MM-DD'), to: today } }),
         api.get('/production/summary', { params: { from: today, to: today } }),
+        api.get('/production/cement-ratio', { params: { asOf: today } }),
       ]);
+      setCement(cementRes.data || null);
       setTotals({ all: sumSummary(allRes.data), month: sumSummary(monthRes.data), today: sumSummary(todayRes.data) });
       setEntries(entriesRes.data || []);
       setTotalPages(entriesRes.pages || 1);
@@ -69,6 +75,14 @@ export default function ProductionPage() {
   };
 
   useEffect(() => { fetchData(); }, [page]);
+
+  // Averages for the form's live cement check, as of the entry's date and without the entry itself
+  useEffect(() => {
+    if (!showForm || !form.date) return;
+    api.get('/production/cement-ratio', { params: { asOf: form.date, ...(editing && { exclude: editing }) } })
+      .then(res => setFormCement(res.data || null))
+      .catch(console.error);
+  }, [showForm, form.date, editing]);
 
   // A consumed material is always counted in that material's own stock unit
   const findMaterial = (id) => materials.find(m => m._id === id);
@@ -140,6 +154,12 @@ export default function ProductionPage() {
     setForm(f => ({ ...f, materials: f.materials.map((m, i) => (i === idx ? { ...m, ...changes } : m)) }));
   };
 
+  // Bags of cement in a list of consumed materials
+  const cementBags = (list) => (list || [])
+    .filter(m => isCement(findMaterial(m.material?._id || m.material)?.name))
+    .reduce((s, m) => s + (Number(m.quantity) || 0), 0);
+  const cementRowFor = (data, productId) => data?.products?.find(r => r.product._id === productId);
+
   const removeMaterial = (idx) => {
     setForm(f => ({ ...f, materials: f.materials.filter((_, i) => i !== idx) }));
   };
@@ -158,6 +178,8 @@ export default function ProductionPage() {
         <StatCard icon={CircleCheck} label="Good Bricks" hint={`Out of ${num(totals.all.produced)} produced in all`} value={`${num(totals.all.produced - totals.all.damaged)} pcs`} tone="emerald" />
         <StatCard icon={TriangleAlert} label="Damaged" hint={totals.all.produced ? `${((totals.all.damaged / totals.all.produced) * 100).toFixed(1)}% of all production` : 'No production yet'} value={`${num(totals.all.damaged)} pcs`} tone="rose" />
       </section>
+
+      <CementRatioPanel data={cement} />
 
       <section className="panel">
         <div className="panel-header">
@@ -184,7 +206,7 @@ export default function ProductionPage() {
           <EmptyState icon={Hammer} title="No production entries found" hint={search ? 'Try a different search.' : 'Add your first production entry to get started.'} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left">
+            <table className="w-full min-w-[940px] text-left">
               <thead>
                 <tr>
                   <th className="table-header">Date</th>
@@ -192,6 +214,7 @@ export default function ProductionPage() {
                   <th className="table-header">Produced</th>
                   <th className="table-header">Good / Damaged</th>
                   <th className="table-header">Materials Used</th>
+                  <th className="table-header">Cement Ratio</th>
                   <th className="table-header">Shift</th>
                   <th className="table-header text-right">Actions</th>
                 </tr>
@@ -207,6 +230,10 @@ export default function ProductionPage() {
                     const mat = findMaterial(m.material?._id || m.material);
                     return `${num(m.quantity)} ${mat?.unit || m.unit || ''} ${mat?.name || ''}`.replace(/\s+/g, ' ').trim();
                   });
+                  // Bricks per bag of cement, against this brick type's 1-year (or lifetime) average
+                  const ratio = bricksPerBag(produced, cementBags(entry.materials));
+                  const cementDiffPct = cementDiff(ratio, baselineOf(cementRowFor(cement, entry.product?._id))?.bricksPerBag);
+                  const cementState = CEMENT_STATUS[cementStatus(cementDiffPct)];
                   return (
                     <tr key={entry._id} className="table-row">
                       <td className="table-cell whitespace-nowrap">
@@ -244,6 +271,18 @@ export default function ProductionPage() {
                             {used.map((u, i) => <span key={i} className="badge-gray whitespace-nowrap">{u}</span>)}
                           </div>
                         )}
+                      </td>
+                      <td className="table-cell whitespace-nowrap">
+                        {ratio ? (
+                          <>
+                            <p className="font-semibold text-slate-800">{fmtRatio(ratio)} <span className="text-xs font-normal text-slate-400">bricks/bag</span></p>
+                            {cementState && (
+                              <span className={cementState.badge} title={`Against the 1-year average · ${cementState.hint}`}>
+                                {cementState === CEMENT_STATUS.normal ? 'Normal' : diffText(cementDiffPct)}
+                              </span>
+                            )}
+                          </>
+                        ) : <span className="text-xs text-slate-400">No cement</span>}
                       </td>
                       <td className="table-cell">
                         <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ring-1 ring-inset ${shift.cls}`}>
@@ -383,6 +422,14 @@ export default function ProductionPage() {
                 </div>
               );
             })}
+            {form.product && (
+              <CementCheck
+                bricks={Number(form.quantityProduced) || 0}
+                bags={cementBags(form.materials)}
+                unit={findMaterial(form.materials.find(m => isCement(findMaterial(m.material)?.name))?.material)?.unit}
+                row={cementRowFor(formCement, form.product)}
+              />
+            )}
           </ModalSection>
         </Modal>
       )}
