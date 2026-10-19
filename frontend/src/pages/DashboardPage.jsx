@@ -6,7 +6,7 @@ import Segmented from '../components/Segmented';
 import { LoadingState } from '../components/States';
 import {
   Hammer, FileText, Package, DollarSign, TrendingUp,
-  AlertTriangle, Users, ShoppingCart, ChevronRight
+  AlertTriangle, Users, ShoppingCart, ChevronRight, HandCoins, Send, Layers
 } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -30,6 +30,16 @@ const RANGES = [
 const rangeLabel = (from, to) => from === to
   ? dayjs(from).format('D MMM YYYY')
   : `${dayjs(from).format('D MMM YYYY')} – ${dayjs(to).format('D MMM YYYY')}`;
+
+// Shortcuts shown under the KPI cards; `?new=1` opens that page's add form straight away
+const QUICK_ACTIONS = [
+  { to: '/production?new=1', icon: Hammer, label: 'New Production', tone: 'bg-blue-50 text-blue-700 ring-blue-100' },
+  { to: '/sales?new=1', icon: FileText, label: 'New Sale', tone: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
+  { to: '/purchases?new=1', icon: ShoppingCart, label: 'New Purchase', tone: 'bg-violet-50 text-violet-700 ring-violet-100' },
+  { to: '/expenses?new=1', icon: DollarSign, label: 'New Expense', tone: 'bg-amber-50 text-amber-700 ring-amber-100' },
+  { to: '/receipts?new=1', icon: HandCoins, label: 'Money Received', tone: 'bg-teal-50 text-teal-700 ring-teal-100' },
+  { to: '/payments?new=1', icon: Send, label: 'Money Paid', tone: 'bg-rose-50 text-rose-700 ring-rose-100' },
+];
 
 // Shared chart styling
 const AXIS_TICK = { fontSize: 11, fill: '#64748b' };
@@ -119,6 +129,38 @@ export default function DashboardPage() {
       {/* KPI cards */}
       <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-3">
         {kpis.map(kpi => <StatCard key={kpi.label} {...kpi} />)}
+      </section>
+
+      {/* Quick actions: the app's blue as a band of colour, with white tiles on it (as in the crusher app) */}
+      <section className="panel bg-gradient-to-r from-primary-700 to-primary-600 ring-primary-700">
+        <div className="panel-header flex flex-wrap items-center justify-between gap-2 border-white/15 py-3">
+          <div>
+            <h3 className="text-sm font-bold text-white">Quick Actions</h3>
+            <p className="text-xs text-primary-100">Add today's entries straight from the dashboard</p>
+          </div>
+          <Link
+            to="/inventory"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 px-3.5 py-2 text-xs font-bold text-white shadow-sm ring-1 ring-inset ring-white/35 transition hover:bg-white/25 md:text-sm"
+          >
+            <Layers size={16} />
+            Brick Stock
+          </Link>
+        </div>
+        {/* Wide screens get all six in one row, with the icon above the label while the row is tight */}
+        <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-3 md:gap-2.5 md:p-3 lg:grid-cols-3 xl:grid-cols-6">
+          {QUICK_ACTIONS.map(({ to, icon: Icon, label, tone }) => (
+            <Link
+              key={label}
+              to={to}
+              className="group flex items-center gap-2 rounded-xl bg-white p-2 text-left shadow-sm transition hover:bg-primary-50 hover:shadow-md xl:flex-col xl:gap-1 xl:px-1 xl:text-center 2xl:flex-row 2xl:gap-2 2xl:px-2 2xl:text-left"
+            >
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${tone}`}>
+                <Icon size={17} />
+              </span>
+              <span className="min-w-0 text-[13.5px] font-semibold leading-tight text-slate-700 group-hover:text-slate-900 xl:text-[12.5px] 2xl:text-[13.5px]">{label}</span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* Low stock alert */}

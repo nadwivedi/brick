@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useEscapeKey from '../hooks/useEscapeKey';
+import useOpenOnNew from '../hooks/useOpenOnNew';
 import Modal from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
@@ -40,6 +41,12 @@ export default function ExpensesPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const openForm = () => {
+    setForm({ date: dayjs().format('YYYY-MM-DD'), category: categories[0] || '', amount: '', description: '', paymentMode: 'cash', plant: '' });
+    setShowForm(true);
+  };
+  useOpenOnNew(!loading, openForm);
 
   const handleSave = async () => {
     const problem =
@@ -84,7 +91,7 @@ export default function ExpensesPage() {
             </div>
             <div className="flex gap-2 md:shrink-0">
               <SearchInput className="flex-1 md:w-72 md:flex-none" value={search} onChange={setSearch} placeholder="Search expenses..." />
-              <button className="btn-primary flex-shrink-0" onClick={() => { setForm({ date: dayjs().format('YYYY-MM-DD'), category: categories[0] || '', amount: '', description: '', paymentMode: 'cash', plant: '' }); setShowForm(true); }}>
+              <button className="btn-primary flex-shrink-0" onClick={openForm}>
                 <Plus size={18} />
                 <span className="hidden sm:inline">Add Expense</span>
                 <span className="sm:hidden">Add</span>

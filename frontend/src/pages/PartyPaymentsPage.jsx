@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import useOpenOnNew from '../hooks/useOpenOnNew';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import PartyPaymentModal from '../components/PartyPaymentModal';
@@ -60,6 +61,7 @@ export default function PartyPaymentsPage({ type }) {
   };
 
   useEffect(() => { fetchData(); }, []);
+  useOpenOnNew(!loading, () => setShowForm(true));
 
   const handleDelete = async (r) => {
     if (!confirm(kind.deleteText(r))) return;

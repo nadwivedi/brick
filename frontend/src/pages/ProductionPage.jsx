@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useEscapeKey from '../hooks/useEscapeKey';
+import useOpenOnNew from '../hooks/useOpenOnNew';
 import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
@@ -110,6 +111,8 @@ export default function ProductionPage() {
     }
     setShowForm(true);
   };
+
+  useOpenOnNew(!loading, () => openForm());
 
   const handleSave = async () => {
     // Blank rows are ignored; a chosen material must have a quantity

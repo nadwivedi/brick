@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useEscapeKey from '../hooks/useEscapeKey';
+import useOpenOnNew from '../hooks/useOpenOnNew';
 import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
@@ -72,6 +73,12 @@ export default function SalesPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const openForm = () => {
+    setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: plants[0]?._id || '', items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, paymentMode: 'cash', vehicleNumber: '', driverName: '', siteAddress: '', notes: '' });
+    setShowForm(true);
+  };
+  useOpenOnNew(!loading, openForm);
 
   const calcTotals = (items, trans, load, disc) => {
     const sub = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
@@ -189,7 +196,7 @@ export default function SalesPage() {
             </div>
             <div className="flex gap-2 md:shrink-0">
               <SearchInput className="flex-1 md:w-72 md:flex-none" value={search} onChange={setSearch} placeholder="Search customer or invoice no..." />
-              <button className="btn-primary flex-shrink-0" onClick={() => { setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: plants[0]?._id || '', items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, paymentMode: 'cash', vehicleNumber: '', driverName: '', siteAddress: '', notes: '' }); setShowForm(true); }}>
+              <button className="btn-primary flex-shrink-0" onClick={openForm}>
                 <Plus size={18} />
                 <span className="hidden sm:inline">New Invoice</span>
                 <span className="sm:hidden">Add</span>

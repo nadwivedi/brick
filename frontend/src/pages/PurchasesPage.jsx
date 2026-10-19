@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useEscapeKey from '../hooks/useEscapeKey';
+import useOpenOnNew from '../hooks/useOpenOnNew';
 import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import { LoadingState, EmptyState } from '../components/States';
@@ -66,6 +67,8 @@ export default function PurchasesPage() {
     });
     setShowForm(true);
   };
+
+  useOpenOnNew(!loading, openForm);
 
   const handleSave = async () => {
     // Blank rows are ignored; everything the purchase needs must be filled in
