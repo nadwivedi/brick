@@ -11,10 +11,14 @@ const productionRoutes = require('./routes/productionRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const apiRoutes = require('./routes/apiRoutes');
 const migrateParties = require('./utils/migrateParties');
+const Invoice = require('./models/Invoice');
 
 connectDB()
   .then(() => migrateParties())
-  .catch(e => console.error('❌ Party migration failed:', e.message));
+  // Brings the database indexes in line with the models, e.g. invoice numbers unique per business
+  // instead of across all businesses (the old index is dropped)
+  .then(() => Invoice.syncIndexes())
+  .catch(e => console.error('❌ Startup data update failed:', e.message));
 
 const app = express();
 

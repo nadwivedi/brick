@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema({
-  invoiceNumber: { type: String, required: true, unique: true },
+  invoiceNumber: { type: String, required: true }, // INV-0001, INV-0002, ... per organization
   date: { type: Date, required: true, default: Date.now },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true }, // the party the bricks are sold to
   plant: { type: mongoose.Schema.Types.ObjectId, ref: 'Plant', required: true },
@@ -33,5 +33,8 @@ const invoiceSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
 }, { timestamps: true });
+
+// Each business numbers its own invoices, so the number only has to be unique within it
+invoiceSchema.index({ organization: 1, invoiceNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

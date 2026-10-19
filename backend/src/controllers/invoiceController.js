@@ -26,6 +26,14 @@ exports.getAll = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// Next invoice number for an organization: one more than the highest used so far.
+// (Counting invoices would hand out a number that is still taken once an invoice is deleted.)
+const nextInvoiceNumber = async (organization) => {
+  const used = await Invoice.find({ organization, invoiceNumber: /^INV-\d+$/ }).select('invoiceNumber').lean();
+  const highest = used.reduce((max, i) => Math.max(max, Number(i.invoiceNumber.slice(4))), 0);
+  return `INV-${String(highest + 1).padStart(4, '0')}`;
+};
+
 // @route POST /api/invoices
 exports.create = async (req, res, next) => {
   try {
@@ -35,17 +43,21 @@ exports.create = async (req, res, next) => {
       if (shortage) return res.status(400).json({ success: false, message: shortage });
     }
 
-    // Generate invoice number
-    const count = await Invoice.countDocuments({ organization: req.user.organization._id });
-    const invoiceNumber = `INV-${String(count + 1).padStart(4, '0')}`;
-
-    const invoice = await Invoice.create({
-      ...req.body,
-      invoiceNumber,
-      balanceDue: req.body.totalAmount - (req.body.paidAmount || 0),
-      createdBy: req.user._id,
-      organization: req.user.organization._id
-    });
+    // Two invoices saved at the same moment can pick the same number; the second one retries
+    let invoice;
+    for (let attempt = 1; !invoice; attempt++) {
+      try {
+        invoice = await Invoice.create({
+          ...req.body,
+          invoiceNumber: await nextInvoiceNumber(req.user.organization._id),
+          balanceDue: req.body.totalAmount - (req.body.paidAmount || 0),
+          createdBy: req.user._id,
+          organization: req.user.organization._id
+        });
+      } catch (e) {
+        if (e.code !== 11000 || attempt >= 3) throw e;
+      }
+    }
 
     if (invoice.paidAmount > 0) {
       await Payment.create({
