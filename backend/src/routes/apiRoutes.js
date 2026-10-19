@@ -132,6 +132,60 @@ router.delete('/units/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Plants: the default plant comes first, and there is always one (see Plant.ensureDefault)
+router.get('/plants', async (req, res, next) => {
+  try {
+    const { organization } = req.user;
+    await Plant.ensureDefault(organization._id, organization.name);
+    const plants = await Plant.find({ organization: organization._id }).sort({ isDefault: -1, name: 1 });
+    res.json({ success: true, data: plants });
+  } catch (e) { next(e); }
+});
+
+router.put('/plants/:id', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const plant = await Plant.findOne({ _id: req.params.id, organization });
+    if (!plant) return res.status(404).json({ success: false, message: 'Not found' });
+    const { name, address, gstin, mobile, isActive, isDefault } = req.body;
+    if (name !== undefined) plant.name = name;
+    if (address !== undefined) plant.address = address;
+    if (gstin !== undefined) plant.gstin = gstin;
+    if (mobile !== undefined) plant.mobile = mobile;
+    if (isActive !== undefined) plant.isActive = isActive;
+    if (isDefault === true || isDefault === 'true') {
+      // Only one default: this one takes over, and it can't be inactive
+      await Plant.updateMany({ organization, _id: { $ne: plant._id } }, { isDefault: false });
+      plant.isDefault = true;
+      plant.isActive = true;
+    }
+    if (plant.isDefault && (plant.isActive === false || plant.isActive === 'false')) {
+      return res.status(400).json({ success: false, message: 'The default plant cannot be inactive. Make another plant the default first.' });
+    }
+    await plant.save();
+    res.json({ success: true, data: plant });
+  } catch (e) { next(e); }
+});
+
+router.delete('/plants/:id', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const plant = await Plant.findOne({ _id: req.params.id, organization });
+    if (!plant) return res.status(404).json({ success: false, message: 'Not found' });
+    if (plant.isDefault) return res.status(400).json({ success: false, message: 'The default plant cannot be deleted. Make another plant the default first.' });
+    const [production, sales, purchases] = await Promise.all([
+      ProductionEntry.countDocuments({ organization, plant: plant._id }),
+      Invoice.countDocuments({ organization, plant: plant._id }),
+      Purchase.countDocuments({ organization, plant: plant._id }),
+    ]);
+    if (production + sales + purchases > 0) {
+      return res.status(400).json({ success: false, message: `This plant has ${production} production, ${sales} sale and ${purchases} purchase entries. Mark it inactive instead.` });
+    }
+    await plant.deleteOne();
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) { next(e); }
+});
+
 router.use('/customers', makeCRUD(Customer));
 router.use('/vendors', makeCRUD(Vendor));
 router.use('/workers', makeCRUD(Worker));

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
+import PlantSelect from '../components/PlantSelect';
 import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
 import Modal from '../components/Modal';
@@ -195,12 +196,7 @@ export default function ExpensesPage() {
                   <option value="cheque">Cheque</option>
                 </select>
               </div>
-              <div><label className="label">Plant</label>
-                <select className="input" value={form.plant} onChange={e => setForm({ ...form, plant: e.target.value })}>
-                  <option value="">All Plants</option>
-                  {plants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
-              </div>
+              <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} allLabel="All Plants" />
             </div>
           </div>
         </Modal>

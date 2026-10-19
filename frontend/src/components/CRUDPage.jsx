@@ -15,7 +15,7 @@ import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
  * - fields: [{ key, label, type, options? }] — for the form
  * - defaultValues: {} — initial form state
  * - canDelete: (item) => bool — hide the delete button for rows that can't be deleted
- * - rowActions: (item) => node — extra buttons shown before Edit/Delete on each row
+ * - rowActions: (item, refresh) => node — extra buttons shown before Edit/Delete on each row
  * - summary: (items) => node — shown above the list, e.g. stat cards
  * - searchKeys: [key] — fields the search box looks in (defaults to the column keys)
  */
@@ -132,7 +132,7 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
                     ))}
                     <td className="table-cell">
                       <div className="flex items-center justify-end gap-1">
-                        {rowActions?.(item)}
+                        {rowActions?.(item, fetchItems)}
                         <button className="icon-btn hover:bg-blue-50 hover:text-blue-600" title="Edit" onClick={() => openForm(item)}>
                           <Edit2 size={16} />
                         </button>
@@ -172,7 +172,7 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
               <div key={f.key} className={twoColumns && f.type === 'textarea' ? 'md:col-span-2' : ''}>
                 <label className="label">{f.label}</label>
                 {f.type === 'select' ? (
-                  <select className="input" value={form[f.key] || ''} onChange={e => setForm({ ...form, [f.key]: e.target.value })}>
+                  <select className="input" value={form[f.key] == null ? '' : String(form[f.key])} onChange={e => setForm({ ...form, [f.key]: e.target.value })}>
                     <option value="">Select {f.label}</option>
                     {(f.options || []).map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>

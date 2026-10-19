@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
+import { hasManyPlants } from '../lib/plants';
 import StatCard from '../components/StatCard';
 import Segmented from '../components/Segmented';
 import SearchInput from '../components/SearchInput';
@@ -158,10 +159,12 @@ export default function ActivityPage() {
               })}
             </div>
             <div className="flex gap-2 md:shrink-0">
-              <select className="input w-40 shrink-0" value={plant} onChange={e => setPlant(e.target.value)} aria-label="Plant">
-                <option value="">All Plants</option>
-                {plants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-              </select>
+              {hasManyPlants(plants) && (
+                <select className="input w-40 shrink-0" value={plant} onChange={e => setPlant(e.target.value)} aria-label="Plant">
+                  <option value="">All Plants</option>
+                  {plants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                </select>
+              )}
               <SearchInput className="min-w-0 flex-1 md:w-64 md:flex-none" value={search} onChange={setSearch} placeholder="Search activity..." />
             </div>
           </div>
@@ -194,7 +197,7 @@ export default function ActivityPage() {
                             <span className="ml-2 text-xs font-medium text-slate-400">{t.label}</span>
                           </p>
                           <p className="truncate text-xs text-slate-500" title={item.detail}>
-                            {[item.plant, item.detail].filter(Boolean).join(' · ') || '—'}
+                            {[hasManyPlants(plants) && item.plant, item.detail].filter(Boolean).join(' · ') || '—'}
                           </p>
                         </div>
                         <p className={`shrink-0 whitespace-nowrap text-right text-sm font-bold ${t.value}`}>{valueText(item)}</p>

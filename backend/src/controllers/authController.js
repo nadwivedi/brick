@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Organization = require('../models/Organization');
+const Plant = require('../models/Plant');
 const Unit = require('../models/Unit');
 const Product = require('../models/Product');
 const ExpenseCategory = require('../models/ExpenseCategory');
@@ -26,6 +27,8 @@ exports.register = async (req, res, next) => {
     });
     org.owner = user._id;
     await org.save();
+    // The business's first plant, named after it; more plants can be added later
+    await Plant.create({ name: orgName, mobile, address: orgAddress, gstin, organization: org._id, isDefault: true });
     await Unit.ensureDefaults(org._id);
     await ExpenseCategory.ensureDefaults(org._id);
     await Product.insertMany(Product.DEFAULT_PRODUCTS.map(p => ({ ...p, organization: org._id })));

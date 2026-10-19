@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Hammer, ShoppingBag, TriangleAlert, Layers, Plus, PackageCheck } from 'lucide-react';
 import dayjs from 'dayjs';
 import api from '../lib/api';
+import { hasManyPlants } from '../lib/plants';
 import StatCard from './StatCard';
 import { LoadingState, EmptyState } from './States';
 
@@ -51,7 +52,7 @@ export default function BrickStock() {
               <p className="text-xs text-slate-500">Available = opening stock + good bricks produced − bricks sold{plant ? ' (opening stock is counted under All plants)' : ''}</p>
             </div>
             <div className="flex gap-2 md:shrink-0">
-              {plants.length > 1 && (
+              {hasManyPlants(plants) && (
                 <select className="input flex-1 md:w-48 md:flex-none" value={plant} onChange={e => setPlant(e.target.value)} aria-label="Plant">
                   <option value="">All plants</option>
                   {plants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}

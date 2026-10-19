@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
+import PlantSelect from '../components/PlantSelect';
+import { defaultPlantId } from '../lib/plants';
 import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
 import PartyFormModal from '../components/PartyFormModal';
@@ -63,7 +65,7 @@ export default function PurchasesPage() {
   const openForm = () => {
     setForm({
       date: dayjs().format('YYYY-MM-DD'),
-      vendor: '', plant: plants[0]?._id || '',
+      vendor: '', plant: defaultPlantId(plants),
       items: [{ material: '', quantity: '', unit: 'kg', rate: '', amount: 0 }],
       totalAmount: 0, transportCharges: 0, paidAmount: 0, paymentMode: 'credit', billNumber: '', notes: ''
     });
@@ -192,12 +194,7 @@ export default function PurchasesPage() {
                   {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
                 </select>
               </div>
-              <div><label className="label">Plant</label>
-                <select className="input" value={form.plant} onChange={e => setForm({ ...form, plant: e.target.value })}>
-                  <option value="">Select Plant</option>
-                  {plants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
-              </div>
+              <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
             </div>
           </ModalSection>
 

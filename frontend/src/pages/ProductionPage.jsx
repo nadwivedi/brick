@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
+import PlantSelect from '../components/PlantSelect';
+import { defaultPlantId, hasManyPlants } from '../lib/plants';
 import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
 import Modal, { ModalSection } from '../components/Modal';
@@ -107,7 +109,7 @@ export default function ProductionPage() {
       });
     } else {
       setEditing(null);
-      setForm({ date: dayjs().format('YYYY-MM-DD'), plant: plants[0]?._id || '', product: '', quantityProduced: '', quantityDamaged: 0, shift: 'full_day', notes: '', materials: [] });
+      setForm({ date: dayjs().format('YYYY-MM-DD'), plant: defaultPlantId(plants), product: '', quantityProduced: '', quantityDamaged: 0, shift: 'full_day', notes: '', materials: [] });
     }
     setShowForm(true);
   };
@@ -166,6 +168,8 @@ export default function ProductionPage() {
   const removeMaterial = (idx) => {
     setForm(f => ({ ...f, materials: f.materials.filter((_, i) => i !== idx) }));
   };
+
+  const manyPlants = hasManyPlants(plants);
 
   const filtered = entries.filter(e =>
     (e.product?.name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -250,7 +254,7 @@ export default function ProductionPage() {
                           </span>
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-800">{entry.product?.name || '-'}</p>
-                            <p className="flex items-center gap-1 text-xs text-slate-500"><MapPin size={11} /> {entry.plant?.name || '-'}</p>
+                            {manyPlants && <p className="flex items-center gap-1 text-xs text-slate-500"><MapPin size={11} /> {entry.plant?.name || '-'}</p>}
                           </div>
                         </div>
                       </td>
@@ -351,13 +355,7 @@ export default function ProductionPage() {
                   {SHIFTS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="label">Plant</label>
-                <select className="input" value={form.plant} onChange={e => setForm({ ...form, plant: e.target.value })}>
-                  <option value="">Select Plant</option>
-                  {plants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
-              </div>
+              <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
               <div>
                 <label className="label">Product</label>
                 <select className="input" value={form.product} onChange={e => setForm({ ...form, product: e.target.value })}>

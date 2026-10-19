@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
+import PlantSelect from '../components/PlantSelect';
+import { defaultPlantId, hasManyPlants } from '../lib/plants';
 import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
 import PartyFormModal from '../components/PartyFormModal';
@@ -41,6 +43,7 @@ export default function SalesPage() {
   const [showPayModal, setShowPayModal] = useState(null);
   // Esc closes the top-most popup first (payment popup, then invoice form)
   useEscapeKey(!!showPayModal, () => setShowPayModal(null));
+  const manyPlants = hasManyPlants(plants);
   const [addingCustomer, setAddingCustomer] = useState(false); // inline "+ New Party" popup over the invoice form
   useEscapeKey(showForm && !showPayModal && !addingCustomer, () => setShowForm(false));
   const [search, setSearch] = useState('');
@@ -77,7 +80,7 @@ export default function SalesPage() {
   useEffect(() => { fetchData(); }, []);
 
   const openForm = () => {
-    setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: plants[0]?._id || '', items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, paymentMode: 'cash', vehicleNumber: '', driverName: '', siteAddress: '', notes: '' });
+    setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plants), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, paymentMode: 'cash', vehicleNumber: '', driverName: '', siteAddress: '', notes: '' });
     setShowForm(true);
   };
   useOpenOnNew(!loading, openForm);
@@ -264,7 +267,7 @@ export default function SalesPage() {
                           <p className="whitespace-nowrap font-semibold text-slate-800">{pieces.toLocaleString('en-IN')} pcs</p>
                           <p className="truncate text-xs text-slate-500" title={names.join(', ')}>{names.join(', ') || '-'}</p>
                           <p className="flex items-center gap-2 truncate text-xs text-slate-400">
-                            {inv.plant?.name && <span className="flex items-center gap-1"><MapPin size={11} /> {inv.plant.name}</span>}
+                            {manyPlants && inv.plant?.name && <span className="flex items-center gap-1"><MapPin size={11} /> {inv.plant.name}</span>}
                             {inv.vehicleNumber && <span className="flex items-center gap-1"><Truck size={11} /> {inv.vehicleNumber}</span>}
                           </p>
                         </div>
@@ -333,13 +336,7 @@ export default function SalesPage() {
                 <label className="label">Date</label>
                 <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
               </div>
-              <div>
-                <label className="label">Plant</label>
-                <select className="input" value={form.plant} onChange={e => setForm({ ...form, plant: e.target.value })}>
-                  <option value="">Select Plant</option>
-                  {plants.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
-              </div>
+              <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
               <div className="col-span-2">
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <label className="label mb-0">Customer</label>
