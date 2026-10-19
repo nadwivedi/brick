@@ -161,7 +161,8 @@ export default function ProductionPage() {
       !form.product ? 'Select a brick type' :
       form.byPlates && !(Number(form.plates) > 0) ? 'Enter the number of plates' :
       form.byPlates && !(Number(form.bricksPerPlate) > 0) ? 'Enter how many bricks one plate makes' :
-      form.quantityProduced === '' || Number(form.quantityProduced) < 0 ? 'Enter the quantity produced' : '';
+      form.quantityProduced === '' || Number(form.quantityProduced) < 0 ? 'Enter the quantity produced' :
+      Number(form.quantityDamaged) > Number(form.quantityProduced) ? 'Damaged bricks cannot be more than the bricks made' : '';
     if (problem) { alert(problem); return; }
     const { byPlates, ...rest } = form;
     const payload = {
@@ -203,6 +204,10 @@ export default function ProductionPage() {
     .filter(m => isCement(findMaterial(m.material?._id || m.material)?.name))
     .reduce((s, m) => s + (Number(m.quantity) || 0), 0);
   const cementRowFor = (data, productId) => data?.products?.find(r => r.product._id === productId);
+
+  const made = Number(form.quantityProduced) || 0;
+  const damaged = Number(form.quantityDamaged) || 0;
+  const tooManyDamaged = damaged > made;
 
   const removeMaterial = (idx) => {
     setForm(f => ({ ...f, materials: f.materials.filter((_, i) => i !== idx) }));
@@ -372,9 +377,9 @@ export default function ProductionPage() {
       {showForm && (
         <Modal
           title={`${editing ? 'Edit' : 'New'} Production Entry`}
-          subtitle={editing ? 'Update this production record' : 'Record bricks produced for a shift'}
+          subtitle={editing ? 'Update this production record' : 'Bricks made in a shift and the materials they used'}
           onClose={() => setShowForm(false)}
-          maxWidth="max-w-3xl"
+          maxWidth="max-w-2xl"
           footer={<>
             <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
@@ -383,110 +388,150 @@ export default function ProductionPage() {
             </button>
           </>}
         >
-          <ModalSection number={1} title="Entry Details" tone="blue">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-              <div>
-                <label className="label">Date</label>
-                <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+          <ModalSection number={1} title="Batch Details" tone="blue">
+            <div className="space-y-3 md:space-y-4">
+              <div className={`grid grid-cols-1 gap-3 md:gap-4 ${manyPlants ? 'sm:grid-cols-3' : 'sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]'}`}>
+                <div>
+                  <label className="label">Date</label>
+                  <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">Brick Type <span className="text-rose-500">*</span></label>
+                  <OptionPicker options={productOptions} value={form.product} onChange={product => setForm(f => ({ ...f, product }))}
+                    placeholder="Select Brick Type" searchPlaceholder="Search brick types..." />
+                </div>
+                <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
               </div>
               <div>
                 <label className="label">Shift</label>
-                <select className="input capitalize" value={form.shift} onChange={e => setForm({ ...form, shift: e.target.value })}>
-                  {SHIFTS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                </select>
-              </div>
-              <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
-              <div>
-                <label className="label">Brick Type</label>
-                <OptionPicker options={productOptions} value={form.product} onChange={product => setForm(f => ({ ...f, product }))}
-                  placeholder="Select Brick Type" searchPlaceholder="Search brick types..." />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {SHIFTS.map(key => {
+                    const { icon: Icon } = SHIFT_STYLES[key];
+                    const active = form.shift === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setForm({ ...form, shift: key })}
+                        aria-pressed={active}
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold capitalize transition ${active ? 'border-primary-600 bg-primary-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                      >
+                        <Icon size={15} /> {key.replace('_', ' ')}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </ModalSection>
 
-          <ModalSection number={2} title="Quantity" tone="emerald">
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <ModalSection number={2} title="Bricks Made" tone="emerald">
+            <div className={`grid gap-2 sm:gap-3 md:gap-4 ${form.byPlates ? 'grid-cols-3' : 'grid-cols-2'}`}>
               {form.byPlates ? (
                 <>
                   <div>
-                    <label className="label">Number of Plates</label>
-                    <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 120" value={form.plates} onChange={e => setPlates({ plates: e.target.value })} autoFocus />
+                    <label className="label">Number of Plates <span className="text-rose-500">*</span></label>
+                    <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 120" value={form.plates} onChange={e => setPlates({ plates: e.target.value })} />
                   </div>
                   <div>
                     <label className="label">Bricks per Plate</label>
                     <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 105" value={form.bricksPerPlate} onChange={e => setPlates({ bricksPerPlate: e.target.value })} />
                   </div>
-                  <div className="col-span-2 flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2.5 ring-1 ring-inset ring-emerald-200">
-                    <span className="text-sm text-slate-600">
-                      {num(Number(form.plates) || 0)} plates × {num(Number(form.bricksPerPlate) || 0)} bricks
-                    </span>
-                    <span className="text-lg font-bold text-emerald-700">= {num(Number(form.quantityProduced) || 0)} bricks</span>
-                  </div>
                 </>
               ) : (
                 <div>
-                  <label className="label">Quantity Produced</label>
-                  <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 5000" value={form.quantityProduced} onChange={e => setForm({ ...form, quantityProduced: e.target.value })} />
+                  <label className="label">Bricks Produced <span className="text-rose-500">*</span></label>
+                  <div className="relative">
+                    <input type="number" {...NON_NEGATIVE} className="input pr-12 font-semibold" placeholder="e.g. 5000" value={form.quantityProduced} onChange={e => setForm({ ...form, quantityProduced: e.target.value })} />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-400">pcs</span>
+                  </div>
                 </div>
               )}
               <div>
                 <label className="label">Damaged / Broken</label>
-                <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.quantityDamaged} onChange={e => setForm({ ...form, quantityDamaged: e.target.value })} />
+                <div className="relative">
+                  <input type="number" {...NON_NEGATIVE} className="input pr-12 font-semibold" placeholder="0" value={form.quantityDamaged} onChange={e => setForm({ ...form, quantityDamaged: e.target.value })} />
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-400">pcs</span>
+                </div>
               </div>
-              <div className="col-span-2">
-                <label className="label">Notes</label>
-                <textarea className="input" rows={2} placeholder="Optional notes..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+            </div>
+
+            {/* Live summary: made, damaged, and the good bricks that go into stock */}
+            <div className="mt-3 grid grid-cols-3 divide-x divide-slate-100 overflow-hidden rounded-lg bg-white text-center ring-1 ring-inset ring-emerald-200 md:mt-4">
+              <div className="px-2 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Made</p>
+                <p className="font-bold text-slate-800">{num(made)}</p>
+                {form.byPlates && <p className="text-[11px] text-slate-400">{num(Number(form.plates) || 0)} × {num(Number(form.bricksPerPlate) || 0)}</p>}
+              </div>
+              <div className="px-2 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Damaged</p>
+                <p className={`font-bold ${damaged ? 'text-rose-600' : 'text-slate-800'}`}>{num(damaged)}</p>
+                {made > 0 && damaged > 0 && !tooManyDamaged && <p className="text-[11px] text-slate-400">{((damaged / made) * 100).toFixed(1)}%</p>}
+              </div>
+              <div className="bg-emerald-50/60 px-2 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Good bricks</p>
+                <p className={`text-lg font-bold leading-tight ${tooManyDamaged ? 'text-rose-600' : 'text-emerald-700'}`}>{tooManyDamaged ? '—' : num(made - damaged)}</p>
+                {tooManyDamaged && <p className="text-[11px] font-semibold text-rose-600">More damaged than made</p>}
               </div>
             </div>
           </ModalSection>
 
           {/* Materials used */}
-          <ModalSection
-            number={3}
-            title="Materials Consumed"
-            tone="purple"
-            action={
-              <button className="btn-secondary btn-sm" onClick={addMaterial}>
-                <Plus size={14} /> Add Material
-              </button>
-            }
-          >
-            {form.materials.length === 0 && (
-              <p className="text-xs text-slate-500 md:text-sm">No materials added. Use "Add Material" to record raw materials used.</p>
-            )}
-            {form.materials.map((m, i) => {
-              const selected = findMaterial(m.material);
-              // Only meaningful for a new entry — an existing entry's quantity is already deducted
-              const overStock = !editing && selected && Number(m.quantity) > (selected.currentStock || 0);
-              return (
-                <div key={i} className="mb-3 last:mb-0">
-                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <OptionPicker options={materialOptions} value={m.material} onChange={id => updateMaterial(i, { material: id, unit: unitOf(id) })}
-                      placeholder="Select Material" searchPlaceholder="Search materials..." />
-                    <input type="number" {...NON_NEGATIVE} className="input" placeholder="Qty" value={m.quantity} onChange={e => updateMaterial(i, { quantity: e.target.value })} />
-                    <input className="input bg-slate-50 font-semibold text-slate-600" placeholder="Unit" value={m.unit} readOnly tabIndex={-1} title="Unit comes from the selected material" />
-                    <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Remove material" onClick={() => removeMaterial(i)}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                  {selected && (
-                    <p className={`mt-1 text-xs ${overStock ? 'font-semibold text-rose-600' : 'text-slate-500'}`}>
-                      In stock: {(selected.currentStock || 0).toLocaleString('en-IN')} {selected.unit}
-                      {overStock ? ' — quantity is more than the available stock' : ''}
-                    </p>
-                  )}
+          <ModalSection number={3} title="Materials Used" tone="purple">
+            {form.materials.length > 0 && (
+              <div className="space-y-2">
+                <div className="hidden grid-cols-[minmax(0,1fr)_9rem_2.25rem] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:grid">
+                  <span>Material</span><span>Quantity</span><span />
                 </div>
-              );
-            })}
+                {form.materials.map((m, i) => {
+                  const selected = findMaterial(m.material);
+                  // Only meaningful for a new entry — an existing entry's quantity is already deducted
+                  const overStock = !editing && selected && Number(m.quantity) > (selected.currentStock || 0);
+                  return (
+                    <div key={i}>
+                      <div className="grid grid-cols-[minmax(0,1fr)_7rem_2.25rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_9rem_2.25rem]">
+                        <OptionPicker options={materialOptions} value={m.material} onChange={id => updateMaterial(i, { material: id, unit: unitOf(id) })}
+                          placeholder="Select Material" searchPlaceholder="Search materials..." />
+                        <div className="relative">
+                          <input type="number" {...NON_NEGATIVE} className={`input pr-12 font-semibold ${overStock ? 'border-rose-400 text-rose-700' : ''}`} placeholder="Qty"
+                            value={m.quantity} onChange={e => updateMaterial(i, { quantity: e.target.value })} />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex max-w-[3rem] items-center truncate text-xs font-semibold text-slate-400">{m.unit}</span>
+                        </div>
+                        <button type="button" className="icon-btn hover:bg-red-50 hover:text-red-600" title="Remove material" aria-label="Remove material" onClick={() => removeMaterial(i)}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      {overStock && (
+                        <p className="mt-1 px-1 text-xs font-semibold text-rose-600">
+                          Only {num(selected.currentStock || 0)} {selected.unit} in stock
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={addMaterial}
+              className={`flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-purple-200 bg-white/70 px-3 py-2.5 text-sm font-semibold text-purple-700 transition hover:border-purple-300 hover:bg-white ${form.materials.length ? 'mt-3' : ''}`}
+            >
+              <Plus size={16} /> {form.materials.length ? 'Add another material' : 'Add material used (cement, sand, fly ash...)'}
+            </button>
             {form.product && (
               <CementCheck
-                bricks={Number(form.quantityProduced) || 0}
+                bricks={made}
                 bags={cementBags(form.materials)}
                 unit={findMaterial(form.materials.find(m => isCement(findMaterial(m.material)?.name))?.material)?.unit}
                 row={cementRowFor(formCement, form.product)}
               />
             )}
           </ModalSection>
+
+          <div>
+            <label className="label">Notes <span className="font-normal text-slate-400">(optional)</span></label>
+            <input className="input" placeholder="Anything worth remembering about this batch" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          </div>
         </Modal>
       )}
     </div>
