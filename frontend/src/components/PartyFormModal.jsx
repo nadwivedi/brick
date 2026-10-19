@@ -15,6 +15,16 @@ const INACTIVE = 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100';
 
 // A customer's opening balance is saved as what they owe us, a vendor's as what we owe them,
 // so a positive amount means receivable for a customer and payable for a vendor.
+// Mobile numbers are 10 digits: anything else typed or pasted (spaces, +91, dashes) is dropped
+const toMobile = (value) => String(value || '').replace(/\D/g, '').slice(-10);
+const typedMobile = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  // A pasted +91 / 0 prefix is dropped; typing past 10 digits is simply ignored
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+  return digits.slice(0, 10);
+};
+
 const defaultSide = (type) => (type === 'vendor' ? 'payable' : 'receivable');
 const toSigned = (type, amount, side) => (side === defaultSide(type) ? amount : -amount);
 
@@ -27,7 +37,7 @@ const formFor = (party, type) => {
   return {
     type: party.type,
     name: party.name || '',
-    mobile: party.mobile || '',
+    mobile: toMobile(party.mobile),
     address: party.address || '',
     gstin: party.gstin || '',
     openingBalance: ob ? Math.abs(ob) : '',
@@ -66,11 +76,12 @@ export default function PartyFormModal({ party, defaultType = 'customer', fixedT
     e.preventDefault();
     setError('');
     if (!form.name.trim()) return setError('Party name is required');
-    if (!form.mobile.trim()) return setError('Mobile number is required');
+    if (!form.mobile) return setError('Mobile number is required');
+    if (form.mobile.length !== 10) return setError('Mobile number must be 10 digits');
 
     const payload = {
       name: form.name.trim(),
-      mobile: form.mobile.trim(),
+      mobile: form.mobile,
       address: form.address.trim(),
       gstin: form.gstin.trim().toUpperCase(),
       openingBalance: toSigned(form.type, Number(form.openingBalance || 0), form.balanceSide),
@@ -144,7 +155,7 @@ export default function PartyFormModal({ party, defaultType = 'customer', fixedT
               </div>
               <div className="sm:col-span-2">
                 <label className="label">Mobile Number <span className="text-rose-500">*</span></label>
-                <input className="input" type="tel" inputMode="numeric" value={form.mobile} onChange={e => set('mobile', e.target.value)}
+                <input className="input" type="tel" inputMode="numeric" value={form.mobile} onChange={e => set('mobile', typedMobile(e.target.value))}
                   placeholder="10 digits" autoComplete="off" required />
               </div>
             </div>
