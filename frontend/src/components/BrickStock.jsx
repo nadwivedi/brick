@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Hammer, ShoppingBag, TriangleAlert, Layers, Plus, PackageCheck } from 'lucide-react';
+import { Hammer, ShoppingBag, TriangleAlert, Layers, Plus, PackageCheck, BookOpen } from 'lucide-react';
 import dayjs from 'dayjs';
 import api from '../lib/api';
 import { hasManyPlants } from '../lib/plants';
@@ -118,11 +118,16 @@ export default function BrickStock() {
                     </div>
                   </dl>
 
-                  <p className="mt-3 text-[11px] text-slate-400">
-                    {r.lastProduced ? `Last made ${dayjs(r.lastProduced).format('D MMM YYYY')}` : 'Not produced yet'}
-                    {' · '}
-                    {r.lastSold ? `last sold ${dayjs(r.lastSold).format('D MMM YYYY')}` : 'not sold yet'}
-                  </p>
+                  <div className="mt-3 flex items-end justify-between gap-2">
+                    <p className="text-[11px] text-slate-400">
+                      {r.lastProduced ? `Last made ${dayjs(r.lastProduced).format('D MMM YYYY')}` : 'Not produced yet'}
+                      <br />
+                      {r.lastSold ? `Last sold ${dayjs(r.lastSold).format('D MMM YYYY')}` : 'Not sold yet'}
+                    </p>
+                    <Link className="btn-secondary btn-sm shrink-0" to={`/inventory/bricks/${r.product._id}${plant ? `?plant=${plant}` : ''}`}>
+                      <BookOpen size={14} /> Ledger
+                    </Link>
+                  </div>
                 </div>
               );
             })}

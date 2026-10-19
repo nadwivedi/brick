@@ -10,6 +10,7 @@ import ActivityPage from './pages/ActivityPage';
 import ProductionPage from './pages/ProductionPage';
 import InventoryPage from './pages/InventoryPage';
 import StockLedgerPage from './pages/StockLedgerPage';
+import BrickLedgerPage from './pages/BrickLedgerPage';
 import SalesPage from './pages/SalesPage';
 import PartyPaymentsPage from './pages/PartyPaymentsPage';
 import PurchasesPage from './pages/PurchasesPage';
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="production" element={<ProductionPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="inventory/ledger/:materialId" element={<StockLedgerPage />} />
+        <Route path="inventory/bricks/:productId" element={<BrickLedgerPage />} />
         <Route path="sales" element={<SalesPage />} />
         <Route path="receipts" element={<PartyPaymentsPage key="customer" type="customer" />} />
         <Route path="payments" element={<PartyPaymentsPage key="vendor" type="vendor" />} />

@@ -16,7 +16,7 @@ const Payment = require('../models/Payment');
 const VendorPayment = require('../models/VendorPayment');
 const StockMovement = require('../models/StockMovement');
 const { getSummary, getActivity } = require('../controllers/dashboardController');
-const { getBrickStock } = require('../utils/brickStock');
+const { getBrickStock, getBrickLedger } = require('../utils/brickStock');
 
 router.use(protect);
 
@@ -411,6 +411,16 @@ router.get('/stock/summary', async (req, res, next) => {
 router.get('/stock/bricks', async (req, res, next) => {
   try {
     const data = await getBrickStock(req.user.organization._id, { plant: req.query.plant });
+    res.json({ success: true, data });
+  } catch (e) { next(e); }
+});
+
+// Ledger for one brick type: production in, sales out, balance after each. Optional ?plant=&from=&to=
+router.get('/stock/bricks/:productId/ledger', async (req, res, next) => {
+  try {
+    const { plant, from, to } = req.query;
+    const data = await getBrickLedger(req.user.organization._id, req.params.productId, { plant, from, to });
+    if (!data) return res.status(404).json({ success: false, message: 'Brick type not found' });
     res.json({ success: true, data });
   } catch (e) { next(e); }
 });

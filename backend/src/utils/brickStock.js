@@ -83,4 +83,73 @@ async function checkBrickStock(organization, items, { excludeInvoice } = {}) {
   return short.length ? `Not enough bricks in stock. ${short.join('; ')}` : null;
 }
 
-module.exports = { getBrickStock, checkBrickStock, NOT_SOLD };
+/**
+ * Ledger for one brick type, oldest first: opening stock, then good bricks in from each
+ * production entry and bricks out on each sale, with the balance after each.
+ * - plant: only that plant's production and sales (opening stock is then left out)
+ * - from / to (YYYY-MM-DD): limit the rows; the opening balance is then the stock just before `from`
+ * Returns null when the brick type is not found.
+ */
+async function getBrickLedger(organization, productId, { plant, from, to } = {}) {
+  if (!mongoose.isValidObjectId(productId)) return null;
+  const product = await Product.findOne({ _id: productId, organization }).lean();
+  if (!product) return null;
+  const plantMatch = plant && mongoose.isValidObjectId(plant) ? { plant: new mongoose.Types.ObjectId(String(plant)) } : {};
+
+  const [production, invoices] = await Promise.all([
+    ProductionEntry.find({ organization, product: product._id, ...plantMatch }).populate('plant', 'name').lean(),
+    Invoice.find({ organization, status: { $nin: NOT_SOLD }, 'items.product': product._id, ...plantMatch })
+      .populate('plant', 'name').populate('customer', 'name').lean(),
+  ]);
+
+  const pcs = (n) => `${(n || 0).toLocaleString('en-IN')} pcs`;
+  const rows = [
+    ...production.map(p => {
+      const damaged = p.quantityDamaged || 0;
+      return {
+        type: 'production', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+        party: 'Produced',
+        detail: [`${pcs(p.quantityProduced)} made`, damaged ? `${pcs(damaged)} damaged` : '', (p.shift || '').replace('_', ' ')].filter(Boolean).join(' · '),
+        produced: p.quantityProduced || 0, damaged,
+        qtyIn: (p.quantityProduced || 0) - damaged, qtyOut: 0,
+      };
+    }),
+    ...invoices.map(i => {
+      const lines = (i.items || []).filter(it => String(it.product) === String(product._id));
+      const qty = lines.reduce((s, it) => s + (it.quantity || 0), 0);
+      const rate = lines[0]?.rate;
+      return {
+        type: 'sale', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
+        party: i.customer?.name || 'Sale',
+        detail: [`Invoice ${i.invoiceNumber}`, rate != null ? `₹${rate.toLocaleString('en-IN')} per pc` : '', i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : ''].filter(Boolean).join(' · '),
+        qtyIn: 0, qtyOut: qty,
+      };
+    }),
+  ].sort((a, b) => (new Date(a.date) - new Date(b.date)) || (new Date(a.createdAt) - new Date(b.createdAt)));
+
+  const start = plantMatch.plant ? 0 : (product.openingStock || 0);
+  let balance = start;
+  const all = rows.map(r => ({ ...r, balance: (balance += r.qtyIn - r.qtyOut) }));
+
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const fromDay = DATE_RE.test(from || '') ? from : null;
+  const toDay = DATE_RE.test(to || '') ? to : null;
+  const dayOf = (r) => new Date(r.date).toISOString().slice(0, 10);
+  const before = fromDay ? all.filter(r => dayOf(r) < fromDay) : [];
+  const entries = all.filter(r => (!fromDay || dayOf(r) >= fromDay) && (!toDay || dayOf(r) <= toDay));
+  const sum = (list, key) => list.reduce((s, r) => s + (r[key] || 0), 0);
+  const opening = start + sum(before, 'qtyIn') - sum(before, 'qtyOut');
+  const totalIn = sum(entries, 'qtyIn');
+  const totalOut = sum(entries, 'qtyOut');
+
+  return {
+    product: { _id: product._id, name: product.name, size: product.size, openingStock: product.openingStock || 0 },
+    from: fromDay, to: toDay,
+    opening, totalIn, totalOut, closing: opening + totalIn - totalOut,
+    produced: sum(entries, 'produced'), damaged: sum(entries, 'damaged'),
+    currentStock: balance,
+    entries,
+  };
+}
+
+module.exports = { getBrickStock, checkBrickStock, getBrickLedger, NOT_SOLD };
