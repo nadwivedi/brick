@@ -99,12 +99,10 @@ export default function SalesPage() {
       const qty = parseFloat(items[idx].quantity) || 0;
       const rate = parseFloat(items[idx].rate) || 0;
       items[idx].amount = qty * rate;
-      const gstPct = parseFloat(items[idx].gstPercent) || 0;
-      items[idx].gstAmount = (items[idx].amount * gstPct) / 100;
     }
     if (key === 'product') {
       const p = products.find(p => p._id === val);
-      if (p) { items[idx].rate = p.defaultRate; items[idx].gstPercent = p.gstPercent || 0; }
+      if (p) items[idx].rate = p.defaultRate;
     }
     const totals = calcTotals(items, form.transportCharges, form.loadingCharges, form.discount);
     setForm({ ...form, items, ...totals });
@@ -141,7 +139,8 @@ export default function SalesPage() {
     try {
       await api.post('/invoices', {
         ...form,
-        items: items.map(i => ({ ...i, quantity: Number(i.quantity), rate: Number(i.rate), gstPercent: Number(i.gstPercent) || 0 })),
+        // GST is not charged for now; the fields stay at 0 so it can be switched back on later
+        items: items.map(i => ({ ...i, quantity: Number(i.quantity), rate: Number(i.rate), gstPercent: 0, gstAmount: 0 })),
         ...calcTotals(items, form.transportCharges, form.loadingCharges, form.discount),
         transportCharges: Number(form.transportCharges) || 0,
         loadingCharges: Number(form.loadingCharges) || 0,
@@ -363,7 +362,6 @@ export default function SalesPage() {
                   <th className="table-header">Product</th>
                   <th className="table-header">Qty</th>
                   <th className="table-header">Rate (₹)</th>
-                  <th className="table-header">GST %</th>
                   <th className="table-header text-right">Amount</th>
                   <th className="table-header"></th>
                 </tr></thead>
@@ -383,8 +381,7 @@ export default function SalesPage() {
                       </td>
                       <td className="px-2 py-1.5"><input type="number" {...NON_NEGATIVE} className="input w-24 py-1.5" placeholder="Qty" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} /></td>
                       <td className="px-2 py-1.5"><input type="number" {...NON_NEGATIVE} className="input w-28 py-1.5" placeholder="Rate" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} /></td>
-                      <td className="px-2 py-1.5"><input type="number" {...NON_NEGATIVE} className="input w-20 py-1.5" placeholder="0" value={item.gstPercent} onChange={e => updateItem(idx, 'gstPercent', e.target.value)} /></td>
-                      <td className="whitespace-nowrap px-3 py-1.5 text-right font-semibold text-slate-800">{fmt(item.amount + item.gstAmount)}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right font-semibold text-slate-800">{fmt(item.amount)}</td>
                       <td className="px-2 py-1.5"><button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={14} /></button></td>
                     </tr>
                   ))}
@@ -414,7 +411,6 @@ export default function SalesPage() {
 
             <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-3 text-right md:mt-4 md:p-4">
               <div className="text-sm text-slate-600">Subtotal: <span className="font-semibold text-slate-800">{fmt(form.subtotal)}</span></div>
-              <div className="text-sm text-slate-600">GST: <span className="font-semibold text-slate-800">{fmt(form.gstTotal)}</span></div>
               <div className="text-lg font-bold text-slate-900">Total: {fmt(form.totalAmount)}</div>
             </div>
           </ModalSection>
