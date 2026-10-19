@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -19,6 +19,8 @@ import PartyLedgerPage from './pages/PartyLedgerPage';
 import ReportsPage from './pages/ReportsPage';
 import LowStockPage from './pages/LowStockPage';
 import SettingsPage from './pages/SettingsPage';
+
+const OldLedgerLink = () => <Navigate to={`/masters/parties/${useParams().id}/ledger`} replace />;
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -56,11 +58,13 @@ function AppRoutes() {
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="masters" element={<MastersPage />} />
         <Route path="masters/:tab" element={<MastersPage />} />
-        <Route path="masters/customers/:id/ledger" element={<PartyLedgerPage key="customer" type="customer" />} />
-        <Route path="masters/vendors/:id/ledger" element={<PartyLedgerPage key="vendor" type="vendor" />} />
+        <Route path="masters/parties/:id/ledger" element={<PartyLedgerPage />} />
+        {/* Customers and vendors became parties with the same ids, so old ledger links still work */}
+        <Route path="masters/customers/:id/ledger" element={<OldLedgerLink />} />
+        <Route path="masters/vendors/:id/ledger" element={<OldLedgerLink />} />
         {/* Old links to the individual master screens */}
-        <Route path="customers" element={<Navigate to="/masters/parties?type=customer" replace />} />
-        <Route path="vendors" element={<Navigate to="/masters/parties?type=vendor" replace />} />
+        <Route path="customers" element={<Navigate to="/masters/parties" replace />} />
+        <Route path="vendors" element={<Navigate to="/masters/parties" replace />} />
         <Route path="parties" element={<Navigate to="/masters/parties" replace />} />
         <Route path="workers" element={<Navigate to="/masters/labour" replace />} />
         <Route path="products" element={<Navigate to="/masters/brick-types" replace />} />

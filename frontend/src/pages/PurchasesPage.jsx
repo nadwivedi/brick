@@ -36,7 +36,7 @@ export default function PurchasesPage() {
     setLoading(true);
     try {
       const [pRes, vRes, plRes, mRes] = await Promise.all([
-        api.get('/purchases'), api.get('/vendors'), api.get('/plants'), api.get('/materials')
+        api.get('/purchases'), api.get('/parties'), api.get('/plants'), api.get('/materials')
       ]);
       setPurchases(pRes.data || []);
       setVendors(vRes.data || []);
@@ -78,7 +78,7 @@ export default function PurchasesPage() {
     // Blank rows are ignored; everything the purchase needs must be filled in
     const items = form.items.filter(i => i.material);
     const problem =
-      !form.vendor ? 'Select a vendor' :
+      !form.vendor ? 'Select a party' :
       !form.plant ? 'Select a plant' :
       items.length === 0 ? 'Add at least one material' :
       items.some(i => !(Number(i.quantity) > 0)) ? 'Enter the quantity for each material' :
@@ -110,7 +110,7 @@ export default function PurchasesPage() {
           <div className="page-header">
             <div>
               <h1 className="page-title">Material Purchases</h1>
-              <p className="page-subtitle">Record raw material purchases from vendors</p>
+              <p className="page-subtitle">Record raw material purchases from parties</p>
             </div>
             <div className="flex gap-2 md:shrink-0">
               <SearchInput className="flex-1 md:w-72 md:flex-none" value={search} onChange={setSearch} placeholder="Search by vendor..." />
@@ -186,11 +186,11 @@ export default function PurchasesPage() {
               <div><label className="label">Bill Number</label><input className="input" placeholder="Bill no." value={form.billNumber} onChange={e => setForm({ ...form, billNumber: e.target.value })} /></div>
               <div>
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <label className="label mb-0">Vendor</label>
+                  <label className="label mb-0">Party</label>
                   <button type="button" onClick={() => setAddingVendor(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
                 </div>
                 <select className="input" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })}>
-                  <option value="">Select Vendor</option>
+                  <option value="">Select Party</option>
                   {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
                 </select>
               </div>
@@ -272,10 +272,9 @@ export default function PurchasesPage() {
         </Modal>
       )}
 
-      {/* New vendor from the purchase form; it is selected once saved */}
+      {/* New party from the purchase form; it is selected once saved */}
       {addingVendor && (
         <PartyFormModal
-          fixedType="vendor"
           onClose={() => setAddingVendor(false)}
           onSaved={party => {
             setVendors(list => [...list, party].sort((a, b) => a.name.localeCompare(b.name)));

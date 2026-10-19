@@ -19,14 +19,14 @@ const MASTERS = {
   'expense-categories': ExpenseCategoriesPage,
 };
 
-// Customers and vendors used to have their own screens; both now live under Parties
-const OLD_PARTY_TABS = { customers: 'customer', vendors: 'vendor' };
+// Customers and vendors used to have their own screens; both are now parties
+const OLD_PARTY_TABS = ['customers', 'vendors'];
 
 export default function MastersPage() {
   const { tab } = useParams();
   const Page = MASTERS[tab];
 
-  if (OLD_PARTY_TABS[tab]) return <Navigate to={`/masters/parties?type=${OLD_PARTY_TABS[tab]}`} replace />;
+  if (OLD_PARTY_TABS.includes(tab)) return <Navigate to="/masters/parties" replace />;
   if (!Page) return <Navigate to="/masters/parties" replace />;
 
   return <Page key={tab} />;

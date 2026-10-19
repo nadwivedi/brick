@@ -10,7 +10,7 @@ import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
  * Reusable CRUD page
  * Props:
  * - title, subtitle: page header
- * - endpoint: API path e.g. '/customers'
+ * - endpoint: API path e.g. '/plants'
  * - columns: [{ key, label, render? }]
  * - fields: [{ key, label, type, options? }] — for the form
  * - defaultValues: {} — initial form state

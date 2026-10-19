@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
-// Money paid to a vendor on account (not tied to one purchase)
+// Money paid to a party on account (not tied to one purchase)
 const vendorPaymentSchema = new mongoose.Schema({
   date: { type: Date, required: true, default: Date.now },
-  vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true },
+  vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true }, // the party we paid
   amount: { type: Number, required: true },
   mode: {
     type: String,

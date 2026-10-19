@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema({
   date: { type: Date, required: true, default: Date.now },
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true }, // the party who paid us
   invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
   amount: { type: Number, required: true },
   mode: {

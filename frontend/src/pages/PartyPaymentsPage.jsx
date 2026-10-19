@@ -19,28 +19,28 @@ const MODE_FILTERS = [{ key: '', label: 'All' }, ...PAYMENT_MODES.map(m => ({ ke
 // Wording, endpoints and links for each direction of money
 const KINDS = {
   customer: {
-    endpoint: '/receipts', partiesEndpoint: '/customers', partyKey: 'customer', ledgerPath: '/masters/customers',
-    title: 'Money Received', subtitle: 'Every payment received from customers, in cash or UPI',
+    endpoint: '/receipts', partyKey: 'customer',
+    title: 'Money Received', subtitle: 'Every payment received from parties, in cash or UPI',
     addLabel: 'Receive Money', icon: HandCoins, noun: 'receipt', todayTone: 'emerald', amountClass: 'text-emerald-700',
-    searchPlaceholder: 'Search customer or reference...',
-    emptyTitle: 'No money received found', emptyHint: 'Record the first payment you receive from a customer.',
-    deleteText: (r) => `Delete this receipt of ${fmt(r.amount)} from ${r.customer?.name || 'this customer'}?${r.invoice?.invoiceNumber ? ` Invoice ${r.invoice.invoiceNumber} will show this amount as due again.` : ''}`,
+    searchPlaceholder: 'Search party or reference...',
+    emptyTitle: 'No money received found', emptyHint: 'Record the first payment you receive from a party.',
+    deleteText: (r) => `Delete this receipt of ${fmt(r.amount)} from ${r.customer?.name || 'this party'}?${r.invoice?.invoiceNumber ? ` Invoice ${r.invoice.invoiceNumber} will show this amount as due again.` : ''}`,
     deleteError: 'Could not delete the receipt',
     linkedText: (r) => (r.invoice?.invoiceNumber ? `For ${r.invoice.invoiceNumber}` : ''),
   },
   vendor: {
-    endpoint: '/vendor-payments', partiesEndpoint: '/vendors', partyKey: 'vendor', ledgerPath: '/masters/vendors',
-    title: 'Money Paid', subtitle: 'Every payment made to vendors, in cash or UPI',
+    endpoint: '/vendor-payments', partyKey: 'vendor',
+    title: 'Money Paid', subtitle: 'Every payment made to parties, in cash or UPI',
     addLabel: 'Pay Money', icon: Send, noun: 'payment', todayTone: 'rose', amountClass: 'text-rose-600',
-    searchPlaceholder: 'Search vendor or reference...',
-    emptyTitle: 'No money paid found', emptyHint: 'Record the first payment you make to a vendor.',
-    deleteText: (r) => `Delete this payment of ${fmt(r.amount)} to ${r.vendor?.name || 'this vendor'}?`,
+    searchPlaceholder: 'Search party or reference...',
+    emptyTitle: 'No money paid found', emptyHint: 'Record the first payment you make to a party.',
+    deleteText: (r) => `Delete this payment of ${fmt(r.amount)} to ${r.vendor?.name || 'this party'}?`,
     deleteError: 'Could not delete the payment',
     linkedText: (r) => (r.purchase ? `Paid with purchase${r.purchase.billNumber ? ` · Bill ${r.purchase.billNumber}` : ''}` : ''),
   },
 };
 
-/** List of money received from customers or money paid to vendors. `type` is 'customer' or 'vendor'. */
+/** List of money received from parties or money paid to them. `type` is 'customer' (received) or 'vendor' (paid). */
 export default function PartyPaymentsPage({ type }) {
   const kind = KINDS[type];
   const [payments, setPayments] = useState([]);
@@ -53,7 +53,7 @@ export default function PartyPaymentsPage({ type }) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [rRes, pRes] = await Promise.all([api.get(kind.endpoint), api.get(kind.partiesEndpoint)]);
+      const [rRes, pRes] = await Promise.all([api.get(kind.endpoint), api.get('/parties')]);
       setPayments(rRes.data || []);
       setParties(pRes.data || []);
     } catch (e) { console.error(e); }
@@ -178,7 +178,7 @@ export default function PartyPaymentsPage({ type }) {
                       <td className="table-cell">
                         <div className="flex items-center justify-end gap-1">
                           {party?._id && (
-                            <Link className="btn-secondary btn-sm mr-1 whitespace-nowrap" to={`${kind.ledgerPath}/${party._id}/ledger`}>
+                            <Link className="btn-secondary btn-sm mr-1 whitespace-nowrap" to={`/masters/parties/${party._id}/ledger`}>
                               <BookOpen size={14} /> Ledger
                             </Link>
                           )}

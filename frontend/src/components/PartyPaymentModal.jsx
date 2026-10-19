@@ -13,30 +13,30 @@ const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 const KINDS = {
   customer: {
     endpoint: '/receipts', partyKey: 'customer',
-    title: 'Money Received', subtitle: 'Record money a customer has paid you',
-    partyLabel: 'Party Name (Customer)', selectLabel: 'Select Customer',
+    title: 'Money Received', subtitle: 'Record money a party has paid you',
+    partyLabel: 'Party Name', selectLabel: 'Select Party',
     modeLabel: 'Received by', saveLabel: 'Save Receipt', balanceLabel: 'balance after this receipt',
-    owes: 'to receive',
+    sign: -1, // money in lowers what they owe us
     noParty: 'Select the party you received money from', noAmount: 'Enter the amount received',
     saveError: 'Could not save the receipt',
   },
   vendor: {
     endpoint: '/vendor-payments', partyKey: 'vendor',
-    title: 'Money Paid', subtitle: 'Record money you have paid to a vendor',
-    partyLabel: 'Party Name (Vendor)', selectLabel: 'Select Vendor',
+    title: 'Money Paid', subtitle: 'Record money you have paid to a party',
+    partyLabel: 'Party Name', selectLabel: 'Select Party',
     modeLabel: 'Paid by', saveLabel: 'Save Payment', balanceLabel: 'balance after this payment',
-    owes: 'to pay',
+    sign: 1, // money out lowers what we owe them
     noParty: 'Select the party you paid money to', noAmount: 'Enter the amount paid',
     saveError: 'Could not save the payment',
   },
 };
 
 /**
- * Popup to record money received from a customer or money paid to a vendor.
+ * Popup to record money received from a party or money paid to a party.
  * Props:
  * - type: 'customer' (money received) or 'vendor' (money paid)
  * - parties: list to pick from
- * - partyId: the customer/vendor to start on
+ * - partyId: the party to start on
  * - onClose, onSaved
  */
 export default function PartyPaymentModal({ type, parties, partyId, onClose, onSaved }) {
@@ -55,16 +55,17 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
   useEscapeKey(true, onClose);
 
   useEffect(() => {
-    api.get(`/party-balances/${type}`).then(res => setBalances(res.data || {})).catch(() => setBalances({}));
-  }, [type]);
+    api.get('/party-balances').then(res => setBalances(res.data || {})).catch(() => setBalances({}));
+  }, []);
 
-  // A positive balance is money still owed; a negative one is an advance
-  const balanceText = (n) => (n > 0 ? `${fmt(n)} ${kind.owes}` : n < 0 ? `${fmt(-n)} advance` : 'Nothing due');
+  // Positive = the party owes you, negative = you owe the party
+  const balanceText = (n) => (n > 0 ? `${fmt(n)} to receive` : n < 0 ? `${fmt(-n)} to pay` : 'Nothing due');
+  const balanceClass = (n) => (n > 0 ? 'text-emerald-700' : n < 0 ? 'text-rose-600' : '');
 
   const party = parties.find(p => p._id === form.party);
   const amount = Number(form.amount) || 0;
   const due = party ? (balances?.[party._id]?.balance ?? party.openingBalance ?? 0) : 0;
-  const after = due - amount;
+  const after = due + kind.sign * amount;
 
   const handleSave = async () => {
     const problem =
@@ -147,10 +148,10 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
           <div className="rounded-xl border-2 border-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{party.name}'s {kind.balanceLabel}</p>
             <p className="mt-1 flex flex-wrap items-center gap-2 text-lg font-bold text-slate-900">
-              <span className={due > 0 ? 'text-rose-600' : ''}>{balanceText(due)}</span>
+              <span className={balanceClass(due)}>{balanceText(due)}</span>
               {amount > 0 && <>
                 <ArrowRight size={18} className="text-slate-400" />
-                <span className={after > 0 ? 'text-rose-600' : 'text-emerald-700'}>{balanceText(after)}</span>
+                <span className={balanceClass(after)}>{balanceText(after)}</span>
               </>}
             </p>
           </div>

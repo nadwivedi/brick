@@ -10,8 +10,11 @@ const authRoutes = require('./routes/authRoutes');
 const productionRoutes = require('./routes/productionRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const apiRoutes = require('./routes/apiRoutes');
+const migrateParties = require('./utils/migrateParties');
 
-connectDB();
+connectDB()
+  .then(() => migrateParties())
+  .catch(e => console.error('❌ Party migration failed:', e.message));
 
 const app = express();
 

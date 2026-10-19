@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const invoiceSchema = new mongoose.Schema({
   invoiceNumber: { type: String, required: true, unique: true },
   date: { type: Date, required: true, default: Date.now },
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true }, // the party the bricks are sold to
   plant: { type: mongoose.Schema.Types.ObjectId, ref: 'Plant', required: true },
   items: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },

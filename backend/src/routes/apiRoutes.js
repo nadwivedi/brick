@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const Customer = require('../models/Customer');
-const Vendor = require('../models/Vendor');
+const Party = require('../models/Party');
 const Worker = require('../models/Worker');
 const Product = require('../models/Product');
 const Material = require('../models/Material');
@@ -186,8 +185,26 @@ router.delete('/plants/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.use('/customers', makeCRUD(Customer));
-router.use('/vendors', makeCRUD(Vendor));
+// Parties: anyone you sell to or buy from. A party with entries can't be deleted.
+router.delete('/parties/:id', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const party = await Party.findOne({ _id: req.params.id, organization });
+    if (!party) return res.status(404).json({ success: false, message: 'Not found' });
+    const [sales, purchases, received, paid] = await Promise.all([
+      Invoice.countDocuments({ organization, customer: party._id }),
+      Purchase.countDocuments({ organization, vendor: party._id }),
+      Payment.countDocuments({ organization, customer: party._id }),
+      VendorPayment.countDocuments({ organization, vendor: party._id }),
+    ]);
+    if (sales + purchases + received + paid > 0) {
+      return res.status(400).json({ success: false, message: `${party.name} has ${sales} sale, ${purchases} purchase and ${received + paid} payment entries. Mark the party inactive instead.` });
+    }
+    await party.deleteOne();
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) { next(e); }
+});
+router.use('/parties', makeCRUD(Party));
 router.use('/workers', makeCRUD(Worker));
 router.use('/products', makeCRUD(Product));
 router.use('/materials', makeCRUD(Material));
@@ -195,8 +212,8 @@ router.use('/plants', makeCRUD(Plant));
 router.use('/expenses', makeCRUD(Expense));
 router.use('/payments', makeCRUD(Payment));
 
-// Money received from customers. Every receipt is a Payment, so it shows up in the customer's
-// ledger, the customer balances, the dashboard collection and the activity center.
+// Money received from parties. Every receipt is a Payment, so it shows up in the party's
+// ledger, the party balances, the dashboard collection and the activity center.
 // The list also includes payments taken on the Sales screen against an invoice.
 const RECEIPT_MODES = ['cash', 'upi', 'bank_transfer', 'cheque'];
 
@@ -215,11 +232,11 @@ router.post('/receipts', async (req, res, next) => {
     const organization = req.user.organization._id;
     const { customer: customerId, mode, date, referenceNumber, notes } = req.body;
     const amount = Number(req.body.amount);
-    if (!customerId) return res.status(400).json({ success: false, message: 'Select a customer' });
+    if (!customerId) return res.status(400).json({ success: false, message: 'Select a party' });
     if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
     if (!RECEIPT_MODES.includes(mode)) return res.status(400).json({ success: false, message: 'Choose how the money was received' });
-    const customer = await Customer.findOne({ _id: customerId, organization });
-    if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+    const customer = await Party.findOne({ _id: customerId, organization });
+    if (!customer) return res.status(404).json({ success: false, message: 'Party not found' });
 
     const receipt = await Payment.create({
       date: /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : new Date().toISOString().slice(0, 10),
@@ -257,7 +274,7 @@ router.delete('/receipts/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Money paid to vendors. Every payment shows up in the vendor's ledger, the vendor balances
+// Money paid to parties. Every payment shows up in the party's ledger, the party balances
 // and the activity center. The list also includes the amount paid on the Purchases screen
 // along with a purchase; those rows carry `purchase` and are changed from the purchase itself.
 router.get('/vendor-payments', async (req, res, next) => {
@@ -284,11 +301,11 @@ router.post('/vendor-payments', async (req, res, next) => {
     const organization = req.user.organization._id;
     const { vendor: vendorId, mode, date, referenceNumber, notes } = req.body;
     const amount = Number(req.body.amount);
-    if (!vendorId) return res.status(400).json({ success: false, message: 'Select a vendor' });
+    if (!vendorId) return res.status(400).json({ success: false, message: 'Select a party' });
     if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
     if (!RECEIPT_MODES.includes(mode)) return res.status(400).json({ success: false, message: 'Choose how the money was paid' });
-    const vendor = await Vendor.findOne({ _id: vendorId, organization });
-    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    const vendor = await Party.findOne({ _id: vendorId, organization });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Party not found' });
 
     const payment = await VendorPayment.create({
       date: /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : new Date().toISOString().slice(0, 10),
@@ -376,15 +393,6 @@ router.delete('/purchases/:id', async (req, res, next) => {
   try {
     await Purchase.findByIdAndDelete(req.params.id);
     res.json({ success: true });
-  } catch (e) { next(e); }
-});
-
-// Customer ledger
-router.get('/customers/:id/ledger', async (req, res, next) => {
-  try {
-    const invoices = await require('../models/Invoice').find({ customer: req.params.id }).sort({ date: 1 });
-    const payments = await Payment.find({ customer: req.params.id }).sort({ date: 1 });
-    res.json({ success: true, data: { invoices, payments } });
   } catch (e) { next(e); }
 });
 
@@ -510,82 +518,76 @@ router.get('/stock/ledger/:materialId', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Account ledger for a customer or a vendor, oldest first, with a running balance.
-//  - customer: invoices raise what they owe us, payments received lower it
-//  - vendor:   purchases raise what we owe them, amounts paid lower it
-// The balance starts from the opening balance saved on the customer/vendor.
+// Everything recorded against one party, oldest first. The balance runs from the party's
+// side: positive = they owe us (receivable), negative = we owe them (payable).
+//  - debit (raises it):  bricks sold to them, money we paid them
+//  - credit (lowers it): money they paid us, material we bought from them
+const partyRows = async (organization, partyId) => {
+  const money = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
+  const words = (s) => (s || '').replace(/_/g, ' ');
+  const join = (parts) => parts.filter(Boolean).join(' · ');
+  const [invoices, received, purchases, paid] = await Promise.all([
+    Invoice.find({ organization, customer: partyId, status: { $nin: ['draft', 'cancelled'] } })
+      .populate('plant', 'name').populate('items.product', 'name').lean(),
+    Payment.find({ organization, customer: partyId }).populate('plant', 'name').populate('invoice', 'invoiceNumber').lean(),
+    Purchase.find({ organization, vendor: partyId }).populate('plant', 'name').populate('items.material', 'name').lean(),
+    VendorPayment.find({ organization, vendor: partyId }).lean(),
+  ]);
+  return [
+    ...invoices.map(i => ({
+      type: 'sale', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
+      title: `Sale · Invoice ${i.invoiceNumber}`,
+      detail: join([
+        (i.items || []).map(it => `${(it.quantity || 0).toLocaleString('en-IN')} pcs ${it.product?.name || ''} @ ${money(it.rate)}`.trim()).join(', '),
+        i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : '',
+      ]),
+      debit: i.totalAmount || 0, credit: 0,
+    })),
+    ...received.map(p => ({
+      type: 'received', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+      title: 'Payment received',
+      detail: join([words(p.mode), p.invoice?.invoiceNumber ? `for ${p.invoice.invoiceNumber}` : '', p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
+      debit: 0, credit: p.amount || 0, order: 1,
+    })),
+    ...purchases.flatMap(p => [
+      {
+        type: 'purchase', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+        title: p.billNumber ? `Purchase · Bill ${p.billNumber}` : 'Purchase',
+        detail: join([
+          (p.items || []).map(i => `${i.quantity} ${i.unit || ''} ${i.material?.name || ''} @ ${money(i.rate)}`.replace(/\s+/g, ' ').trim()).join(', '),
+          p.transportCharges ? `Transport ${money(p.transportCharges)}` : '',
+        ]),
+        debit: 0, credit: (p.totalAmount || 0) + (p.transportCharges || 0),
+      },
+      ...(p.paidAmount > 0 ? [{
+        type: 'paid', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+        title: 'Payment made',
+        detail: join([words(p.paymentMode), p.billNumber ? `for Bill ${p.billNumber}` : '']),
+        debit: p.paidAmount, credit: 0, order: 1,
+      }] : []),
+    ]),
+    ...paid.map(p => ({
+      type: 'paid', refId: p._id, date: p.date, createdAt: p.createdAt, plant: '',
+      title: 'Payment made',
+      detail: join([words(p.mode), p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
+      debit: p.amount || 0, credit: 0,
+    })),
+  ].sort((a, b) => (new Date(a.date) - new Date(b.date)) || (new Date(a.createdAt) - new Date(b.createdAt)) || ((a.order || 0) - (b.order || 0)));
+};
+
+// Account ledger for one party, oldest first, with a running balance (see partyRows).
 // Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD limits the rows; the opening balance is then the
 // balance just before `from`.
-router.get('/party-ledger/:type/:id', async (req, res, next) => {
+router.get('/party-ledger/:id', async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
-    const { type, id } = req.params;
-    if (!['customer', 'vendor'].includes(type)) return res.status(404).json({ success: false, message: 'Not found' });
-    const party = await (type === 'customer' ? Customer : Vendor).findOne({ _id: id, organization });
-    if (!party) return res.status(404).json({ success: false, message: `${type === 'customer' ? 'Customer' : 'Vendor'} not found` });
+    const party = await Party.findOne({ _id: req.params.id, organization });
+    if (!party) return res.status(404).json({ success: false, message: 'Party not found' });
 
-    const money = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
-    const words = (s) => (s || '').replace(/_/g, ' ');
-    const join = (parts) => parts.filter(Boolean).join(' · ');
-    let rows;
-
-    if (type === 'customer') {
-      const [invoices, payments] = await Promise.all([
-        Invoice.find({ organization, customer: id, status: { $nin: ['draft', 'cancelled'] } })
-          .populate('plant', 'name').populate('items.product', 'name').lean(),
-        Payment.find({ organization, customer: id }).populate('plant', 'name').populate('invoice', 'invoiceNumber').lean(),
-      ]);
-      rows = [
-        ...invoices.map(i => ({
-          type: 'sale', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
-          title: `Invoice ${i.invoiceNumber}`,
-          detail: join([
-            (i.items || []).map(it => `${(it.quantity || 0).toLocaleString('en-IN')} pcs ${it.product?.name || ''} @ ${money(it.rate)}`.trim()).join(', '),
-            i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : '',
-          ]),
-          increase: i.totalAmount || 0, decrease: 0,
-        })),
-        ...payments.map(p => ({
-          type: 'payment', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
-          title: 'Payment received',
-          detail: join([words(p.mode), p.invoice?.invoiceNumber ? `for ${p.invoice.invoiceNumber}` : '', p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
-          increase: 0, decrease: p.amount || 0,
-        })),
-      ];
-    } else {
-      const [purchases, payments] = await Promise.all([
-        Purchase.find({ organization, vendor: id })
-          .populate('plant', 'name').populate('items.material', 'name').lean(),
-        VendorPayment.find({ organization, vendor: id }).lean(),
-      ]);
-      rows = purchases.flatMap(p => [
-        {
-          type: 'purchase', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
-          title: p.billNumber ? `Purchase · Bill ${p.billNumber}` : 'Purchase',
-          detail: join([
-            (p.items || []).map(i => `${i.quantity} ${i.unit || ''} ${i.material?.name || ''} @ ${money(i.rate)}`.replace(/\s+/g, ' ').trim()).join(', '),
-            p.transportCharges ? `Transport ${money(p.transportCharges)}` : '',
-          ]),
-          increase: (p.totalAmount || 0) + (p.transportCharges || 0), decrease: 0, order: 0,
-        },
-        ...(p.paidAmount > 0 ? [{
-          type: 'payment', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
-          title: 'Payment made',
-          detail: join([words(p.paymentMode), p.billNumber ? `for Bill ${p.billNumber}` : '']),
-          increase: 0, decrease: p.paidAmount, order: 1,
-        }] : []),
-      ]).concat(payments.map(p => ({
-        type: 'payment', refId: p._id, date: p.date, createdAt: p.createdAt, plant: '',
-        title: 'Payment made',
-        detail: join([words(p.mode), p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
-        increase: 0, decrease: p.amount || 0,
-      })));
-    }
-
-    rows.sort((a, b) => (new Date(a.date) - new Date(b.date)) || (new Date(a.createdAt) - new Date(b.createdAt)) || ((a.order || 0) - (b.order || 0)));
+    const rows = await partyRows(organization, party._id);
     const start = party.openingBalance || 0;
     let balance = start;
-    const all = rows.map(({ order, ...r }) => ({ ...r, balance: (balance += r.increase - r.decrease) }));
+    const all = rows.map(({ order, ...r }) => ({ ...r, balance: (balance += r.debit - r.credit) }));
 
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
     const from = DATE_RE.test(req.query.from || '') ? req.query.from : null;
@@ -594,17 +596,18 @@ router.get('/party-ledger/:type/:id', async (req, res, next) => {
     const before = from ? all.filter(r => dayOf(r) < from) : [];
     const entries = all.filter(r => (!from || dayOf(r) >= from) && (!to || dayOf(r) <= to));
     const sum = (list, key) => list.reduce((s, r) => s + r[key], 0);
-    const opening = start + sum(before, 'increase') - sum(before, 'decrease');
-    const totalIncrease = sum(entries, 'increase');
-    const totalDecrease = sum(entries, 'decrease');
+    const opening = start + sum(before, 'debit') - sum(before, 'credit');
+    const totalDebit = sum(entries, 'debit');
+    const totalCredit = sum(entries, 'credit');
+    const totalOf = (type) => entries.filter(r => r.type === type).reduce((s, r) => s + r.debit + r.credit, 0);
 
     res.json({
       success: true,
       data: {
-        type,
         party: { _id: party._id, name: party.name, mobile: party.mobile, address: party.address, gstin: party.gstin },
         from, to,
-        opening, totalIncrease, totalDecrease, closing: opening + totalIncrease - totalDecrease,
+        opening, totalDebit, totalCredit, closing: opening + totalDebit - totalCredit,
+        sales: totalOf('sale'), received: totalOf('received'), purchases: totalOf('purchase'), paid: totalOf('paid'),
         currentBalance: balance,
         entries,
       }
@@ -612,66 +615,55 @@ router.get('/party-ledger/:type/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Totals per customer or vendor for the list screens: how much was billed, how much was paid,
-// and the balance still due (opening balance + billed - paid), keyed by id.
-router.get('/party-balances/:type', async (req, res, next) => {
+// Totals per party for the list screens, keyed by id: sales and money received, purchases and
+// money paid, and the balance (opening + sales - received - purchases + paid; positive = they owe us).
+router.get('/party-balances', async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
-    const { type } = req.params;
-    if (!['customer', 'vendor'].includes(type)) return res.status(404).json({ success: false, message: 'Not found' });
     const byId = (rows) => Object.fromEntries(rows.map(r => [String(r._id), r]));
+    const [parties, sales, received, purchases, paidOnAccount] = await Promise.all([
+      Party.find({ organization }).select('openingBalance').lean(),
+      Invoice.aggregate([
+        { $match: { organization, status: { $nin: ['draft', 'cancelled'] } } },
+        { $group: { _id: '$customer', total: { $sum: '$totalAmount' }, count: { $sum: 1 }, lastDate: { $max: '$date' } } },
+      ]),
+      Payment.aggregate([
+        { $match: { organization } },
+        { $group: { _id: '$customer', total: { $sum: '$amount' } } },
+      ]),
+      Purchase.aggregate([
+        { $match: { organization } },
+        { $group: {
+          _id: '$vendor',
+          total: { $sum: { $add: ['$totalAmount', { $ifNull: ['$transportCharges', 0] }] } },
+          paid: { $sum: { $ifNull: ['$paidAmount', 0] } },
+          count: { $sum: 1 }, lastDate: { $max: '$date' },
+        } },
+      ]),
+      VendorPayment.aggregate([
+        { $match: { organization } },
+        { $group: { _id: '$vendor', total: { $sum: '$amount' } } },
+      ]),
+    ]);
 
-    let parties, billed, paid;
-    if (type === 'customer') {
-      [parties, billed, paid] = await Promise.all([
-        Customer.find({ organization }).select('openingBalance').lean(),
-        Invoice.aggregate([
-          { $match: { organization, status: { $nin: ['draft', 'cancelled'] } } },
-          { $group: { _id: '$customer', total: { $sum: '$totalAmount' }, count: { $sum: 1 }, lastDate: { $max: '$date' } } },
-        ]),
-        Payment.aggregate([
-          { $match: { organization } },
-          { $group: { _id: '$customer', total: { $sum: '$amount' } } },
-        ]),
-      ]);
-    } else {
-      let paidOnAccount;
-      [parties, billed, paidOnAccount] = await Promise.all([
-        Vendor.find({ organization }).select('openingBalance').lean(),
-        Purchase.aggregate([
-          { $match: { organization } },
-          { $group: {
-            _id: '$vendor',
-            total: { $sum: { $add: ['$totalAmount', { $ifNull: ['$transportCharges', 0] }] } },
-            paid: { $sum: { $ifNull: ['$paidAmount', 0] } },
-            count: { $sum: 1 }, lastDate: { $max: '$date' },
-          } },
-        ]),
-        VendorPayment.aggregate([
-          { $match: { organization } },
-          { $group: { _id: '$vendor', total: { $sum: '$amount' } } },
-        ]),
-      ]);
-      // Paid along with purchases + paid on account
-      const onAccount = byId(paidOnAccount);
-      const withPurchase = byId(billed);
-      paid = parties.map(p => ({
-        _id: p._id,
-        total: (withPurchase[String(p._id)]?.paid || 0) + (onAccount[String(p._id)]?.total || 0),
-      }));
-    }
-
-    const billedById = byId(billed);
-    const paidById = byId(paid);
+    const salesById = byId(sales);
+    const receivedById = byId(received);
+    const purchasesById = byId(purchases);
+    const paidById = byId(paidOnAccount);
     const data = Object.fromEntries(parties.map(p => {
-      const b = billedById[String(p._id)];
-      const billedTotal = b?.total || 0;
-      const paidTotal = paidById[String(p._id)]?.total || 0;
-      return [String(p._id), {
-        billed: billedTotal, paid: paidTotal,
-        balance: (p.openingBalance || 0) + billedTotal - paidTotal,
-        count: b?.count || 0, lastDate: b?.lastDate || null,
-      }];
+      const id = String(p._id);
+      const sold = salesById[id];
+      const bought = purchasesById[id];
+      const row = {
+        sales: sold?.total || 0, salesCount: sold?.count || 0,
+        received: receivedById[id]?.total || 0,
+        purchases: bought?.total || 0, purchaseCount: bought?.count || 0,
+        // Paid along with purchases + paid on account
+        paid: (bought?.paid || 0) + (paidById[id]?.total || 0),
+        lastDate: [sold?.lastDate, bought?.lastDate].filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0] || null,
+      };
+      row.balance = (p.openingBalance || 0) + row.sales - row.received - row.purchases + row.paid;
+      return [id, row];
     }));
     res.json({ success: true, data });
   } catch (e) { next(e); }

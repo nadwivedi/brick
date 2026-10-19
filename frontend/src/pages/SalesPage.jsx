@@ -63,7 +63,7 @@ export default function SalesPage() {
     try {
       const [invRes, custRes, prodRes, plantRes, stockRes] = await Promise.all([
         api.get('/invoices', { params: { limit: 1000 } }),
-        api.get('/customers'),
+        api.get('/parties'),
         api.get('/products'),
         api.get('/plants'),
         api.get('/stock/bricks'),
@@ -131,7 +131,7 @@ export default function SalesPage() {
     const shortName = products.find(p => p._id === overStock[0])?.name;
     const problem =
       !form.plant ? 'Select a plant' :
-      !form.customer ? 'Select a customer' :
+      !form.customer ? 'Select a party' :
       items.length === 0 ? 'Add at least one product' :
       items.some(i => !(Number(i.quantity) > 0)) ? 'Enter the quantity for each product' :
       items.some(i => i.rate === '' || Number(i.rate) < 0) ? 'Enter the rate for each product' :
@@ -339,11 +339,11 @@ export default function SalesPage() {
               <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
               <div className="col-span-2">
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <label className="label mb-0">Customer</label>
+                  <label className="label mb-0">Party</label>
                   <button type="button" onClick={() => setAddingCustomer(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
                 </div>
                 <select className="input" value={form.customer} onChange={e => setForm({ ...form, customer: e.target.value })}>
-                  <option value="">Select Customer</option>
+                  <option value="">Select Party</option>
                   {customers.map(c => <option key={c._id} value={c._id}>{c.name} ({c.mobile})</option>)}
                 </select>
               </div>
@@ -498,10 +498,9 @@ export default function SalesPage() {
         </Modal>
       )}
 
-      {/* New customer from the invoice form; it is selected once saved */}
+      {/* New party from the invoice form; it is selected once saved */}
       {addingCustomer && (
         <PartyFormModal
-          fixedType="customer"
           onClose={() => setAddingCustomer(false)}
           onSaved={party => {
             setCustomers(list => [...list, party].sort((a, b) => a.name.localeCompare(b.name)));
