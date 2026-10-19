@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import PlantSelect from '../components/PlantSelect';
+import OptionPicker from '../components/OptionPicker';
 import { defaultPlantId, hasManyPlants } from '../lib/plants';
 import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
@@ -50,6 +51,7 @@ export default function ProductionPage() {
   const [cement, setCement] = useState(null); // cement ratios as of today
   const [formCement, setFormCement] = useState(null); // cement ratios as of the date in the form
   const [settings, setSettings] = useState({ platesEnabled: false, bricksPerPlate: 0 }); // production entered by plates?
+  const [brickStock, setBrickStock] = useState({}); // bricks available per brick type id
 
   useEscapeKey(showForm, () => setShowForm(false));
 
@@ -57,7 +59,7 @@ export default function ProductionPage() {
     setLoading(true);
     try {
       const today = dayjs().format('YYYY-MM-DD');
-      const [entriesRes, productsRes, plantsRes, materialsRes, allRes, monthRes, todayRes, cementRes, settingsRes] = await Promise.all([
+      const [entriesRes, productsRes, plantsRes, materialsRes, allRes, monthRes, todayRes, cementRes, settingsRes, stockRes] = await Promise.all([
         api.get(`/production?page=${page}`),
         api.get('/products'),
         api.get('/plants'),
@@ -67,7 +69,9 @@ export default function ProductionPage() {
         api.get('/production/summary', { params: { from: today, to: today } }),
         api.get('/production/cement-ratio', { params: { asOf: today } }),
         api.get('/settings'),
+        api.get('/stock/bricks'),
       ]);
+      setBrickStock(Object.fromEntries((stockRes.data || []).map(r => [r.product._id, r.available])));
       setCement(cementRes.data || null);
       setSettings(settingsRes.data || { platesEnabled: false, bricksPerPlate: 0 });
       setTotals({ all: sumSummary(allRes.data), month: sumSummary(monthRes.data), today: sumSummary(todayRes.data) });
@@ -93,6 +97,17 @@ export default function ProductionPage() {
   // A consumed material is always counted in that material's own stock unit
   const findMaterial = (id) => materials.find(m => m._id === id);
   const unitOf = (id) => findMaterial(id)?.unit || '';
+
+  // Dropdown options with the stock left on each
+  const productOptions = products.filter(p => p.isActive !== false || p._id === form.product).map(p => {
+    const left = brickStock[p._id] || 0;
+    return { value: p._id, label: p.name, hint: p.size, badge: { text: `${num(left)} pcs in stock`, tone: left > 0 ? 'green' : 'gray' } };
+  });
+  const materialOptions = materials.map(m => {
+    const left = m.currentStock || 0;
+    const tone = left <= 0 ? 'red' : left <= (m.lowStockThreshold || 0) ? 'amber' : 'green';
+    return { value: m._id, label: m.name, hint: tone === 'amber' ? 'Running low' : tone === 'red' ? 'Out of stock' : '', badge: { text: `${num(left)} ${m.unit} left`, tone } };
+  });
 
   const openForm = (entry = null) => {
     if (entry) {
@@ -143,7 +158,7 @@ export default function ProductionPage() {
     }
     const problem =
       !form.plant ? 'Select a plant' :
-      !form.product ? 'Select a product' :
+      !form.product ? 'Select a brick type' :
       form.byPlates && !(Number(form.plates) > 0) ? 'Enter the number of plates' :
       form.byPlates && !(Number(form.bricksPerPlate) > 0) ? 'Enter how many bricks one plate makes' :
       form.quantityProduced === '' || Number(form.quantityProduced) < 0 ? 'Enter the quantity produced' : '';
@@ -382,11 +397,9 @@ export default function ProductionPage() {
               </div>
               <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
               <div>
-                <label className="label">Product</label>
-                <select className="input" value={form.product} onChange={e => setForm({ ...form, product: e.target.value })}>
-                  <option value="">Select Product</option>
-                  {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
+                <label className="label">Brick Type</label>
+                <OptionPicker options={productOptions} value={form.product} onChange={product => setForm(f => ({ ...f, product }))}
+                  placeholder="Select Brick Type" searchPlaceholder="Search brick types..." />
               </div>
             </div>
           </ModalSection>
@@ -448,10 +461,8 @@ export default function ProductionPage() {
               return (
                 <div key={i} className="mb-3 last:mb-0">
                   <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
-                    <select className="input" value={m.material} onChange={e => updateMaterial(i, { material: e.target.value, unit: unitOf(e.target.value) })}>
-                      <option value="">Select Material</option>
-                      {materials.map(mat => <option key={mat._id} value={mat._id}>{mat.name}</option>)}
-                    </select>
+                    <OptionPicker options={materialOptions} value={m.material} onChange={id => updateMaterial(i, { material: id, unit: unitOf(id) })}
+                      placeholder="Select Material" searchPlaceholder="Search materials..." />
                     <input type="number" {...NON_NEGATIVE} className="input" placeholder="Qty" value={m.quantity} onChange={e => updateMaterial(i, { quantity: e.target.value })} />
                     <input className="input bg-slate-50 font-semibold text-slate-600" placeholder="Unit" value={m.unit} readOnly tabIndex={-1} title="Unit comes from the selected material" />
                     <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Remove material" onClick={() => removeMaterial(i)}>
