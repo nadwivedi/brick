@@ -10,6 +10,8 @@ const vendorPaymentSchema = new mongoose.Schema({
     enum: ['cash', 'upi', 'bank_transfer', 'cheque'],
     required: true
   },
+  // The cash / bank account the money went into or came out of (older entries have none, see utils/accounts)
+  account: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
   referenceNumber: { type: String }, // cheque no / UTR
   notes: { type: String },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

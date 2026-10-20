@@ -7,6 +7,8 @@ import useOpenOnNew from '../hooks/useOpenOnNew';
 import PartyFormModal from '../components/PartyFormModal';
 import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
+import AccountPicker, { modeForAccount } from '../components/AccountPicker';
+import useAccounts from '../hooks/useAccounts';
 import { LoadingState, EmptyState } from '../components/States';
 import { Plus, Trash2, Loader2, ShoppingCart } from 'lucide-react';
 import { NON_NEGATIVE } from '../lib/number';
@@ -29,8 +31,10 @@ export default function PurchasesPage() {
     date: dayjs().format('YYYY-MM-DD'),
     vendor: '', plant: '',
     items: [{ material: '', quantity: '', unit: 'kg', rate: '', amount: 0 }],
-    totalAmount: 0, transportCharges: 0, paidAmount: 0, paymentMode: 'credit', billNumber: '', notes: ''
+    totalAmount: 0, transportCharges: 0, paidAmount: 0, account: '', paymentMode: '', billNumber: '', notes: ''
   });
+  const { accounts, defaultAccountId } = useAccounts();
+  const accountOf = (id) => accounts.find(a => a._id === (id || defaultAccountId));
 
   const fetchData = async () => {
     setLoading(true);
@@ -67,7 +71,7 @@ export default function PurchasesPage() {
       date: dayjs().format('YYYY-MM-DD'),
       vendor: '', plant: defaultPlantId(plants),
       items: [{ material: '', quantity: '', unit: 'kg', rate: '', amount: 0 }],
-      totalAmount: 0, transportCharges: 0, paidAmount: 0, paymentMode: 'credit', billNumber: '', notes: ''
+      totalAmount: 0, transportCharges: 0, paidAmount: 0, account: '', paymentMode: '', billNumber: '', notes: ''
     });
     setShowForm(true);
   };
@@ -92,6 +96,9 @@ export default function PurchasesPage() {
         totalAmount: items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0),
         transportCharges: Number(form.transportCharges) || 0,
         paidAmount: Number(form.paidAmount) || 0,
+        // The cash / bank account the amount paid now came out of (nothing paid = on credit)
+        account: accountOf(form.account)?._id,
+        paymentMode: Number(form.paidAmount) > 0 ? modeForAccount(accountOf(form.account), form.paymentMode) : 'credit',
       });
       setShowForm(false);
       fetchData();
@@ -250,19 +257,18 @@ export default function PurchasesPage() {
           </ModalSection>
 
           <ModalSection number={3} title="Payment Information" tone="purple">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div><label className="label">Transport Charges (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" value={form.transportCharges} onChange={e => setForm({ ...form, transportCharges: e.target.value })} /></div>
-              <div><label className="label">Amount Paid (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} /></div>
-              <div><label className="label">Payment Mode</label>
-                <select className="input" value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value })}>
-                  <option value="credit">Credit</option>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cheque">Cheque</option>
-                </select>
-              </div>
+              <div><label className="label">Amount Paid Now (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} /></div>
             </div>
+            {/* Which cash / bank account only matters when money was paid */}
+            {Number(form.paidAmount) > 0 && (
+              <div className="mt-3 md:mt-4">
+                <AccountPicker label="Paid From" accounts={accounts} defaultAccountId={defaultAccountId}
+                  account={form.account} mode={form.paymentMode}
+                  onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
+              </div>
+            )}
 
             <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-right md:mt-4 md:p-4">
               <p className="text-lg font-bold text-slate-900">Total: {fmt(form.totalAmount)}</p>

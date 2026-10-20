@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Activity, Hammer, Package, ShoppingCart, FileText,
   Users, Building2, HardHat, DollarSign, BarChart3,
-  Settings, LogOut, Layers, AlertTriangle, Ruler, Tags, Boxes, HandCoins, Send, X
+  Settings, LogOut, Layers, AlertTriangle, Ruler, Tags, Boxes, HandCoins, Send, Landmark, X
 } from 'lucide-react';
 import Logo from './Logo';
 
@@ -26,6 +26,7 @@ const navGroups = [
       { to: '/receipts', icon: HandCoins, label: 'Money Received' },
       { to: '/payments', icon: Send, label: 'Money Paid' },
       { to: '/expenses', icon: DollarSign, label: 'Expenses' },
+      { to: '/accounts', icon: Landmark, label: 'Cash & Bank' },
     ]
   },
   {

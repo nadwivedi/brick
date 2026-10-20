@@ -15,6 +15,8 @@ import SalesPage from './pages/SalesPage';
 import PartyPaymentsPage from './pages/PartyPaymentsPage';
 import PurchasesPage from './pages/PurchasesPage';
 import ExpensesPage from './pages/ExpensesPage';
+import AccountsPage from './pages/AccountsPage';
+import AccountLedgerPage from './pages/AccountLedgerPage';
 import MastersPage from './pages/MastersPage';
 import PartyLedgerPage from './pages/PartyLedgerPage';
 import ReportsPage from './pages/ReportsPage';
@@ -58,6 +60,8 @@ function AppRoutes() {
         <Route path="payments" element={<PartyPaymentsPage key="vendor" type="vendor" />} />
         <Route path="purchases" element={<PurchasesPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="accounts" element={<AccountsPage />} />
+        <Route path="accounts/:id" element={<AccountLedgerPage />} />
         <Route path="masters" element={<MastersPage />} />
         <Route path="masters/:tab" element={<MastersPage />} />
         <Route path="masters/parties/:id/ledger" element={<PartyLedgerPage />} />

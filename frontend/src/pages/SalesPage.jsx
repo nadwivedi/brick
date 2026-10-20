@@ -9,6 +9,8 @@ import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import PartyCell from '../components/PartyCell';
+import AccountPicker, { modeForAccount } from '../components/AccountPicker';
+import useAccounts from '../hooks/useAccounts';
 import { LoadingState, EmptyState } from '../components/States';
 import { Plus, Trash2, Loader2, CreditCard, FileText, Wallet, Scale, CalendarDays, MapPin, Truck } from 'lucide-react';
 import { NON_NEGATIVE } from '../lib/number';
@@ -54,9 +56,12 @@ export default function SalesPage() {
     customer: '', plant: '',
     items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }],
     subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0,
-    paidAmount: 0, paymentMode: 'cash', vehicleNumber: '', driverName: '', siteAddress: '', notes: ''
+    paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: ''
   });
-  const [payForm, setPayForm] = useState({ amount: '', mode: 'cash', referenceNumber: '', notes: '', date: dayjs().format('YYYY-MM-DD') });
+  const [payForm, setPayForm] = useState({ amount: '', account: '', mode: '', referenceNumber: '', notes: '', date: dayjs().format('YYYY-MM-DD') });
+  const { accounts, defaultAccountId } = useAccounts();
+  const accountOf = (id) => accounts.find(a => a._id === (id || defaultAccountId));
+  const payMode = modeForAccount(accountOf(payForm.account), payForm.mode);
 
   const fetchData = async () => {
     setLoading(true);
@@ -80,7 +85,7 @@ export default function SalesPage() {
   useEffect(() => { fetchData(); }, []);
 
   const openForm = () => {
-    setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plants), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, paymentMode: 'cash', vehicleNumber: '', driverName: '', siteAddress: '', notes: '' });
+    setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plants), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '' });
     setShowForm(true);
   };
   useOpenOnNew(!loading, openForm);
@@ -146,6 +151,9 @@ export default function SalesPage() {
         loadingCharges: Number(form.loadingCharges) || 0,
         discount: Number(form.discount) || 0,
         paidAmount: Number(form.paidAmount) || 0,
+        // The cash / bank account the money received now went into
+        account: accountOf(form.account)?._id,
+        paymentMode: modeForAccount(accountOf(form.account), form.paymentMode),
       });
       setShowForm(false);
       fetchData();
@@ -156,7 +164,7 @@ export default function SalesPage() {
   const handleAddPayment = async () => {
     setSaving(true);
     try {
-      await api.post(`/invoices/${showPayModal}/payment`, payForm);
+      await api.post(`/invoices/${showPayModal}/payment`, { ...payForm, account: accountOf(payForm.account)?._id, mode: payMode });
       setShowPayModal(null);
       fetchData();
     } catch (e) { alert(e.message || 'Error'); }
@@ -290,7 +298,7 @@ export default function SalesPage() {
                         <div className="flex items-center justify-end gap-1">
                           {inv.status !== 'paid' && (
                             <button className="btn-secondary btn-sm mr-1 whitespace-nowrap" title="Add Payment"
-                              onClick={() => { setShowPayModal(inv._id); setPayForm({ amount: inv.balanceDue, mode: 'cash', referenceNumber: '', notes: '', date: dayjs().format('YYYY-MM-DD') }); }}>
+                              onClick={() => { setShowPayModal(inv._id); setPayForm({ amount: inv.balanceDue, account: '', mode: '', referenceNumber: '', notes: '', date: dayjs().format('YYYY-MM-DD') }); }}>
                               <CreditCard size={14} /> Receive
                             </button>
                           )}
@@ -421,15 +429,19 @@ export default function SalesPage() {
                 <label className="label">Amount Paid Now (₹)</label>
                 <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
               </div>
-              <div>
-                <label className="label">Payment Mode</label>
-                <select className="input" value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value })}>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cheque">Cheque</option>
-                </select>
+              <div className="flex items-end">
+                <p className="pb-2.5 text-sm text-slate-600">
+                  Balance due: <span className="font-semibold text-rose-600">{fmt((form.totalAmount || 0) - (Number(form.paidAmount) || 0))}</span>
+                </p>
               </div>
+              {/* Which cash / bank account only matters when money was received */}
+              {Number(form.paidAmount) > 0 && (
+                <div className="col-span-2">
+                  <AccountPicker label="Received In" accounts={accounts} defaultAccountId={defaultAccountId}
+                    account={form.account} mode={form.paymentMode}
+                    onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
+                </div>
+              )}
               <div>
                 <label className="label">Vehicle Number</label>
                 <input className="input" placeholder="e.g. MH 04 AB 1234" value={form.vehicleNumber} onChange={e => setForm({ ...form, vehicleNumber: e.target.value })} />
@@ -473,19 +485,15 @@ export default function SalesPage() {
                 <input type="number" {...NON_NEGATIVE} className="input font-semibold" value={payForm.amount} onChange={e => setPayForm({ ...payForm, amount: e.target.value })} />
               </div>
             </div>
-            <div>
-              <label className="label">Payment Mode</label>
-              <select className="input" value={payForm.mode} onChange={e => setPayForm({ ...payForm, mode: e.target.value })}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Reference / Cheque No.</label>
-              <input className="input" placeholder="UTR / Cheque number" value={payForm.referenceNumber} onChange={e => setPayForm({ ...payForm, referenceNumber: e.target.value })} />
-            </div>
+            <AccountPicker label="Received In" accounts={accounts} defaultAccountId={defaultAccountId}
+              account={payForm.account} mode={payForm.mode}
+              onChange={picked => setPayForm({ ...payForm, ...picked })} />
+            {payMode !== 'cash' && (
+              <div>
+                <label className="label">{payMode === 'cheque' ? 'Cheque No.' : 'Reference / UTR No.'} (optional)</label>
+                <input className="input" placeholder={payMode === 'cheque' ? 'Cheque number' : 'UPI / bank reference number'} value={payForm.referenceNumber} onChange={e => setPayForm({ ...payForm, referenceNumber: e.target.value })} />
+              </div>
+            )}
             <div>
               <label className="label">Notes</label>
               <input className="input" value={payForm.notes} onChange={e => setPayForm({ ...payForm, notes: e.target.value })} />

@@ -10,6 +10,8 @@ const expenseSchema = new mongoose.Schema({
     enum: ['cash', 'upi', 'bank_transfer', 'cheque'],
     default: 'cash'
   },
+  // The cash / bank account the money went into or came out of (older entries have none, see utils/accounts)
+  account: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
   plant: { type: mongoose.Schema.Types.ObjectId, ref: 'Plant' },
   billPhoto: { type: String },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

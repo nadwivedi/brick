@@ -1,6 +1,7 @@
 const Invoice = require('../models/Invoice');
 const Payment = require('../models/Payment');
 const { checkBrickStock, NOT_SOLD } = require('../utils/brickStock');
+const { pickAccount, modeFor } = require('../utils/accounts');
 
 // @route GET /api/invoices
 exports.getAll = async (req, res, next) => {
@@ -59,13 +60,16 @@ exports.create = async (req, res, next) => {
       }
     }
 
+    // Money received with the sale goes into the chosen cash / bank account
     if (invoice.paidAmount > 0) {
+      const account = await pickAccount(req.user.organization._id, req.body.account);
       await Payment.create({
         date: invoice.date,
         customer: invoice.customer,
         invoice: invoice._id,
         amount: invoice.paidAmount,
-        mode: req.body.paymentMode || 'cash',
+        account: account._id,
+        mode: modeFor(account, req.body.paymentMode),
         createdBy: req.user._id,
         organization: req.user.organization._id,
         plant: invoice.plant
@@ -119,15 +123,20 @@ exports.remove = async (req, res, next) => {
 // @route POST /api/invoices/:id/payment
 exports.addPayment = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findById(req.params.id);
+    const organization = req.user.organization._id;
+    const invoice = await Invoice.findOne({ _id: req.params.id, organization });
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+    const amount = Number(req.body.amount);
+    if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
 
+    const account = await pickAccount(organization, req.body.account);
     const payment = await Payment.create({
       date: req.body.date || new Date(),
       customer: invoice.customer,
       invoice: invoice._id,
-      amount: req.body.amount,
-      mode: req.body.mode,
+      amount,
+      account: account._id,
+      mode: modeFor(account, req.body.mode),
       referenceNumber: req.body.referenceNumber,
       notes: req.body.notes,
       createdBy: req.user._id,
@@ -135,7 +144,7 @@ exports.addPayment = async (req, res, next) => {
       plant: invoice.plant
     });
 
-    invoice.paidAmount = (invoice.paidAmount || 0) + req.body.amount;
+    invoice.paidAmount = (invoice.paidAmount || 0) + amount;
     invoice.balanceDue = invoice.totalAmount - invoice.paidAmount;
     invoice.status = invoice.balanceDue <= 0 ? 'paid' : 'partial';
     await invoice.save();

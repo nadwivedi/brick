@@ -10,11 +10,14 @@ const authRoutes = require('./routes/authRoutes');
 const productionRoutes = require('./routes/productionRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const apiRoutes = require('./routes/apiRoutes');
+const accountRoutes = require('./routes/accountRoutes');
 const migrateParties = require('./utils/migrateParties');
+const migrateAccounts = require('./utils/migrateAccounts');
 const Invoice = require('./models/Invoice');
 
 connectDB()
   .then(() => migrateParties())
+  .then(() => migrateAccounts())
   // Brings the database indexes in line with the models, e.g. invoice numbers unique per business
   // instead of across all businesses (the old index is dropped)
   .then(() => Invoice.syncIndexes())
@@ -31,6 +34,7 @@ if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 app.use('/api/auth', authRoutes);
 app.use('/api/production', productionRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/accounts', accountRoutes);
 app.use('/api', apiRoutes);
 
 app.get('/', (req, res) => res.json({ message: '🧱 BrickSoft API is running' }));

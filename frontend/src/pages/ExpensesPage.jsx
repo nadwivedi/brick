@@ -6,6 +6,8 @@ import useOpenOnNew from '../hooks/useOpenOnNew';
 import Modal from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
+import AccountPicker, { modeForAccount } from '../components/AccountPicker';
+import useAccounts from '../hooks/useAccounts';
 import { LoadingState, EmptyState } from '../components/States';
 import { Plus, Trash2, Loader2, Wallet } from 'lucide-react';
 import { NON_NEGATIVE } from '../lib/number';
@@ -27,8 +29,11 @@ export default function ExpensesPage() {
   const [catFilter, setCatFilter] = useState('');
   const [form, setForm] = useState({
     date: dayjs().format('YYYY-MM-DD'),
-    category: '', amount: '', description: '', paymentMode: 'cash', plant: ''
+    category: '', amount: '', description: '', account: '', paymentMode: '', plant: ''
   });
+  const { accounts, defaultAccountId } = useAccounts();
+  const accountOf = (id) => accounts.find(a => a._id === (id || defaultAccountId));
+  const accountName = (id) => accounts.find(a => a._id === id)?.name;
 
   const fetchData = async () => {
     setLoading(true);
@@ -44,7 +49,7 @@ export default function ExpensesPage() {
   useEffect(() => { fetchData(); }, []);
 
   const openForm = () => {
-    setForm({ date: dayjs().format('YYYY-MM-DD'), category: categories[0] || '', amount: '', description: '', paymentMode: 'cash', plant: '' });
+    setForm({ date: dayjs().format('YYYY-MM-DD'), category: categories[0] || '', amount: '', description: '', account: '', paymentMode: '', plant: '' });
     setShowForm(true);
   };
   useOpenOnNew(!loading, openForm);
@@ -57,7 +62,10 @@ export default function ExpensesPage() {
     setSaving(true);
     try {
       // "All Plants" means no plant, so the field is left out instead of sent blank
-      await api.post('/expenses', { ...form, amount: Number(form.amount), plant: form.plant || undefined });
+      await api.post('/expenses', {
+        ...form, amount: Number(form.amount), plant: form.plant || undefined,
+        account: accountOf(form.account)?._id, paymentMode: modeForAccount(accountOf(form.account), form.paymentMode),
+      });
       setShowForm(false);
       fetchData();
     } catch (e) { alert(e.message); }
@@ -132,7 +140,7 @@ export default function ExpensesPage() {
                 <th className="table-header">Category</th>
                 <th className="table-header">Description</th>
                 <th className="table-header">Amount</th>
-                <th className="table-header">Mode</th>
+                <th className="table-header">Paid From</th>
                 <th className="table-header text-right">Actions</th>
               </tr></thead>
               <tbody>
@@ -142,7 +150,10 @@ export default function ExpensesPage() {
                     <td className="table-cell"><span className="badge-orange">{exp.category}</span></td>
                     <td className="table-cell">{exp.description || '-'}</td>
                     <td className="table-cell font-semibold text-rose-600">{fmt(exp.amount)}</td>
-                    <td className="table-cell capitalize">{exp.paymentMode?.replace('_', ' ')}</td>
+                    <td className="table-cell">
+                      <p className="font-semibold text-slate-700">{accountName(exp.account) || '-'}</p>
+                      {exp.paymentMode && exp.paymentMode !== 'cash' && <p className="text-xs capitalize text-slate-500">{exp.paymentMode.replace('_', ' ')}</p>}
+                    </td>
                     <td className="table-cell">
                       <div className="flex justify-end">
                         <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={async () => {
@@ -187,17 +198,10 @@ export default function ExpensesPage() {
               </select>
             </div>
             <div><label className="label">Description</label><input className="input" placeholder="What was this expense for?" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div><label className="label">Payment Mode</label>
-                <select className="input" value={form.paymentMode} onChange={e => setForm({ ...form, paymentMode: e.target.value })}>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cheque">Cheque</option>
-                </select>
-              </div>
-              <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} allLabel="All Plants" />
-            </div>
+            <AccountPicker label="Paid From" accounts={accounts} defaultAccountId={defaultAccountId}
+              account={form.account} mode={form.paymentMode}
+              onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
+            <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} allLabel="All Plants" />
           </div>
         </Modal>
       )}

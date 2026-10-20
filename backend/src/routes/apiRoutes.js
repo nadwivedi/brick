@@ -18,6 +18,7 @@ const VendorPayment = require('../models/VendorPayment');
 const StockMovement = require('../models/StockMovement');
 const { getSummary, getActivity, getProfitLoss, parseRange } = require('../controllers/dashboardController');
 const { getBrickStock, getBrickLedger } = require('../utils/brickStock');
+const { pickAccount, modeFor } = require('../utils/accounts');
 
 router.use(protect);
 
@@ -235,19 +236,27 @@ router.use('/workers', makeCRUD(Worker));
 router.use('/products', makeCRUD(Product));
 router.use('/materials', makeCRUD(Material));
 router.use('/plants', makeCRUD(Plant));
-router.use('/expenses', makeCRUD(Expense));
+// An expense is paid from a cash / bank account; the mode follows that account
+router.use('/expenses', async (req, res, next) => {
+  if (!['POST', 'PUT'].includes(req.method)) return next();
+  try {
+    const account = await pickAccount(req.user.organization._id, req.body.account);
+    req.body = { ...req.body, account: account._id, paymentMode: modeFor(account, req.body.paymentMode) };
+    next();
+  } catch (e) { next(e); }
+}, makeCRUD(Expense));
 router.use('/payments', makeCRUD(Payment));
 
 // Money received from parties. Every receipt is a Payment, so it shows up in the party's
 // ledger, the party balances, the dashboard collection and the activity center.
 // The list also includes payments taken on the Sales screen against an invoice.
-const RECEIPT_MODES = ['cash', 'upi', 'bank_transfer', 'cheque'];
-
+// The money goes into the chosen cash / bank account; for a bank account the mode says how (UPI, bank, cheque).
 router.get('/receipts', async (req, res, next) => {
   try {
     const receipts = await Payment.find({ organization: req.user.organization._id })
       .populate('customer', 'name mobile')
       .populate('invoice', 'invoiceNumber')
+      .populate('account', 'name type')
       .sort({ date: -1, createdAt: -1 });
     res.json({ success: true, data: receipts });
   } catch (e) { next(e); }
@@ -260,15 +269,16 @@ router.post('/receipts', async (req, res, next) => {
     const amount = Number(req.body.amount);
     if (!customerId) return res.status(400).json({ success: false, message: 'Select a party' });
     if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
-    if (!RECEIPT_MODES.includes(mode)) return res.status(400).json({ success: false, message: 'Choose how the money was received' });
     const customer = await Party.findOne({ _id: customerId, organization });
     if (!customer) return res.status(404).json({ success: false, message: 'Party not found' });
+    const account = await pickAccount(organization, req.body.account);
 
     const receipt = await Payment.create({
       date: /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : new Date().toISOString().slice(0, 10),
       customer: customer._id,
       amount,
-      mode,
+      account: account._id,
+      mode: modeFor(account, mode),
       referenceNumber: (referenceNumber || '').trim() || undefined,
       notes: (notes || '').trim() || undefined,
       createdBy: req.user._id,
@@ -307,14 +317,14 @@ router.get('/vendor-payments', async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
     const [payments, purchases] = await Promise.all([
-      VendorPayment.find({ organization }).populate('vendor', 'name mobile').lean(),
-      Purchase.find({ organization, paidAmount: { $gt: 0 } }).populate('vendor', 'name mobile').lean(),
+      VendorPayment.find({ organization }).populate('vendor', 'name mobile').populate('account', 'name type').lean(),
+      Purchase.find({ organization, paidAmount: { $gt: 0 } }).populate('vendor', 'name mobile').populate('account', 'name type').lean(),
     ]);
     const rows = [
       ...payments,
       ...purchases.map(p => ({
         _id: p._id, date: p.date, createdAt: p.createdAt, vendor: p.vendor,
-        amount: p.paidAmount, mode: p.paymentMode,
+        amount: p.paidAmount, mode: p.paymentMode, account: p.account,
         purchase: { _id: p._id, billNumber: p.billNumber },
       })),
     ].sort((a, b) => (new Date(b.date) - new Date(a.date)) || (new Date(b.createdAt) - new Date(a.createdAt)));
@@ -329,15 +339,16 @@ router.post('/vendor-payments', async (req, res, next) => {
     const amount = Number(req.body.amount);
     if (!vendorId) return res.status(400).json({ success: false, message: 'Select a party' });
     if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
-    if (!RECEIPT_MODES.includes(mode)) return res.status(400).json({ success: false, message: 'Choose how the money was paid' });
     const vendor = await Party.findOne({ _id: vendorId, organization });
     if (!vendor) return res.status(404).json({ success: false, message: 'Party not found' });
+    const account = await pickAccount(organization, req.body.account);
 
     const payment = await VendorPayment.create({
       date: /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date : new Date().toISOString().slice(0, 10),
       vendor: vendor._id,
       amount,
-      mode,
+      account: account._id,
+      mode: modeFor(account, mode),
       referenceNumber: (referenceNumber || '').trim() || undefined,
       notes: (notes || '').trim() || undefined,
       createdBy: req.user._id,
@@ -355,6 +366,13 @@ router.delete('/vendor-payments/:id', async (req, res, next) => {
     res.json({ success: true, message: 'Deleted' });
   } catch (e) { next(e); }
 });
+
+// The account and mode for the amount paid with a purchase: nothing paid is 'credit'
+const paidFrom = async (organization, body) => {
+  if (!(Number(body.paidAmount) > 0)) return { account: null, paymentMode: 'credit' };
+  const account = await pickAccount(organization, body.account);
+  return { account: account._id, paymentMode: modeFor(account, body.paymentMode) };
+};
 
 // Purchases with material stock update
 router.get('/purchases', async (req, res, next) => {
@@ -385,6 +403,7 @@ router.post('/purchases', async (req, res, next) => {
     const items = (req.body.items || []).map(i => ({ ...i, unit: units.get(String(i.material)) || i.unit }));
     const purchase = await Purchase.create({
       ...req.body,
+      ...(await paidFrom(organization, req.body)),
       items,
       balanceDue: req.body.totalAmount + (req.body.transportCharges || 0) - (req.body.paidAmount || 0),
       organization
@@ -410,7 +429,9 @@ router.post('/purchases', async (req, res, next) => {
 
 router.put('/purchases/:id', async (req, res, next) => {
   try {
-    const p = await Purchase.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const organization = req.user.organization._id;
+    const body = 'paidAmount' in req.body ? { ...req.body, ...(await paidFrom(organization, req.body)) } : req.body;
+    const p = await Purchase.findOneAndUpdate({ _id: req.params.id, organization }, body, { new: true });
     res.json({ success: true, data: p });
   } catch (e) { next(e); }
 });

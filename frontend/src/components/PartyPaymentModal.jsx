@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import useEscapeKey from '../hooks/useEscapeKey';
 import Modal from './Modal';
+import AccountPicker, { modeForAccount } from './AccountPicker';
+import useAccounts from '../hooks/useAccounts';
 import { NON_NEGATIVE } from '../lib/number';
-import { PAYMENT_MODES } from '../lib/paymentModes';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import dayjs from 'dayjs';
 
@@ -15,7 +16,7 @@ const KINDS = {
     endpoint: '/receipts', partyKey: 'customer',
     title: 'Money Received', subtitle: 'Record money a party has paid you',
     partyLabel: 'Party Name', selectLabel: 'Select Party',
-    modeLabel: 'Received by', saveLabel: 'Save Receipt', balanceLabel: 'balance after this receipt',
+    accountLabel: 'Received In', saveLabel: 'Save Receipt', balanceLabel: 'balance after this receipt',
     sign: -1, // money in lowers what they owe us
     noParty: 'Select the party you received money from', noAmount: 'Enter the amount received',
     saveError: 'Could not save the receipt',
@@ -24,7 +25,7 @@ const KINDS = {
     endpoint: '/vendor-payments', partyKey: 'vendor',
     title: 'Money Paid', subtitle: 'Record money you have paid to a party',
     partyLabel: 'Party Name', selectLabel: 'Select Party',
-    modeLabel: 'Paid by', saveLabel: 'Save Payment', balanceLabel: 'balance after this payment',
+    accountLabel: 'Paid From', saveLabel: 'Save Payment', balanceLabel: 'balance after this payment',
     sign: 1, // money out lowers what we owe them
     noParty: 'Select the party you paid money to', noAmount: 'Enter the amount paid',
     saveError: 'Could not save the payment',
@@ -44,13 +45,17 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
   const [form, setForm] = useState({
     party: partyId || '',
     date: dayjs().format('YYYY-MM-DD'),
-    mode: 'cash',
+    account: '', // '' = the default account
+    mode: '',
     amount: '',
     referenceNumber: '',
     notes: '',
   });
   const [balances, setBalances] = useState(null); // balance due per party id
   const [saving, setSaving] = useState(false);
+  const { accounts, defaultAccountId } = useAccounts();
+  const account = accounts.find(a => a._id === (form.account || defaultAccountId));
+  const mode = modeForAccount(account, form.mode);
 
   useEscapeKey(true, onClose);
 
@@ -76,7 +81,7 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
     setSaving(true);
     try {
       const { party: selected, ...rest } = form;
-      await api.post(kind.endpoint, { ...rest, [kind.partyKey]: selected, amount });
+      await api.post(kind.endpoint, { ...rest, account: account?._id, mode, [kind.partyKey]: selected, amount });
       onSaved?.();
       onClose();
     } catch (e) { alert(e.message || kind.saveError); }
@@ -118,27 +123,20 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
           </div>
         </div>
 
-        {/* Cash, UPI, ... */}
-        <div>
-          <label className="label">{kind.modeLabel}</label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {PAYMENT_MODES.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setForm({ ...form, mode: key })}
-                className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-semibold transition ${form.mode === key ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
-              >
-                <Icon size={16} /> {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Cash book or bank account, and for a bank: UPI / bank transfer / cheque */}
+        <AccountPicker
+          label={kind.accountLabel}
+          accounts={accounts}
+          defaultAccountId={defaultAccountId}
+          account={form.account}
+          mode={form.mode}
+          onChange={picked => setForm({ ...form, ...picked })}
+        />
 
-        {form.mode !== 'cash' && (
+        {mode !== 'cash' && (
           <div>
-            <label className="label">{form.mode === 'cheque' ? 'Cheque No.' : 'Reference / UTR No.'} (optional)</label>
-            <input className="input" placeholder={form.mode === 'cheque' ? 'Cheque number' : 'UPI / bank reference number'}
+            <label className="label">{mode === 'cheque' ? 'Cheque No.' : 'Reference / UTR No.'} (optional)</label>
+            <input className="input" placeholder={mode === 'cheque' ? 'Cheque number' : 'UPI / bank reference number'}
               value={form.referenceNumber} onChange={e => setForm({ ...form, referenceNumber: e.target.value })} />
           </div>
         )}
