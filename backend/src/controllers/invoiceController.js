@@ -2,6 +2,16 @@ const Invoice = require('../models/Invoice');
 const Payment = require('../models/Payment');
 const { checkBrickStock, NOT_SOLD } = require('../utils/brickStock');
 const { pickAccount, modeFor } = require('../utils/accounts');
+const { resolveSaleTransport, resolveSaleVehicle } = require('../utils/transport');
+require('../models/Vehicle');
+
+// The sale's transport and vehicle, cleaned up; the total follows the transport charge kept
+const withTransport = async (organization, body) => {
+  const transport = await resolveSaleTransport(organization, body);
+  const vehicle = await resolveSaleVehicle(organization, body, transport);
+  const totalAmount = Number(body.totalAmount || 0) - (Number(body.transportCharges) || 0) + transport.transportCharges;
+  return { ...body, ...transport, ...vehicle, totalAmount };
+};
 
 // @route GET /api/invoices
 exports.getAll = async (req, res, next) => {
@@ -19,6 +29,7 @@ exports.getAll = async (req, res, next) => {
       .populate('customer', 'name mobile')
       .populate('plant', 'name')
       .populate('items.product', 'name unit')
+      .populate('transporter', 'name mobile')
       .sort({ date: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
@@ -38,9 +49,10 @@ const nextInvoiceNumber = async (organization) => {
 // @route POST /api/invoices
 exports.create = async (req, res, next) => {
   try {
+    const body = await withTransport(req.user.organization._id, req.body);
     // Bricks can't be sold beyond what is in stock
-    if (!NOT_SOLD.includes(req.body.status)) {
-      const shortage = await checkBrickStock(req.user.organization._id, req.body.items);
+    if (!NOT_SOLD.includes(body.status)) {
+      const shortage = await checkBrickStock(req.user.organization._id, body.items);
       if (shortage) return res.status(400).json({ success: false, message: shortage });
     }
 
@@ -49,9 +61,9 @@ exports.create = async (req, res, next) => {
     for (let attempt = 1; !invoice; attempt++) {
       try {
         invoice = await Invoice.create({
-          ...req.body,
+          ...body,
           invoiceNumber: await nextInvoiceNumber(req.user.organization._id),
-          balanceDue: req.body.totalAmount - (req.body.paidAmount || 0),
+          balanceDue: body.totalAmount - (body.paidAmount || 0),
           createdBy: req.user._id,
           organization: req.user.organization._id
         });
@@ -76,7 +88,7 @@ exports.create = async (req, res, next) => {
       });
     }
 
-    const populated = await invoice.populate(['customer', 'plant', 'items.product']);
+    const populated = await invoice.populate(['customer', 'plant', 'items.product', 'transporter']);
     res.status(201).json({ success: true, data: populated });
   } catch (error) { next(error); }
 };
@@ -107,7 +119,8 @@ exports.update = async (req, res, next) => {
       if (shortage) return res.status(400).json({ success: false, message: shortage });
     }
 
-    const invoice = await Invoice.findByIdAndUpdate(existing._id, req.body, { new: true, runValidators: true });
+    const body = 'transportMode' in req.body ? await withTransport(organization, req.body) : req.body;
+    const invoice = await Invoice.findByIdAndUpdate(existing._id, body, { new: true, runValidators: true });
     res.json({ success: true, data: invoice });
   } catch (error) { next(error); }
 };

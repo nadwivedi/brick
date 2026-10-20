@@ -9,6 +9,8 @@ import Modal, { ModalSection } from '../components/Modal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import PartyCell from '../components/PartyCell';
+import SaleTransport from '../components/SaleTransport';
+import { modeLabel, saleTransportQty } from '../lib/transport';
 import AccountPicker, { modeForAccount } from '../components/AccountPicker';
 import useAccounts from '../hooks/useAccounts';
 import { LoadingState, EmptyState } from '../components/States';
@@ -17,6 +19,9 @@ import { NON_NEGATIVE } from '../lib/number';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
+
+// A new sale starts on the party's own vehicle
+const NO_TRANSPORT = { transportMode: 'party', transporter: '', transportBasis: 'per_trip', transportQty: '', transportRate: '' };
 
 const STATUS_COLORS = {
   issued: 'badge-orange',
@@ -37,6 +42,7 @@ const STATUS_FILTERS = [
 export default function SalesPage() {
   const [invoices, setInvoices] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
   const [products, setProducts] = useState([]);
   const [plants, setPlants] = useState([]);
   const [brickStock, setBrickStock] = useState({}); // pcs available per brick type id
@@ -56,7 +62,7 @@ export default function SalesPage() {
     customer: '', plant: '',
     items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }],
     subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0,
-    paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: ''
+    paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '', ...NO_TRANSPORT
   });
   const [payForm, setPayForm] = useState({ amount: '', account: '', mode: '', referenceNumber: '', notes: '', date: dayjs().format('YYYY-MM-DD') });
   const { accounts, defaultAccountId } = useAccounts();
@@ -66,13 +72,15 @@ export default function SalesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [invRes, custRes, prodRes, plantRes, stockRes] = await Promise.all([
+      const [invRes, custRes, prodRes, plantRes, stockRes, vehRes] = await Promise.all([
         api.get('/invoices', { params: { limit: 1000 } }),
         api.get('/parties'),
         api.get('/products'),
         api.get('/plants'),
         api.get('/stock/bricks'),
+        api.get('/vehicles'),
       ]);
+      setVehicles(vehRes.data || []);
       setBrickStock(Object.fromEntries((stockRes.data || []).map(r => [r.product._id, Math.max(r.available, 0)])));
       setInvoices(invRes.data || []);
       setCustomers(custRes.data || []);
@@ -85,7 +93,7 @@ export default function SalesPage() {
   useEffect(() => { fetchData(); }, []);
 
   const openForm = () => {
-    setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plants), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '' });
+    setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plants), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '', ...NO_TRANSPORT });
     setShowForm(true);
   };
   useOpenOnNew(!loading, openForm);
@@ -127,6 +135,14 @@ export default function SalesPage() {
   // Pieces of each brick type on this invoice, across all its rows
   const qtyByProduct = form.items.reduce((m, i) => (i.product ? { ...m, [i.product]: (m[i.product] || 0) + (Number(i.quantity) || 0) } : m), {});
   const overStock = Object.keys(qtyByProduct).filter(id => qtyByProduct[id] > (brickStock[id] || 0));
+  const pieces = Object.values(qtyByProduct).reduce((s, n) => s + n, 0);
+
+  // Transport changes can change the charge to the party, and so the total
+  const setTransport = (patch) => setForm(f => {
+    const next = { ...f, ...patch };
+    if (next.transportMode === 'party') next.transportCharges = 0;
+    return { ...next, ...calcTotals(next.items, next.transportCharges, next.loadingCharges, next.discount) };
+  });
 
   const handleSave = async () => {
     // Blank rows are ignored; everything the invoice needs must be filled in
@@ -138,7 +154,8 @@ export default function SalesPage() {
       items.length === 0 ? 'Add at least one product' :
       items.some(i => !(Number(i.quantity) > 0)) ? 'Enter the quantity for each product' :
       items.some(i => i.rate === '' || Number(i.rate) < 0) ? 'Enter the rate for each product' :
-      overStock.length ? `Not enough stock: only ${(brickStock[overStock[0]] || 0).toLocaleString('en-IN')} pcs of ${shortName} available` : '';
+      overStock.length ? `Not enough stock: only ${(brickStock[overStock[0]] || 0).toLocaleString('en-IN')} pcs of ${shortName} available` :
+      form.transportMode === 'hired' && !form.transporter ? 'Select the transporter the vehicle is hired from' : '';
     if (problem) { alert(problem); return; }
     setSaving(true);
     try {
@@ -154,6 +171,8 @@ export default function SalesPage() {
         // The cash / bank account the money received now went into
         account: accountOf(form.account)?._id,
         paymentMode: modeForAccount(accountOf(form.account), form.paymentMode),
+        transportQty: saleTransportQty(form, pieces),
+        transportRate: Number(form.transportRate) || 0,
       });
       setShowForm(false);
       fetchData();
@@ -275,7 +294,11 @@ export default function SalesPage() {
                           <p className="truncate text-xs text-slate-500" title={names.join(', ')}>{names.join(', ') || '-'}</p>
                           <p className="flex items-center gap-2 truncate text-xs text-slate-400">
                             {manyPlants && inv.plant?.name && <span className="flex items-center gap-1"><MapPin size={11} /> {inv.plant.name}</span>}
-                            {inv.vehicleNumber && <span className="flex items-center gap-1"><Truck size={11} /> {inv.vehicleNumber}</span>}
+                            {(inv.vehicleNumber || inv.transportMode === 'hired' || inv.transportMode === 'own') && (
+                              <span className="flex items-center gap-1" title={inv.transportMode === 'hired' ? `Hired from ${inv.transporter?.name || '-'} · ${fmt(inv.transportCost)} to pay` : ''}>
+                                <Truck size={11} /> {[inv.vehicleNumber, inv.transportMode && inv.transportMode !== 'party' ? modeLabel(inv.transportMode) : ''].filter(Boolean).join(' · ')}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </td>
@@ -398,13 +421,12 @@ export default function SalesPage() {
             </div>
           </ModalSection>
 
-          <ModalSection number={3} title="Charges & Total" tone="purple">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
-              <div>
-                <label className="label">Transport Charges (₹)</label>
-                <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.transportCharges}
-                  onChange={e => { const t = e.target.value; const tot = calcTotals(form.items, t, form.loadingCharges, form.discount); setForm(f => ({ ...f, transportCharges: t, ...tot })); }} />
-              </div>
+          <ModalSection number={3} title="Transport" tone="amber">
+            <SaleTransport form={form} onChange={setTransport} vehicles={vehicles} parties={customers} pieces={pieces} />
+          </ModalSection>
+
+          <ModalSection number={4} title="Charges & Total" tone="purple">
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div>
                 <label className="label">Loading Charges (₹)</label>
                 <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.loadingCharges}
@@ -419,11 +441,12 @@ export default function SalesPage() {
 
             <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-3 text-right md:mt-4 md:p-4">
               <div className="text-sm text-slate-600">Subtotal: <span className="font-semibold text-slate-800">{fmt(form.subtotal)}</span></div>
+              {Number(form.transportCharges) > 0 && <div className="text-sm text-slate-600">Transport: <span className="font-semibold text-slate-800">{fmt(Number(form.transportCharges))}</span></div>}
               <div className="text-lg font-bold text-slate-900">Total: {fmt(form.totalAmount)}</div>
             </div>
           </ModalSection>
 
-          <ModalSection number={4} title="Payment & Delivery" tone="emerald">
+          <ModalSection number={5} title="Payment & Delivery" tone="emerald">
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div>
                 <label className="label">Amount Paid Now (₹)</label>
@@ -442,15 +465,11 @@ export default function SalesPage() {
                     onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
                 </div>
               )}
-              <div>
-                <label className="label">Vehicle Number</label>
-                <input className="input" placeholder="e.g. MH 04 AB 1234" value={form.vehicleNumber} onChange={e => setForm({ ...form, vehicleNumber: e.target.value })} />
-              </div>
-              <div>
+              <div className="col-span-2 md:col-span-1">
                 <label className="label">Driver Name</label>
                 <input className="input" placeholder="Driver name" value={form.driverName} onChange={e => setForm({ ...form, driverName: e.target.value })} />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-2 md:col-span-1">
                 <label className="label">Site / Delivery Address</label>
                 <input className="input" placeholder="Delivery site address" value={form.siteAddress} onChange={e => setForm({ ...form, siteAddress: e.target.value })} />
               </div>

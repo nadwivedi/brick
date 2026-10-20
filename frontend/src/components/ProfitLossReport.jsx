@@ -71,7 +71,7 @@ export default function ProfitLossReport({ from, to }) {
     <div className={`space-y-4 transition-opacity md:space-y-5 ${loading ? 'pointer-events-none opacity-50' : ''}`}>
       <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-4">
         <StatCard icon={TrendingUp} label="Total Income" hint={`${income.invoiceCount} ${income.invoiceCount === 1 ? 'sale' : 'sales'} in this period`} value={fmt(income.total)} tone="emerald" />
-        <StatCard icon={Wallet} label="Total Expense" hint="Material bought + other expenses" value={fmt(costs.total)} tone="rose" />
+        <StatCard icon={Wallet} label="Total Expense" hint="Material, hired vehicles + other expenses" value={fmt(costs.total)} tone="rose" />
         <StatCard icon={profit ? TrendingUp : TrendingDown} label={profit ? 'Net Profit' : 'Net Loss'} hint={income.total ? `${data.margin.toFixed(1)}% of income` : 'No income in this period'} value={fmt(Math.abs(netProfit))} tone={profit ? 'emerald' : 'rose'} />
         <StatCard icon={Hammer} label="Cost per Brick" hint={`${fmtN(data.production)} pcs produced`} value={data.production ? `₹${data.costPerBrick.toFixed(2)}` : '—'} tone="amber" />
       </section>
@@ -102,6 +102,11 @@ export default function ProfitLossReport({ from, to }) {
               : costs.materials.map(m => <Line key={m.name} label={m.name} hint={`${fmtN(m.quantity)} ${m.unit}`.trim()} value={m.amount} />)}
             {costs.purchaseTransport > 0 && <Line label="Transport on purchases" value={costs.purchaseTransport} />}
           </Group>
+          {costs.hiredTransport > 0 && (
+            <Group title="Delivery">
+              <Line label="Hired vehicles" hint="Owed to transporters for sale deliveries" value={costs.hiredTransport} />
+            </Group>
+          )}
           <Group title="Other expenses">
             {costs.expenses.length === 0
               ? <p className="py-2.5 text-sm text-slate-400">No expenses in this period</p>

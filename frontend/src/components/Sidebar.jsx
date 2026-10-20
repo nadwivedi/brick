@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Activity, Hammer, Package, ShoppingCart, FileText,
   Users, Building2, HardHat, DollarSign, BarChart3,
-  Settings, LogOut, Layers, AlertTriangle, Ruler, Tags, Boxes, HandCoins, Send, Landmark, X
+  Settings, LogOut, Layers, AlertTriangle, Ruler, Tags, Boxes, HandCoins, Send, Landmark, Truck, X
 } from 'lucide-react';
 import Logo from './Logo';
 
@@ -41,6 +41,7 @@ const navGroups = [
     items: [
       { to: '/masters/parties', icon: Users, label: 'Parties' },
       { to: '/masters/labour', icon: HardHat, label: 'Labour' },
+      { to: '/masters/vehicles', icon: Truck, label: 'Vehicles' },
       { to: '/masters/plants', icon: Building2, label: 'Plants' },
       { to: '/masters/brick-types', icon: Layers, label: 'Brick Types' },
       { to: '/masters/raw-materials', icon: Boxes, label: 'Raw Materials' },

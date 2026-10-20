@@ -26,6 +26,14 @@ const invoiceSchema = new mongoose.Schema({
     enum: ['draft', 'issued', 'partial', 'paid', 'cancelled'],
     default: 'issued'
   },
+  // Transport (see utils/transport). transportCharges above is what the party pays for it.
+  transportMode: { type: String, enum: ['party', 'own', 'hired'], default: 'party' },
+  vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
+  transporter: { type: mongoose.Schema.Types.ObjectId, ref: 'Party' }, // who a hired vehicle is hired from
+  transportBasis: { type: String, enum: ['per_trip', 'per_ton', 'per_km', 'per_1000', 'fixed'], default: 'per_trip' },
+  transportQty: { type: Number, default: 0 },
+  transportRate: { type: Number, default: 0 },
+  transportCost: { type: Number, default: 0 }, // what we owe the transporter
   vehicleNumber: { type: String },
   driverName: { type: String },
   siteAddress: { type: String },

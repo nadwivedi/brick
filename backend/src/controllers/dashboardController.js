@@ -140,8 +140,8 @@ exports.getSummary = async (req, res, next) => {
 
 // @route GET /api/reports/profit-loss?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Income is what was billed on sales (bricks + transport/loading - discount, GST left out as it
-// is collected for the government). Costs are raw material bought (with its transport) and
-// expenses by category. Draft and cancelled invoices are not counted.
+// is collected for the government). Costs are raw material bought (with its transport),
+// vehicles hired to deliver sales, and expenses by category. Draft and cancelled invoices are not counted.
 exports.getProfitLoss = async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
@@ -149,7 +149,7 @@ exports.getProfitLoss = async (req, res, next) => {
     const inRange = { organization, date: { $gte: start, $lte: end } };
     const sales = { ...inRange, status: { $nin: ['draft', 'cancelled'] } };
 
-    const [brickSales, invoiceTotals, materials, purchaseTotals, expenses, production] = await Promise.all([
+    const [brickSales, invoiceTotals, materials, purchaseTotals, expenses, production, hiredTransport] = await Promise.all([
       Invoice.aggregate([
         { $match: sales },
         { $unwind: '$items' },
@@ -191,6 +191,8 @@ exports.getProfitLoss = async (req, res, next) => {
         { $sort: { amount: -1 } },
       ]),
       sumInRange(ProductionEntry, inRange, 'quantityProduced'),
+      // Owed to transporters for vehicles hired to deliver sales
+      sumInRange(Invoice, { ...sales, transportMode: 'hired' }, 'transportCost'),
     ]);
 
     const sum = (list) => list.reduce((s, r) => s + (r.amount || 0), 0);
@@ -212,10 +214,11 @@ exports.getProfitLoss = async (req, res, next) => {
       purchaseTransport: pur.transport || 0,
       purchaseCount: pur.count || 0,
       expenses: expenses.map(r => ({ name: r._id || 'Other', amount: r.amount, count: r.count })),
+      hiredTransport,
     };
     costs.materialTotal = sum(costs.materials) + costs.purchaseTransport;
     costs.expenseTotal = sum(costs.expenses);
-    costs.total = costs.materialTotal + costs.expenseTotal;
+    costs.total = costs.materialTotal + costs.expenseTotal + costs.hiredTransport;
 
     const netProfit = income.total - costs.total;
     res.json({

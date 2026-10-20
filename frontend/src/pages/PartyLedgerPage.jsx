@@ -6,7 +6,7 @@ import StatCard from '../components/StatCard';
 import PartyPaymentModal from '../components/PartyPaymentModal';
 import BalanceCell, { balanceText } from '../components/BalanceCell';
 import { LoadingState, EmptyState } from '../components/States';
-import { FileText, ShoppingCart, HandCoins, Send, BookOpen, ChevronLeft, Receipt, Scale } from 'lucide-react';
+import { FileText, ShoppingCart, HandCoins, Send, BookOpen, ChevronLeft, Receipt, Scale, Truck } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -25,6 +25,7 @@ const ROW_TYPES = {
   purchase: { icon: ShoppingCart, tile: 'bg-indigo-50 text-indigo-700 ring-indigo-100' },
   received: { icon: HandCoins, tile: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
   paid: { icon: Send, tile: 'bg-rose-50 text-rose-700 ring-rose-100' },
+  transport: { icon: Truck, tile: 'bg-amber-50 text-amber-700 ring-amber-100' }, // their vehicle hired for a sale
 };
 
 /** Account ledger for one party: sales and purchases with them, and money both ways. */
@@ -151,7 +152,7 @@ export default function PartyLedgerPage() {
                     <th className="table-header">Date</th>
                     <th className="table-header">Details</th>
                     <th className="table-header text-right">Debit <span className="font-normal normal-case text-slate-400">(sale / paid)</span></th>
-                    <th className="table-header text-right">Credit <span className="font-normal normal-case text-slate-400">(received / purchase)</span></th>
+                    <th className="table-header text-right">Credit <span className="font-normal normal-case text-slate-400">(received / purchase / hire)</span></th>
                     <th className="table-header text-right">Balance</th>
                   </tr>
                 </thead>

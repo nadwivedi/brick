@@ -6,12 +6,14 @@ import ProductsPage from './ProductsPage';
 import MaterialsPage from './MaterialsPage';
 import UnitsPage from './UnitsPage';
 import ExpenseCategoriesPage from './ExpenseCategoriesPage';
+import VehiclesPage from './VehiclesPage';
 
 // Master data: set up once here, then used across the operations screens.
 // Navigation between masters lives in the sidebar.
 const MASTERS = {
   'parties': PartiesPage,
   'labour': WorkersPage,
+  'vehicles': VehiclesPage,
   'plants': PlantsPage,
   'brick-types': ProductsPage,
   'raw-materials': MaterialsPage,
