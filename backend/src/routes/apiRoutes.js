@@ -16,7 +16,7 @@ const Expense = require('../models/Expense');
 const Payment = require('../models/Payment');
 const VendorPayment = require('../models/VendorPayment');
 const StockMovement = require('../models/StockMovement');
-const { getSummary, getActivity } = require('../controllers/dashboardController');
+const { getSummary, getActivity, getProfitLoss, parseRange } = require('../controllers/dashboardController');
 const { getBrickStock, getBrickLedger } = require('../utils/brickStock');
 
 router.use(protect);
@@ -651,59 +651,117 @@ router.get('/party-ledger/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Totals per party for the list screens, keyed by id: sales and money received, purchases and
-// money paid, and the balance (opening + sales - received - purchases + paid; positive = they owe us).
+// Totals per party, keyed by id: sales and money received, purchases and money paid.
+// `date` is an optional Mongo condition on the entry date (e.g. { $lt: start }).
+const partyTotals = async (organization, date) => {
+  const match = date ? { organization, date } : { organization };
+  const byId = (rows) => Object.fromEntries(rows.map(r => [String(r._id), r]));
+  const [sales, received, purchases, paidOnAccount] = await Promise.all([
+    Invoice.aggregate([
+      { $match: { ...match, status: { $nin: ['draft', 'cancelled'] } } },
+      { $group: { _id: '$customer', total: { $sum: '$totalAmount' }, count: { $sum: 1 }, lastDate: { $max: '$date' } } },
+    ]),
+    Payment.aggregate([
+      { $match: match },
+      { $group: { _id: '$customer', total: { $sum: '$amount' } } },
+    ]),
+    Purchase.aggregate([
+      { $match: match },
+      { $group: {
+        _id: '$vendor',
+        total: { $sum: { $add: ['$totalAmount', { $ifNull: ['$transportCharges', 0] }] } },
+        paid: { $sum: { $ifNull: ['$paidAmount', 0] } },
+        count: { $sum: 1 }, lastDate: { $max: '$date' },
+      } },
+    ]),
+    VendorPayment.aggregate([
+      { $match: match },
+      { $group: { _id: '$vendor', total: { $sum: '$amount' } } },
+    ]),
+  ]);
+
+  const salesById = byId(sales);
+  const receivedById = byId(received);
+  const purchasesById = byId(purchases);
+  const paidById = byId(paidOnAccount);
+  return (id) => {
+    const sold = salesById[id];
+    const bought = purchasesById[id];
+    return {
+      sales: sold?.total || 0, salesCount: sold?.count || 0,
+      received: receivedById[id]?.total || 0,
+      purchases: bought?.total || 0, purchaseCount: bought?.count || 0,
+      // Paid along with purchases + paid on account
+      paid: (bought?.paid || 0) + (paidById[id]?.total || 0),
+      lastDate: [sold?.lastDate, bought?.lastDate].filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0] || null,
+    };
+  };
+};
+
+// What a set of totals moves the balance by (positive = they owe us more)
+const balanceChange = (t) => t.sales - t.received - t.purchases + t.paid;
+
+// Totals per party for the list screens, keyed by id, with the balance
+// (opening + sales - received - purchases + paid; positive = they owe us).
 router.get('/party-balances', async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
-    const byId = (rows) => Object.fromEntries(rows.map(r => [String(r._id), r]));
-    const [parties, sales, received, purchases, paidOnAccount] = await Promise.all([
+    const [parties, totalsOf] = await Promise.all([
       Party.find({ organization }).select('openingBalance').lean(),
-      Invoice.aggregate([
-        { $match: { organization, status: { $nin: ['draft', 'cancelled'] } } },
-        { $group: { _id: '$customer', total: { $sum: '$totalAmount' }, count: { $sum: 1 }, lastDate: { $max: '$date' } } },
-      ]),
-      Payment.aggregate([
-        { $match: { organization } },
-        { $group: { _id: '$customer', total: { $sum: '$amount' } } },
-      ]),
-      Purchase.aggregate([
-        { $match: { organization } },
-        { $group: {
-          _id: '$vendor',
-          total: { $sum: { $add: ['$totalAmount', { $ifNull: ['$transportCharges', 0] }] } },
-          paid: { $sum: { $ifNull: ['$paidAmount', 0] } },
-          count: { $sum: 1 }, lastDate: { $max: '$date' },
-        } },
-      ]),
-      VendorPayment.aggregate([
-        { $match: { organization } },
-        { $group: { _id: '$vendor', total: { $sum: '$amount' } } },
-      ]),
+      partyTotals(organization),
     ]);
-
-    const salesById = byId(sales);
-    const receivedById = byId(received);
-    const purchasesById = byId(purchases);
-    const paidById = byId(paidOnAccount);
     const data = Object.fromEntries(parties.map(p => {
-      const id = String(p._id);
-      const sold = salesById[id];
-      const bought = purchasesById[id];
-      const row = {
-        sales: sold?.total || 0, salesCount: sold?.count || 0,
-        received: receivedById[id]?.total || 0,
-        purchases: bought?.total || 0, purchaseCount: bought?.count || 0,
-        // Paid along with purchases + paid on account
-        paid: (bought?.paid || 0) + (paidById[id]?.total || 0),
-        lastDate: [sold?.lastDate, bought?.lastDate].filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0] || null,
-      };
-      row.balance = (p.openingBalance || 0) + row.sales - row.received - row.purchases + row.paid;
-      return [id, row];
+      const row = totalsOf(String(p._id));
+      row.balance = (p.openingBalance || 0) + balanceChange(row);
+      return [String(p._id), row];
     }));
     res.json({ success: true, data });
   } catch (e) { next(e); }
 });
+
+// Party ledger report: every party with its opening balance at `from`, what happened
+// between `from` and `to`, and the closing balance at `to`.
+// @route GET /api/reports/party-ledger?from=YYYY-MM-DD&to=YYYY-MM-DD
+router.get('/reports/party-ledger', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const { start, end } = parseRange(req.query.from, req.query.to);
+    const [parties, beforeOf, duringOf] = await Promise.all([
+      Party.find({ organization }).select('name mobile openingBalance isActive').sort({ name: 1 }).lean(),
+      partyTotals(organization, { $lt: start }),
+      partyTotals(organization, { $gte: start, $lte: end }),
+    ]);
+    const rows = parties.map(p => {
+      const id = String(p._id);
+      const during = duringOf(id);
+      const opening = (p.openingBalance || 0) + balanceChange(beforeOf(id));
+      return {
+        _id: p._id, name: p.name, mobile: p.mobile, isActive: p.isActive,
+        opening,
+        sales: during.sales, received: during.received, purchases: during.purchases, paid: during.paid,
+        closing: opening + balanceChange(during),
+        hasActivity: during.salesCount + during.purchaseCount > 0 || during.received > 0 || during.paid > 0,
+      };
+    });
+    const sum = (key) => rows.reduce((s, r) => s + r[key], 0);
+    res.json({
+      success: true,
+      data: {
+        from: start.toISOString().slice(0, 10),
+        to: end.toISOString().slice(0, 10),
+        totals: {
+          sales: sum('sales'), received: sum('received'), purchases: sum('purchases'), paid: sum('paid'),
+          receivable: rows.reduce((s, r) => s + Math.max(r.closing, 0), 0),
+          payable: rows.reduce((s, r) => s + Math.max(-r.closing, 0), 0),
+        },
+        rows,
+      }
+    });
+  } catch (e) { next(e); }
+});
+
+// Profit & loss for a period
+router.get('/reports/profit-loss', getProfitLoss);
 
 // Expense categories (default categories are created automatically for each organization)
 const readCategoryName = (body) => (body.name || '').trim();

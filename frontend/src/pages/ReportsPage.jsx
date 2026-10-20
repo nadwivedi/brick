@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import StatCard from '../components/StatCard';
 import Segmented from '../components/Segmented';
-import { BarChart2, TrendingUp, DollarSign, FileText, Download, Hammer, Wallet } from 'lucide-react';
+import PartyLedgerReport from '../components/PartyLedgerReport';
+import ProfitLossReport from '../components/ProfitLossReport';
+import { BarChart2, TrendingUp, DollarSign, FileText, Download, Hammer, Wallet, LayoutGrid, BookOpen, Scale } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -17,19 +20,37 @@ const AXIS_TICK = { fontSize: 11, fill: '#64748b' };
 const TOOLTIP_STYLE = { borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -12px rgba(15,23,42,0.25)', fontSize: 12 };
 const CHART_BLUE = '#2563eb';
 
-const PRESETS = ['Today', 'This Week', 'This Month', 'Last Month'];
+const DATE_FMT = 'YYYY-MM-DD';
+// Financial year runs April to March
+const fyStart = () => dayjs().month(3).startOf('month').subtract(dayjs().month() < 3 ? 1 : 0, 'year');
+const PRESETS = [
+  { label: 'Today', get: () => [dayjs(), dayjs()] },
+  { label: 'This Week', get: () => [dayjs().startOf('week'), dayjs()] },
+  { label: 'This Month', get: () => [dayjs().startOf('month'), dayjs()] },
+  { label: 'Last Month', get: () => [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+  { label: 'This FY', get: () => [fyStart(), dayjs()] },
+];
+
+const REPORTS = [
+  { key: 'overview', label: 'Overview', icon: LayoutGrid },
+  { key: 'party-ledger', label: 'Party Ledger', icon: BookOpen },
+  { key: 'profit-loss', label: 'Profit & Loss', icon: Scale },
+];
 
 export default function ReportsPage() {
+  const [params, setParams] = useSearchParams();
+  const report = REPORTS.some(r => r.key === params.get('report')) ? params.get('report') : 'overview';
   const [activeTab, setActiveTab] = useState('production');
   const [data, setData] = useState(null);
   const [from, setFrom] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
   const [to, setTo] = useState(dayjs().format('YYYY-MM-DD'));
 
   useEffect(() => {
+    if (report !== 'overview') return;
     api.get(`/dashboard/summary?from=${from}&to=${to}`)
       .then(res => setData(res.data))
       .catch(console.error);
-  }, [from, to]);
+  }, [from, to, report]);
 
   const tabs = [
     { key: 'production', label: 'Production', icon: BarChart2 },
@@ -50,6 +71,8 @@ export default function ReportsPage() {
         </button>
       </div>
 
+      <Segmented options={REPORTS} value={report} onChange={key => setParams(key === 'overview' ? {} : { report: key }, { replace: true })} />
+
       {/* Date Range */}
       <div className="card flex flex-wrap items-end gap-3 md:gap-4">
         <div>
@@ -61,20 +84,19 @@ export default function ReportsPage() {
           <input type="date" className="input w-44" value={to} onChange={e => setTo(e.target.value)} />
         </div>
         <div className="flex flex-wrap gap-2 pb-0.5">
-          {PRESETS.map((label, i) => (
+          {PRESETS.map(({ label, get }) => (
             <button key={label} className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300" onClick={() => {
-              const presets = [
-                [dayjs().format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')],
-                [dayjs().startOf('week').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')],
-                [dayjs().startOf('month').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')],
-                [dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')],
-              ];
-              setFrom(presets[i][0]); setTo(presets[i][1]);
+              const [start, end] = get();
+              setFrom(start.format(DATE_FMT)); setTo(end.format(DATE_FMT));
             }}>{label}</button>
           ))}
         </div>
       </div>
 
+      {report === 'party-ledger' && <PartyLedgerReport from={from} to={to} />}
+      {report === 'profit-loss' && <ProfitLossReport from={from} to={to} />}
+
+      {report === 'overview' && <>
       {/* Summary Cards */}
       {data && (
         <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-4">
@@ -188,6 +210,7 @@ export default function ReportsPage() {
           </div>
         )}
       </div>
+      </>}
     </div>
   );
 }

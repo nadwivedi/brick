@@ -4,6 +4,7 @@ import api from '../lib/api';
 import Segmented from '../components/Segmented';
 import StatCard from '../components/StatCard';
 import PartyPaymentModal from '../components/PartyPaymentModal';
+import BalanceCell, { balanceText } from '../components/BalanceCell';
 import { LoadingState, EmptyState } from '../components/States';
 import { FileText, ShoppingCart, HandCoins, Send, BookOpen, ChevronLeft, Receipt, Scale } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -25,16 +26,6 @@ const ROW_TYPES = {
   received: { icon: HandCoins, tile: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
   paid: { icon: Send, tile: 'bg-rose-50 text-rose-700 ring-rose-100' },
 };
-
-// A positive balance is what the party owes you; a negative one is what you owe them
-const balanceText = (n) => (n > 0 ? `${fmt(n)} to receive` : n < 0 ? `${fmt(-n)} to pay` : 'Settled, nothing due');
-const balanceClass = (n) => (n > 0 ? 'text-emerald-700' : n < 0 ? 'text-rose-600' : 'text-slate-800');
-const BalanceCell = ({ n }) => (
-  <span className={balanceClass(n)}>
-    {fmt(Math.abs(n))}
-    {n !== 0 && <span className="ml-1 text-[10px] font-semibold uppercase">{n > 0 ? 'Rec' : 'Pay'}</span>}
-  </span>
-);
 
 /** Account ledger for one party: sales and purchases with them, and money both ways. */
 export default function PartyLedgerPage() {

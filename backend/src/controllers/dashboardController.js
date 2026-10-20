@@ -138,6 +138,104 @@ exports.getSummary = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// @route GET /api/reports/profit-loss?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Income is what was billed on sales (bricks + transport/loading - discount, GST left out as it
+// is collected for the government). Costs are raw material bought (with its transport) and
+// expenses by category. Draft and cancelled invoices are not counted.
+exports.getProfitLoss = async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const { start, end } = parseRange(req.query.from, req.query.to);
+    const inRange = { organization, date: { $gte: start, $lte: end } };
+    const sales = { ...inRange, status: { $nin: ['draft', 'cancelled'] } };
+
+    const [brickSales, invoiceTotals, materials, purchaseTotals, expenses, production] = await Promise.all([
+      Invoice.aggregate([
+        { $match: sales },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.product', quantity: { $sum: '$items.quantity' }, amount: { $sum: '$items.amount' } } },
+        { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
+        { $project: { quantity: 1, amount: 1, name: { $ifNull: [{ $arrayElemAt: ['$product.name', 0] }, 'Other'] } } },
+        { $sort: { amount: -1 } },
+      ]),
+      Invoice.aggregate([
+        { $match: sales },
+        { $group: {
+          _id: null,
+          count: { $sum: 1 },
+          transport: { $sum: { $ifNull: ['$transportCharges', 0] } },
+          loading: { $sum: { $ifNull: ['$loadingCharges', 0] } },
+          discount: { $sum: { $ifNull: ['$discount', 0] } },
+          gst: { $sum: { $ifNull: ['$gstTotal', 0] } },
+        } },
+      ]),
+      Purchase.aggregate([
+        { $match: inRange },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.material', quantity: { $sum: '$items.quantity' }, amount: { $sum: '$items.amount' } } },
+        { $lookup: { from: 'materials', localField: '_id', foreignField: '_id', as: 'material' } },
+        { $project: {
+          quantity: 1, amount: 1,
+          name: { $ifNull: [{ $arrayElemAt: ['$material.name', 0] }, 'Other'] },
+          unit: { $arrayElemAt: ['$material.unit', 0] },
+        } },
+        { $sort: { amount: -1 } },
+      ]),
+      Purchase.aggregate([
+        { $match: inRange },
+        { $group: { _id: null, count: { $sum: 1 }, transport: { $sum: { $ifNull: ['$transportCharges', 0] } } } },
+      ]),
+      Expense.aggregate([
+        { $match: inRange },
+        { $group: { _id: '$category', amount: { $sum: '$amount' }, count: { $sum: 1 } } },
+        { $sort: { amount: -1 } },
+      ]),
+      sumInRange(ProductionEntry, inRange, 'quantityProduced'),
+    ]);
+
+    const sum = (list) => list.reduce((s, r) => s + (r.amount || 0), 0);
+    const inv = invoiceTotals[0] || {};
+    const pur = purchaseTotals[0] || {};
+
+    const income = {
+      bricks: brickSales.map(r => ({ name: r.name, quantity: r.quantity, amount: r.amount })),
+      transport: inv.transport || 0,
+      loading: inv.loading || 0,
+      discount: inv.discount || 0,
+      invoiceCount: inv.count || 0,
+      gstCollected: inv.gst || 0,
+    };
+    income.total = sum(income.bricks) + income.transport + income.loading - income.discount;
+
+    const costs = {
+      materials: materials.map(r => ({ name: r.name, unit: r.unit || '', quantity: r.quantity, amount: r.amount })),
+      purchaseTransport: pur.transport || 0,
+      purchaseCount: pur.count || 0,
+      expenses: expenses.map(r => ({ name: r._id || 'Other', amount: r.amount, count: r.count })),
+    };
+    costs.materialTotal = sum(costs.materials) + costs.purchaseTransport;
+    costs.expenseTotal = sum(costs.expenses);
+    costs.total = costs.materialTotal + costs.expenseTotal;
+
+    const netProfit = income.total - costs.total;
+    res.json({
+      success: true,
+      data: {
+        from: start.toISOString().slice(0, 10),
+        to: end.toISOString().slice(0, 10),
+        income,
+        costs,
+        production,
+        costPerBrick: production ? costs.total / production : 0,
+        netProfit,
+        margin: income.total ? (netProfit / income.total) * 100 : 0,
+      }
+    });
+  } catch (error) { next(error); }
+};
+
+exports.parseRange = parseRange;
+
 const pcs = (n) => `${(n || 0).toLocaleString('en-IN')} pcs`;
 const words = (s) => (s || '').replace(/_/g, ' ');
 
