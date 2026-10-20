@@ -31,8 +31,8 @@ export default function VehiclesPage() {
       ]}
       fields={[
         { key: 'vehicleNumber', label: 'Vehicle Number', placeholder: 'e.g. MH 04 AB 1234' },
-        { key: 'ownership', label: 'Whose Vehicle', type: 'select', options: TRANSPORT_MODES.map(m => ({ value: m.key, label: m.label })) },
-        { key: 'party', label: 'Owner Party', type: 'select', options: partyOptions, show: f => f.ownership === 'party' },
+        // Party vehicles come in from sales; vehicles added here are mine or hired
+        { key: 'ownership', label: 'Whose Vehicle', type: 'select', options: TRANSPORT_MODES.filter(m => m.key !== 'party').map(m => ({ value: m.key, label: m.label })) },
         { key: 'party', label: 'Transporter (hired from)', type: 'select', options: partyOptions, show: f => f.ownership === 'hired' },
         { key: 'hireBasis', label: 'Usually Paid', type: 'select', options: TRANSPORT_BASES.map(b => ({ value: b.key, label: b.label })), show: f => f.ownership === 'hired' },
         { key: 'hireRate', label: 'Hire Rate (₹)', type: 'number', show: f => f.ownership === 'hired' },
