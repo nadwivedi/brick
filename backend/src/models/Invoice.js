@@ -34,6 +34,7 @@ const invoiceSchema = new mongoose.Schema({
   transportQty: { type: Number, default: 0 },
   transportRate: { type: Number, default: 0 },
   transportCost: { type: Number, default: 0 }, // what we owe the transporter
+  transportLocation: { type: String, trim: true }, // where a per-trip delivery went
   vehicleNumber: { type: String },
   driverName: { type: String },
   siteAddress: { type: String },

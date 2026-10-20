@@ -20,11 +20,13 @@ const transportCost = (basis, qty, rate) => round(basis === 'fixed' ? num(rate) 
 const resolveSaleTransport = async (organization, body = {}) => {
   const Party = mongoose.model('Party');
   const mode = TRANSPORT_MODES.includes(body.transportMode) ? body.transportMode : 'party';
-  const none = { transportMode: mode, transporter: null, transportBasis: 'per_trip', transportQty: 0, transportRate: 0, transportCost: 0 };
+  const none = { transportMode: mode, transporter: null, transportBasis: 'per_trip', transportQty: 0, transportRate: 0, transportCost: 0, transportLocation: '' };
   // The party's own vehicle: nothing to charge or pay
   if (mode === 'party') return { ...none, transportCharges: 0 };
   const transportCharges = num(body.transportCharges);
-  if (mode === 'own') return { ...none, transportCharges };
+  const transportLocation = String(body.transportLocation || '').trim();
+  // My vehicle: a delivery to a location counts trips (1 unless typed)
+  if (mode === 'own') return { ...none, transportCharges, transportLocation, transportQty: transportLocation ? num(body.transportQty) || 1 : 0 };
 
   const fail = (message) => Object.assign(new Error(message), { statusCode: 400 });
   if (!mongoose.Types.ObjectId.isValid(body.transporter)) throw fail('Select the transporter the vehicle is hired from');
@@ -37,6 +39,7 @@ const resolveSaleTransport = async (organization, body = {}) => {
   return {
     transportMode: 'hired', transportCharges, transporter: transporter._id,
     transportBasis, transportQty, transportRate,
+    transportLocation: transportBasis === 'per_trip' ? transportLocation : '',
     transportCost: transportCost(transportBasis, transportQty, transportRate),
   };
 };
@@ -54,6 +57,12 @@ const resolveSaleVehicle = async (organization, body, transport) => {
       party: transport.transportMode === 'hired' ? transport.transporter : transport.transportMode === 'party' ? body.customer : undefined,
       hireBasis: transport.transportBasis,
       hireRate: transport.transportRate,
+      // The route this sale went on becomes the vehicle's first per-trip rate
+      tripRates: transport.transportLocation ? [{
+        plant: body.plant, location: transport.transportLocation,
+        rate: transport.transportMode === 'hired' ? transport.transportRate : 0,
+        charge: transport.transportQty ? round(transport.transportCharges / transport.transportQty) : 0,
+      }] : [],
     }).catch(e => {
       // Saved by another request at the same moment
       if (e.code !== 11000) throw e;
@@ -63,13 +72,31 @@ const resolveSaleVehicle = async (organization, body, transport) => {
   return { vehicle: vehicle._id, vehicleNumber };
 };
 
-// "2 trips × ₹1,500", "12 tons × ₹300", or "Fixed amount"
+// "2 trips × ₹1,500 to Raipur", "12 tons × ₹300", or "Fixed amount"
 const UNITS = { per_trip: 'trip', per_ton: 'ton', per_km: 'km', per_1000: '1000 bricks' };
-const describeTransport = (basis, qty, rate) => {
+const describeTransport = (basis, qty, rate, location) => {
   const unit = UNITS[basis];
   if (!unit) return 'Fixed amount';
   const plural = qty === 1 || unit === 'km' || unit === '1000 bricks' ? unit : `${unit}s`;
-  return `${(qty || 0).toLocaleString('en-IN')} ${plural} × ₹${(rate || 0).toLocaleString('en-IN')}`;
+  return `${(qty || 0).toLocaleString('en-IN')} ${plural} × ₹${(rate || 0).toLocaleString('en-IN')}${location ? ` to ${location}` : ''}`;
 };
 
-module.exports = { TRANSPORT_MODES, TRANSPORT_BASES, transportCost, resolveSaleTransport, resolveSaleVehicle, describeTransport };
+// Per-trip routes from the vehicle form: rows with a location, numbers cleaned, one row per plant + location
+const cleanTripRates = (rows) => {
+  const seen = new Set();
+  return (Array.isArray(rows) ? rows : [])
+    .map(r => ({
+      plant: mongoose.Types.ObjectId.isValid(r?.plant) ? r.plant : undefined,
+      location: String(r?.location || '').trim(),
+      rate: num(r?.rate),
+      charge: num(r?.charge),
+    }))
+    .filter(r => {
+      const key = `${r.plant || ''}|${r.location.toLowerCase()}`;
+      if (!r.location || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+module.exports = { TRANSPORT_MODES, TRANSPORT_BASES, transportCost, resolveSaleTransport, resolveSaleVehicle, describeTransport, cleanTripRates };

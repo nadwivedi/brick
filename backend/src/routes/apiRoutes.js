@@ -19,7 +19,7 @@ const StockMovement = require('../models/StockMovement');
 const { getSummary, getActivity, getProfitLoss, parseRange } = require('../controllers/dashboardController');
 const { getBrickStock, getBrickLedger } = require('../utils/brickStock');
 const { pickAccount, modeFor } = require('../utils/accounts');
-const { describeTransport } = require('../utils/transport');
+const { describeTransport, cleanTripRates } = require('../utils/transport');
 const Vehicle = require('../models/Vehicle');
 
 // Sales carried by a hired vehicle with a cost owed to its transporter
@@ -255,6 +255,7 @@ router.use('/vehicles', async (req, res, next) => {
       ...req.body, vehicleNumber, ownership,
       party: ownership === 'own' ? null : req.body.party || null,
       hireRate: Math.max(0, Number(req.body.hireRate) || 0),
+      tripRates: cleanTripRates(req.body.tripRates),
     };
     next();
   } catch (e) { next(e); }
@@ -653,7 +654,7 @@ const partyRows = async (organization, partyId) => {
     ...hired.map(i => ({
       type: 'transport', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
       title: `Vehicle hire · Invoice ${i.invoiceNumber}`,
-      detail: join([describeTransport(i.transportBasis, i.transportQty, i.transportRate), i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : '', i.customer?.name ? `to ${i.customer.name}` : '']),
+      detail: join([describeTransport(i.transportBasis, i.transportQty, i.transportRate, i.transportLocation), i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : '', i.customer?.name ? `to ${i.customer.name}` : '']),
       debit: 0, credit: i.transportCost || 0,
     })),
     ...paid.map(p => ({

@@ -1,30 +1,71 @@
 import { NON_NEGATIVE } from '../lib/number';
+import { defaultPlantId } from '../lib/plants';
 import { TRANSPORT_MODES, TRANSPORT_BASES, basisOf, transportCost, saleTransportQty } from '../lib/transport';
+import { ArrowRight } from 'lucide-react';
 
 const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
 
 /**
  * Transport on a sale: whose vehicle carried it, what the party is charged, and for a hired
- * vehicle who it is hired from and what they are paid.
- * Props: form (the invoice form), onChange(patch), vehicles, parties, pieces (bricks on the sale)
+ * vehicle who it is hired from and what they are paid. A per-trip delivery picks a route of the
+ * vehicle (from the sale's plant to a location), which fills in both per-trip rates.
+ * Props: form (the invoice form), onChange(patch), vehicles, parties, plants, pieces (bricks on the sale)
  */
-export default function SaleTransport({ form, onChange, vehicles, parties, pieces }) {
+export default function SaleTransport({ form, onChange, vehicles, parties, plants, pieces }) {
   const mode = form.transportMode || 'party';
   const basis = basisOf(form.transportBasis);
   const qty = saleTransportQty(form, pieces);
   const cost = mode === 'hired' ? transportCost(form.transportBasis, qty, form.transportRate) : 0;
   const charge = Number(form.transportCharges) || 0;
 
-  // Typing or picking a known vehicle fills in its transport
+  // Routes of the chosen vehicle that start at this sale's plant
+  const mainPlant = defaultPlantId(plants);
+  const salePlant = form.plant || mainPlant;
+  const plantName = plants.find(p => p._id === salePlant)?.name || 'Plant';
+  const vehicle = vehicles.find(v => v.vehicleNumber === String(form.vehicleNumber || '').trim().toUpperCase());
+  const routesFor = (v) => (v?.tripRates || []).filter(r => (r.plant || mainPlant) === salePlant);
+  const routes = routesFor(vehicle);
+  const perTrip = mode === 'own' || (mode === 'hired' && basis.key === 'per_trip');
+  const trips = Number(form.transportQty) || 1;
+  const route = routes.find(r => r.location === form.transportLocation);
+
+  // A route sets where it went, what the transporter is paid per trip and what the party is charged
+  const routePatch = (r, ownership, tripCount) => ({
+    transportLocation: r.location,
+    ...(ownership === 'hired' ? { transportBasis: 'per_trip', transportRate: r.rate || '' } : {}),
+    ...(r.charge > 0 ? { transportCharges: r.charge * tripCount } : {}),
+  });
+
+  // Typing or picking a known vehicle fills in its transport, and its route when it has only one
   const pickVehicle = (value) => {
     const v = vehicles.find(x => x.vehicleNumber === value.trim().toUpperCase());
     if (!v) return onChange({ vehicleNumber: value });
+    const only = routesFor(v).length === 1 ? routesFor(v)[0] : null;
     onChange({
       vehicleNumber: v.vehicleNumber,
       transportMode: v.ownership,
+      transportLocation: '',
       ...(v.ownership === 'hired' ? { transporter: v.party || '', transportBasis: v.hireBasis || 'per_trip', transportRate: v.hireRate || '' } : {}),
+      ...(only && (v.ownership === 'own' || (v.hireBasis || 'per_trip') === 'per_trip') ? routePatch(only, v.ownership, trips) : {}),
     });
   };
+
+  const pickRoute = (location) => {
+    const r = routes.find(x => x.location === location);
+    onChange(r ? routePatch(r, mode, trips) : { transportLocation: location });
+  };
+
+  const setTrips = (value) => onChange({
+    transportQty: value,
+    ...(route?.charge > 0 ? { transportCharges: route.charge * (Number(value) || 1) } : {}),
+  });
+
+  const tripsInput = (
+    <div>
+      <label className="label">Trips</label>
+      <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="1" value={form.transportQty} onChange={e => setTrips(e.target.value)} />
+    </div>
+  );
 
   return (
     <div className="space-y-3 md:space-y-4">
@@ -78,13 +119,13 @@ export default function SaleTransport({ form, onChange, vehicles, parties, piece
               {TRANSPORT_BASES.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
             </select>
           </div>
-          {basis.key !== 'fixed' && (
+          {basis.key === 'per_trip' ? tripsInput : basis.key !== 'fixed' && (
             <div>
-              <label className="label">{basis.key === 'per_trip' ? 'Trips' : basis.key === 'per_km' ? 'Distance (km)' : basis.key === 'per_ton' ? 'Weight (tons)' : 'Bricks (×1000)'}</label>
+              <label className="label">{basis.key === 'per_km' ? 'Distance (km)' : basis.key === 'per_ton' ? 'Weight (tons)' : 'Bricks (×1000)'}</label>
               {basis.key === 'per_1000' ? (
                 <input className="input bg-slate-50 font-semibold" readOnly value={qty} title="From the bricks on this sale" />
               ) : (
-                <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder={basis.key === 'per_trip' ? '1' : '0'}
+                <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
                   value={form.transportQty} onChange={e => onChange({ transportQty: e.target.value })} />
               )}
             </div>
@@ -94,6 +135,53 @@ export default function SaleTransport({ form, onChange, vehicles, parties, piece
             <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
               value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
           </div>
+        </div>
+      )}
+
+      {/* Where a per-trip delivery went: from this sale's plant to a location */}
+      {perTrip && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+          <div className="col-span-2 md:col-span-3">
+            <label className="label flex items-center gap-1.5">
+              Route <span className="font-normal text-slate-400">· from {plantName}</span> <ArrowRight size={12} className="text-slate-400" /> <span className="font-normal text-slate-400">to</span>
+            </label>
+            {routes.length > 0 ? (
+              <select className="input" value={form.transportLocation || ''} onChange={e => pickRoute(e.target.value)}>
+                <option value="">Select where it is going</option>
+                {/* A location typed earlier stays pickable */}
+                {form.transportLocation && !route && <option value={form.transportLocation}>{form.transportLocation}</option>}
+                {routes.map(r => (
+                  <option key={r.location} value={r.location}>
+                    {plantName} → {r.location}
+                    {mode === 'hired' ? ` · transporter ₹${(r.rate || 0).toLocaleString('en-IN')}` : ''}
+                    {r.charge > 0 ? ` · party ₹${r.charge.toLocaleString('en-IN')}` : ''} / trip
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input className="input" placeholder={vehicle ? 'Location (add routes to this vehicle under Masters → Vehicles)' : 'Location, e.g. Raipur'}
+                value={form.transportLocation || ''} onChange={e => onChange({ transportLocation: e.target.value })} />
+            )}
+          </div>
+          {mode === 'own' && tripsInput}
+        </div>
+      )}
+
+      {perTrip && route && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {mode === 'hired' && (
+            <span className="rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+              Transporter charges {fmt(route.rate)} / trip
+            </span>
+          )}
+          <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            {route.charge > 0 ? `We charge party ${fmt(route.charge)} / trip` : 'No party rate saved for this route'}
+          </span>
+          {mode === 'hired' && route.charge > 0 && (
+            <span className={`rounded-full px-3 py-1 font-semibold ring-1 ring-inset ${route.charge - route.rate < 0 ? 'bg-rose-50 text-rose-700 ring-rose-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>
+              Margin {fmt(route.charge - route.rate)} / trip
+            </span>
+          )}
         </div>
       )}
 

@@ -12,7 +12,8 @@ import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
  * - title, subtitle: page header
  * - endpoint: API path e.g. '/plants'
  * - columns: [{ key, label, render? }]
- * - fields: [{ key, label, type, options?, show? }] — for the form; show(form) hides a field when it returns false
+ * - fields: [{ key, label, type, options?, show? }] — for the form; show(form) hides a field when it returns false.
+ *   type 'custom' takes render(value, set, form) and spans the full width
  * - defaultValues: {} — initial form state
  * - canDelete: (item) => bool — hide the delete button for rows that can't be deleted
  * - rowActions: (item, refresh) => node — extra buttons shown before Edit/Delete on each row
@@ -169,9 +170,11 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
         >
           <div className={`grid grid-cols-1 gap-3 md:gap-4 ${twoColumns ? 'md:grid-cols-2' : ''}`}>
             {fields.filter(f => !f.show || f.show(form)).map(f => (
-              <div key={f.key} className={twoColumns && f.type === 'textarea' ? 'md:col-span-2' : ''}>
+              <div key={f.key} className={twoColumns && ['textarea', 'custom'].includes(f.type) ? 'md:col-span-2' : ''}>
                 <label className="label">{f.label}</label>
-                {f.type === 'select' ? (
+                {f.type === 'custom' ? (
+                  f.render(form[f.key], value => setForm(prev => ({ ...prev, [f.key]: value })), form)
+                ) : f.type === 'select' ? (
                   <select className="input" value={form[f.key] == null ? '' : String(form[f.key])} onChange={e => setForm({ ...form, [f.key]: e.target.value })}>
                     <option value="">Select {f.label}</option>
                     {(f.options || []).map(o => (

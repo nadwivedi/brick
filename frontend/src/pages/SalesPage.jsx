@@ -21,7 +21,7 @@ import dayjs from 'dayjs';
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
 // A new sale starts on the party's own vehicle
-const NO_TRANSPORT = { transportMode: 'party', transporter: '', transportBasis: 'per_trip', transportQty: '', transportRate: '' };
+const NO_TRANSPORT = { transportMode: 'party', transporter: '', transportBasis: 'per_trip', transportQty: '', transportRate: '', transportLocation: '' };
 
 const STATUS_COLORS = {
   issued: 'badge-orange',
@@ -422,7 +422,7 @@ export default function SalesPage() {
           </ModalSection>
 
           <ModalSection number={3} title="Transport" tone="amber">
-            <SaleTransport form={form} onChange={setTransport} vehicles={vehicles} parties={customers} pieces={pieces} />
+            <SaleTransport form={form} onChange={setTransport} vehicles={vehicles} parties={customers} plants={plants} pieces={pieces} />
           </ModalSection>
 
           <ModalSection number={4} title="Charges & Total" tone="purple">
