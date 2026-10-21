@@ -1,0 +1,220 @@
+import { useState, useEffect } from 'react';
+import api from '../lib/api';
+import PlantSelect from './PlantSelect';
+import { defaultPlantId } from '../lib/plants';
+import useEscapeKey from '../hooks/useEscapeKey';
+import PartyFormModal from './PartyFormModal';
+import Modal, { ModalSection } from './Modal';
+import AccountPicker, { modeForAccount } from './AccountPicker';
+import useAccounts from '../hooks/useAccounts';
+import { LoadingState } from './States';
+import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { NON_NEGATIVE } from '../lib/number';
+import dayjs from 'dayjs';
+
+const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
+
+/**
+ * "New Purchase" popup. Loads the parties, plants and materials it needs by itself, so it can be
+ * opened from the Purchases page or straight from the dashboard.
+ * Props: onClose, onSaved (called after a successful save; the caller closes the popup)
+ */
+export default function PurchaseFormModal({ onClose, onSaved }) {
+  const [vendors, setVendors] = useState([]);
+  const [plants, setPlants] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [form, setForm] = useState(null); // filled in once the lists above have loaded
+  const [saving, setSaving] = useState(false);
+  const [addingVendor, setAddingVendor] = useState(false); // inline "+ New Party" popup over the purchase form
+  const { accounts, defaultAccountId } = useAccounts();
+  const accountOf = (id) => accounts.find(a => a._id === (id || defaultAccountId));
+
+  useEscapeKey(!addingVendor, onClose);
+
+  useEffect(() => {
+    Promise.all([api.get('/parties'), api.get('/plants'), api.get('/materials')])
+      .then(([vRes, plRes, mRes]) => {
+        const plantList = plRes.data || [];
+        setVendors(vRes.data || []);
+        setPlants(plantList);
+        setMaterials(mRes.data || []);
+        setForm({
+          date: dayjs().format('YYYY-MM-DD'),
+          vendor: '', plant: defaultPlantId(plantList),
+          items: [{ material: '', quantity: '', unit: 'kg', rate: '', amount: 0 }],
+          totalAmount: 0, transportCharges: 0, paidAmount: 0, account: '', paymentMode: '', billNumber: '', notes: ''
+        });
+      })
+      .catch(e => { alert(e.message || 'Could not load the form'); onClose(); });
+  }, []);
+
+  if (!form) {
+    return (
+      <Modal title="New Purchase" subtitle="Record raw materials bought from a vendor" onClose={onClose} maxWidth="max-w-3xl">
+        <LoadingState label="Loading form…" />
+      </Modal>
+    );
+  }
+
+  const updateItem = (idx, key, val) => {
+    const items = [...form.items];
+    items[idx][key] = val;
+    if (key === 'quantity' || key === 'rate') {
+      items[idx].amount = (parseFloat(items[idx].quantity) || 0) * (parseFloat(items[idx].rate) || 0);
+    }
+    if (key === 'material') {
+      const mat = materials.find(m => m._id === val);
+      if (mat) items[idx].unit = mat.unit;
+    }
+    const total = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+    setForm({ ...form, items, totalAmount: total });
+  };
+
+  const handleSave = async () => {
+    // Blank rows are ignored; everything the purchase needs must be filled in
+    const items = form.items.filter(i => i.material);
+    const problem =
+      !form.vendor ? 'Select a party' :
+      !form.plant ? 'Select a plant' :
+      items.length === 0 ? 'Add at least one material' :
+      items.some(i => !(Number(i.quantity) > 0)) ? 'Enter the quantity for each material' :
+      items.some(i => i.rate === '' || Number(i.rate) < 0) ? 'Enter the rate for each material' : '';
+    if (problem) { alert(problem); return; }
+    setSaving(true);
+    try {
+      await api.post('/purchases', {
+        ...form,
+        items: items.map(i => ({ ...i, quantity: Number(i.quantity), rate: Number(i.rate) })),
+        totalAmount: items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0),
+        transportCharges: Number(form.transportCharges) || 0,
+        paidAmount: Number(form.paidAmount) || 0,
+        // The cash / bank account the amount paid now came out of (nothing paid = on credit)
+        account: accountOf(form.account)?._id,
+        paymentMode: Number(form.paidAmount) > 0 ? modeForAccount(accountOf(form.account), form.paymentMode) : 'credit',
+      });
+      setSaving(false);
+      onSaved();
+    } catch (e) {
+      alert(e.message || 'Error');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Modal
+        title="New Purchase"
+        subtitle="Record raw materials bought from a vendor"
+        onClose={onClose}
+        maxWidth="max-w-3xl"
+        footer={<>
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 size={16} className="animate-spin" /> : null}
+            Save Purchase
+          </button>
+        </>}
+      >
+        <ModalSection number={1} title="Purchase Details" tone="blue">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            <div><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
+            <div><label className="label">Bill Number</label><input className="input" placeholder="Bill no." value={form.billNumber} onChange={e => setForm({ ...form, billNumber: e.target.value })} /></div>
+            <div>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="label mb-0">Party</label>
+                <button type="button" onClick={() => setAddingVendor(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+              </div>
+              <select className="input" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })}>
+                <option value="">Select Party</option>
+                {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+              </select>
+            </div>
+            <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
+          </div>
+        </ModalSection>
+
+        <ModalSection
+          number={2}
+          title="Materials"
+          tone="slate"
+          action={
+            <button className="btn-secondary btn-sm" onClick={() => setForm(f => ({ ...f, items: [...f.items, { material: '', quantity: '', unit: 'kg', rate: '', amount: 0 }] }))}>
+              <Plus size={14} /> Add Item
+            </button>
+          }
+        >
+          {form.items.map((item, idx) => {
+            // Quantity and rate are always in the selected material's own unit
+            const unit = materials.find(m => m._id === item.material)?.unit || '';
+            const qty = Number(item.quantity) || 0;
+            const rate = Number(item.rate) || 0;
+            return (
+              <div key={idx} className="mb-2 rounded-lg border border-slate-200 bg-white p-3 last:mb-0">
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end md:gap-3">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="label">Material</label>
+                    <select className="input" value={item.material} onChange={e => updateItem(idx, 'material', e.target.value)}>
+                      <option value="">Select Material</option>
+                      {materials.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">{unit ? `How many ${unit}?` : 'Quantity'}</label>
+                    <div className="relative">
+                      <input type="number" {...NON_NEGATIVE} className="input pr-14 font-semibold" placeholder="0" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-500">{unit || 'unit'}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label">{unit ? `Rate per ${unit}` : 'Rate per unit'}</label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                      <input type="number" {...NON_NEGATIVE} className="input pl-7 pr-14 font-semibold" placeholder="0" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-500">/ {unit || 'unit'}</span>
+                    </div>
+                  </div>
+                  <button className="icon-btn col-span-2 justify-self-end hover:bg-red-50 hover:text-red-600 md:col-span-1 md:mb-0.5" title="Remove item" onClick={() => setForm(f => { const items = f.items.filter((_, i) => i !== idx); const total = items.reduce((s, i) => s + i.amount, 0); return { ...f, items, totalAmount: total }; })}><Trash2 size={16} /></button>
+                </div>
+                <p className="mt-2 flex flex-wrap items-center justify-between gap-x-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
+                  <span>{qty.toLocaleString('en-IN')} {unit || 'unit'} × {fmt(rate)} per {unit || 'unit'}</span>
+                  <span className="text-sm font-bold text-slate-900">= {fmt(item.amount)}</span>
+                </p>
+              </div>
+            );
+          })}
+        </ModalSection>
+
+        <ModalSection number={3} title="Payment Information" tone="purple">
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div><label className="label">Transport Charges (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" value={form.transportCharges} onChange={e => setForm({ ...form, transportCharges: e.target.value })} /></div>
+            <div><label className="label">Amount Paid Now (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} /></div>
+          </div>
+          {/* Which cash / bank account only matters when money was paid */}
+          {Number(form.paidAmount) > 0 && (
+            <div className="mt-3 md:mt-4">
+              <AccountPicker label="Paid From" accounts={accounts} defaultAccountId={defaultAccountId}
+                account={form.account} mode={form.paymentMode}
+                onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
+            </div>
+          )}
+
+          <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-right md:mt-4 md:p-4">
+            <p className="text-lg font-bold text-slate-900">Total: {fmt(form.totalAmount)}</p>
+            <p className="text-sm text-slate-600">Balance Due: <span className="font-semibold text-rose-600">{fmt(form.totalAmount - (parseFloat(form.paidAmount) || 0))}</span></p>
+          </div>
+        </ModalSection>
+      </Modal>
+
+    {/* New party from the purchase form; it is selected once saved */}
+    {addingVendor && (
+      <PartyFormModal
+        onClose={() => setAddingVendor(false)}
+        onSaved={party => {
+          setVendors(list => [...list, party].sort((a, b) => a.name.localeCompare(b.name)));
+          setForm(f => ({ ...f, vendor: party._id }));
+        }}
+      />
+    )}
+    </>
+  );
+}

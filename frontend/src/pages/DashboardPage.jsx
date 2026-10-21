@@ -4,6 +4,11 @@ import api from '../lib/api';
 import StatCard from '../components/StatCard';
 import ProductionTrendChart from '../components/ProductionTrendChart';
 import Segmented from '../components/Segmented';
+import ProductionFormModal from '../components/ProductionFormModal';
+import SaleFormModal from '../components/SaleFormModal';
+import PurchaseFormModal from '../components/PurchaseFormModal';
+import ExpenseFormModal from '../components/ExpenseFormModal';
+import PartyPaymentModal from '../components/PartyPaymentModal';
 import { LoadingState } from '../components/States';
 import {
   Hammer, FileText, Package, DollarSign, TrendingUp,
@@ -32,15 +37,19 @@ const rangeLabel = (from, to) => from === to
   ? dayjs(from).format('D MMM YYYY')
   : `${dayjs(from).format('D MMM YYYY')} – ${dayjs(to).format('D MMM YYYY')}`;
 
-// Shortcuts shown under the KPI cards; `?new=1` opens that page's add form straight away
+// Shortcuts shown under the KPI cards; each opens its form as a popup right here on the dashboard
 const QUICK_ACTIONS = [
-  { to: '/production?new=1', icon: Hammer, label: 'New Production', tone: 'bg-blue-50 text-blue-700 ring-blue-100' },
-  { to: '/sales?new=1', icon: FileText, label: 'New Sale', tone: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
-  { to: '/purchases?new=1', icon: ShoppingCart, label: 'New Purchase', tone: 'bg-violet-50 text-violet-700 ring-violet-100' },
-  { to: '/expenses?new=1', icon: DollarSign, label: 'New Expense', tone: 'bg-amber-50 text-amber-700 ring-amber-100' },
-  { to: '/receipts?new=1', icon: HandCoins, label: 'Money Received', tone: 'bg-teal-50 text-teal-700 ring-teal-100' },
-  { to: '/payments?new=1', icon: Send, label: 'Money Paid', tone: 'bg-rose-50 text-rose-700 ring-rose-100' },
+  { popup: 'production', icon: Hammer, label: 'New Production', tone: 'bg-blue-50 text-blue-700 ring-blue-100' },
+  { popup: 'sale', icon: FileText, label: 'New Sale', tone: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
+  { popup: 'purchase', icon: ShoppingCart, label: 'New Purchase', tone: 'bg-violet-50 text-violet-700 ring-violet-100' },
+  { popup: 'expense', icon: DollarSign, label: 'New Expense', tone: 'bg-amber-50 text-amber-700 ring-amber-100' },
+  { popup: 'receipt', icon: HandCoins, label: 'Money Received', tone: 'bg-teal-50 text-teal-700 ring-teal-100' },
+  { popup: 'payment', icon: Send, label: 'Money Paid', tone: 'bg-rose-50 text-rose-700 ring-rose-100' },
 ];
+
+// The money popups pick from the party list, which the dashboard fetches when one is opened
+const PAYMENT_TYPES = { receipt: 'customer', payment: 'vendor' };
+
 
 // Shared chart styling
 const AXIS_TICK = { fontSize: 11, fill: '#64748b' };
@@ -54,6 +63,9 @@ export default function DashboardPage() {
   const [rangeKey, setRangeKey] = useState('today');
   const [range, setRange] = useState(() => ({ from: dayjs().format(DATE_FMT), to: dayjs().format(DATE_FMT) }));
   const [custom, setCustom] = useState(range);
+  const [popup, setPopup] = useState(null); // quick-action form open on the dashboard
+  const [reload, setReload] = useState(0); // bumped after a quick entry is saved, to refresh the figures
+  const [parties, setParties] = useState(null); // for the money popups, loaded on first use
 
   useEffect(() => {
     setLoading(true);
@@ -61,7 +73,16 @@ export default function DashboardPage() {
       .then(res => setData(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [range]);
+  }, [range, reload]);
+
+  const openPopup = (key) => {
+    if (PAYMENT_TYPES[key] && !parties) {
+      api.get('/parties').then(res => setParties(res.data || [])).catch(e => alert(e.message || 'Could not load parties'));
+    }
+    setPopup(key);
+  };
+  const closePopup = () => setPopup(null);
+  const savedPopup = () => { setPopup(null); setReload(r => r + 1); };
 
   const selectRange = (key) => {
     setRangeKey(key);
@@ -149,17 +170,18 @@ export default function DashboardPage() {
         </div>
         {/* Wide screens get all six in one row, with the icon above the label while the row is tight */}
         <div className="grid grid-cols-2 gap-2 p-2.5 sm:grid-cols-3 md:gap-2.5 md:p-3 lg:grid-cols-3 xl:grid-cols-6">
-          {QUICK_ACTIONS.map(({ to, icon: Icon, label, tone }) => (
-            <Link
+          {QUICK_ACTIONS.map(({ popup: key, icon: Icon, label, tone }) => (
+            <button
               key={label}
-              to={to}
+              type="button"
+              onClick={() => openPopup(key)}
               className="group flex items-center gap-2 rounded-xl bg-white p-2 text-left shadow-sm transition hover:bg-primary-50 hover:shadow-md xl:flex-col xl:gap-1 xl:px-1 xl:text-center 2xl:flex-row 2xl:gap-2 2xl:px-2 2xl:text-left"
             >
               <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${tone}`}>
                 <Icon size={17} />
               </span>
               <span className="min-w-0 text-[13.5px] font-semibold leading-tight text-slate-700 group-hover:text-slate-900 xl:text-[12.5px] 2xl:text-[13.5px]">{label}</span>
-            </Link>
+            </button>
           ))}
         </div>
       </section>
@@ -256,6 +278,15 @@ export default function DashboardPage() {
         </section>
       )}
       </div>
+      )}
+
+      {popup === 'production' && <ProductionFormModal onClose={closePopup} onSaved={savedPopup} />}
+      {popup === 'sale' && <SaleFormModal onClose={closePopup} onSaved={savedPopup} />}
+      {popup === 'purchase' && <PurchaseFormModal onClose={closePopup} onSaved={savedPopup} />}
+      {popup === 'expense' && <ExpenseFormModal onClose={closePopup} onSaved={savedPopup} />}
+      {/* This popup closes itself after saving */}
+      {PAYMENT_TYPES[popup] && parties && (
+        <PartyPaymentModal key={popup} type={PAYMENT_TYPES[popup]} parties={parties} onClose={closePopup} onSaved={() => setReload(r => r + 1)} />
       )}
     </div>
   );

@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
-import PlantSelect from '../components/PlantSelect';
-import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
-import Modal from '../components/Modal';
+import ExpenseFormModal from '../components/ExpenseFormModal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
-import AccountPicker, { modeForAccount } from '../components/AccountPicker';
 import useAccounts from '../hooks/useAccounts';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Trash2, Loader2, Wallet } from 'lucide-react';
-import { NON_NEGATIVE } from '../lib/number';
+import { Plus, Trash2, Wallet } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -19,28 +15,19 @@ const SUMMARY_TONES = ['blue', 'emerald', 'amber', 'rose'];
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
-  const [plants, setPlants] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  useEscapeKey(showForm, () => setShowForm(false));
-  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
-  const [form, setForm] = useState({
-    date: dayjs().format('YYYY-MM-DD'),
-    category: '', amount: '', description: '', account: '', paymentMode: '', plant: ''
-  });
-  const { accounts, defaultAccountId } = useAccounts();
-  const accountOf = (id) => accounts.find(a => a._id === (id || defaultAccountId));
+  const { accounts } = useAccounts();
   const accountName = (id) => accounts.find(a => a._id === id)?.name;
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [eRes, pRes, cRes] = await Promise.all([api.get('/expenses'), api.get('/plants'), api.get('/expense-categories')]);
+      const [eRes, cRes] = await Promise.all([api.get('/expenses'), api.get('/expense-categories')]);
       setExpenses(eRes.data || []);
-      setPlants(pRes.data || []);
       setCategories((cRes.data || []).map(c => c.name));
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -48,29 +35,8 @@ export default function ExpensesPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const openForm = () => {
-    setForm({ date: dayjs().format('YYYY-MM-DD'), category: categories[0] || '', amount: '', description: '', account: '', paymentMode: '', plant: '' });
-    setShowForm(true);
-  };
+  const openForm = () => setShowForm(true);
   useOpenOnNew(!loading, openForm);
-
-  const handleSave = async () => {
-    const problem =
-      !form.category ? 'Select a category' :
-      !(Number(form.amount) > 0) ? 'Enter the amount' : '';
-    if (problem) { alert(problem); return; }
-    setSaving(true);
-    try {
-      // "All Plants" means no plant, so the field is left out instead of sent blank
-      await api.post('/expenses', {
-        ...form, amount: Number(form.amount), plant: form.plant || undefined,
-        account: accountOf(form.account)?._id, paymentMode: modeForAccount(accountOf(form.account), form.paymentMode),
-      });
-      setShowForm(false);
-      fetchData();
-    } catch (e) { alert(e.message); }
-    setSaving(false);
-  };
 
   const searched = expenses
     .filter(e => (e.description || '').toLowerCase().includes(search.toLowerCase()) || (e.category || '').toLowerCase().includes(search.toLowerCase()));
@@ -174,36 +140,7 @@ export default function ExpensesPage() {
       </section>
 
       {showForm && (
-        <Modal
-          title="Add Expense"
-          subtitle="Record an operational expense"
-          onClose={() => setShowForm(false)}
-          maxWidth="max-w-md"
-          footer={<>
-            <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-              Save Expense
-            </button>
-          </>}
-        >
-          <div className="space-y-3 md:space-y-4">
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
-              <div><label className="label">Amount (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="Amount" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
-            </div>
-            <div><label className="label">Category</label>
-              <select className="input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div><label className="label">Description</label><input className="input" placeholder="What was this expense for?" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
-            <AccountPicker label="Paid From" accounts={accounts} defaultAccountId={defaultAccountId}
-              account={form.account} mode={form.paymentMode}
-              onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
-            <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} allLabel="All Plants" />
-          </div>
-        </Modal>
+        <ExpenseFormModal onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); fetchData(); }} />
       )}
     </div>
   );
