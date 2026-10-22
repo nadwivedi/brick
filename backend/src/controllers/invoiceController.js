@@ -79,6 +79,7 @@ exports.create = async (req, res, next) => {
         date: invoice.date,
         customer: invoice.customer,
         invoice: invoice._id,
+        atSale: true,
         amount: invoice.paidAmount,
         account: account._id,
         mode: modeFor(account, req.body.paymentMode),
@@ -128,55 +129,12 @@ exports.update = async (req, res, next) => {
 // @route DELETE /api/invoices/:id
 exports.remove = async (req, res, next) => {
   try {
-    await Invoice.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Deleted' });
-  } catch (error) { next(error); }
-};
-
-// @route POST /api/invoices/:id/payment
-exports.addPayment = async (req, res, next) => {
-  try {
     const organization = req.user.organization._id;
-    const invoice = await Invoice.findOne({ _id: req.params.id, organization });
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    const amount = Number(req.body.amount);
-    if (!(amount > 0)) return res.status(400).json({ success: false, message: 'Enter an amount above zero' });
-
-    const account = await pickAccount(organization, req.body.account);
-    const payment = await Payment.create({
-      date: req.body.date || new Date(),
-      customer: invoice.customer,
-      invoice: invoice._id,
-      amount,
-      account: account._id,
-      mode: modeFor(account, req.body.mode),
-      referenceNumber: req.body.referenceNumber,
-      notes: req.body.notes,
-      createdBy: req.user._id,
-      organization: req.user.organization._id,
-      plant: invoice.plant
-    });
-
-    invoice.paidAmount = (invoice.paidAmount || 0) + amount;
-    invoice.balanceDue = invoice.totalAmount - invoice.paidAmount;
-    invoice.status = invoice.balanceDue <= 0 ? 'paid' : 'partial';
-    await invoice.save();
-
-    res.status(201).json({ success: true, data: { payment, invoice } });
-  } catch (error) { next(error); }
-};
-
-// @route GET /api/invoices/outstanding
-exports.outstanding = async (req, res, next) => {
-  try {
-    const invoices = await Invoice.find({
-      organization: req.user.organization._id,
-      status: { $in: ['issued', 'partial'] }
-    })
-    .populate('customer', 'name mobile')
-    .sort({ date: 1 });
-    
-    const total = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
-    res.json({ success: true, data: invoices, totalOutstanding: total });
+    const invoice = await Invoice.findOneAndDelete({ _id: req.params.id, organization });
+    if (!invoice) return res.status(404).json({ success: false, message: 'Not found' });
+    // The money taken with the sale goes with it; any other receipt for it stays with the party
+    await Payment.deleteMany({ organization, invoice: invoice._id, atSale: true });
+    await Payment.updateMany({ organization, invoice: invoice._id }, { $unset: { invoice: 1 } });
+    res.json({ success: true, message: 'Deleted' });
   } catch (error) { next(error); }
 };

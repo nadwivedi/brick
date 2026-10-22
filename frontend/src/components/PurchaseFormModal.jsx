@@ -10,6 +10,7 @@ import useAccounts from '../hooks/useAccounts';
 import { LoadingState } from './States';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { NON_NEGATIVE } from '../lib/number';
+import { PAID_TYPES, paidType } from '../lib/paidWith';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -69,6 +70,11 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
     const total = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
     setForm({ ...form, items, totalAmount: total });
   };
+
+  // The bill is materials plus transport; what is not paid now goes on the party's balance
+  const bill = (form.totalAmount || 0) + (Number(form.transportCharges) || 0);
+  const purchaseType = paidType(form.paidAmount, bill);
+  const onCredit = bill - (Number(form.paidAmount) || 0);
 
   const handleSave = async () => {
     // Blank rows are ignored; everything the purchase needs must be filled in
@@ -187,7 +193,13 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
         <ModalSection number={3} title="Payment Information" tone="purple">
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             <div><label className="label">Transport Charges (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" value={form.transportCharges} onChange={e => setForm({ ...form, transportCharges: e.target.value })} /></div>
-            <div><label className="label">Amount Paid Now (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} /></div>
+            <div>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="label mb-0">Paid Now (₹)</label>
+                <button type="button" onClick={() => setForm({ ...form, paidAmount: bill })} className="text-xs font-semibold text-primary-600 hover:underline">Full amount</button>
+              </div>
+              <input type="number" {...NON_NEGATIVE} className="input font-semibold text-rose-600" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
+            </div>
           </div>
           {/* Which cash / bank account only matters when money was paid */}
           {Number(form.paidAmount) > 0 && (
@@ -198,9 +210,15 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
             </div>
           )}
 
-          <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-right md:mt-4 md:p-4">
-            <p className="text-lg font-bold text-slate-900">Total: {fmt(form.totalAmount)}</p>
-            <p className="text-sm text-slate-600">Balance Due: <span className="font-semibold text-rose-600">{fmt(form.totalAmount - (parseFloat(form.paidAmount) || 0))}</span></p>
+          {/* Whatever is not paid now is added to the party's balance, to be paid later */}
+          <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-3 md:mt-4 md:p-4">
+            <p className="flex items-center justify-between gap-2">
+              <span className={PAID_TYPES[purchaseType].badge}>{PAID_TYPES[purchaseType].label} purchase</span>
+              <span className="text-lg font-bold text-slate-900">Total: {fmt(bill)}</span>
+            </p>
+            {Number(form.transportCharges) > 0 && <p className="text-right text-xs text-slate-500">Materials {fmt(form.totalAmount)} + transport {fmt(Number(form.transportCharges))}</p>}
+            {onCredit > 0 && <p className="text-right text-sm text-slate-600"><span className="font-semibold text-slate-800">{fmt(onCredit)} on credit</span>, added to the party's balance. Pay it later from Money Paid.</p>}
+            {onCredit < 0 && <p className="text-right text-sm font-semibold text-emerald-700">{fmt(-onCredit)} extra paid as advance</p>}
           </div>
         </ModalSection>
       </Modal>

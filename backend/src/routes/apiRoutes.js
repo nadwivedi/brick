@@ -21,9 +21,7 @@ const { getBrickStock, getBrickLedger } = require('../utils/brickStock');
 const { pickAccount, modeFor } = require('../utils/accounts');
 const { describeTransport, cleanTripRates, VEHICLE_NUMBER_MAX, cleanVehicleNumber } = require('../utils/transport');
 const Vehicle = require('../models/Vehicle');
-
-// Sales carried by a hired vehicle with a cost owed to its transporter
-const HIRED_TRANSPORT = { transportMode: 'hired', transportCost: { $gt: 0 }, status: { $nin: ['draft', 'cancelled'] } };
+const { HIRED_TRANSPORT, partyTotals, balanceChange, partyBalances } = require('../utils/partyBalances');
 
 router.use(protect);
 
@@ -707,78 +705,11 @@ router.get('/party-ledger/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Totals per party, keyed by id: sales and money received, purchases and money paid.
-// A vehicle hired from a party for a sale counts as bought from them.
-// `date` is an optional Mongo condition on the entry date (e.g. { $lt: start }).
-const partyTotals = async (organization, date) => {
-  const match = date ? { organization, date } : { organization };
-  const byId = (rows) => Object.fromEntries(rows.map(r => [String(r._id), r]));
-  const [sales, received, purchases, paidOnAccount, hired] = await Promise.all([
-    Invoice.aggregate([
-      { $match: { ...match, status: { $nin: ['draft', 'cancelled'] } } },
-      { $group: { _id: '$customer', total: { $sum: '$totalAmount' }, count: { $sum: 1 }, lastDate: { $max: '$date' } } },
-    ]),
-    Payment.aggregate([
-      { $match: match },
-      { $group: { _id: '$customer', total: { $sum: '$amount' } } },
-    ]),
-    Purchase.aggregate([
-      { $match: match },
-      { $group: {
-        _id: '$vendor',
-        total: { $sum: { $add: ['$totalAmount', { $ifNull: ['$transportCharges', 0] }] } },
-        paid: { $sum: { $ifNull: ['$paidAmount', 0] } },
-        count: { $sum: 1 }, lastDate: { $max: '$date' },
-      } },
-    ]),
-    VendorPayment.aggregate([
-      { $match: match },
-      { $group: { _id: '$vendor', total: { $sum: '$amount' } } },
-    ]),
-    Invoice.aggregate([
-      { $match: { ...match, ...HIRED_TRANSPORT } },
-      { $group: { _id: '$transporter', total: { $sum: '$transportCost' }, count: { $sum: 1 }, lastDate: { $max: '$date' } } },
-    ]),
-  ]);
-
-  const salesById = byId(sales);
-  const hiredById = byId(hired);
-  const receivedById = byId(received);
-  const purchasesById = byId(purchases);
-  const paidById = byId(paidOnAccount);
-  return (id) => {
-    const sold = salesById[id];
-    const bought = purchasesById[id];
-    const hire = hiredById[id];
-    return {
-      sales: sold?.total || 0, salesCount: sold?.count || 0,
-      received: receivedById[id]?.total || 0,
-      purchases: (bought?.total || 0) + (hire?.total || 0), purchaseCount: (bought?.count || 0) + (hire?.count || 0),
-      // Paid along with purchases + paid on account
-      paid: (bought?.paid || 0) + (paidById[id]?.total || 0),
-      lastDate: [sold?.lastDate, bought?.lastDate, hire?.lastDate].filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0] || null,
-    };
-  };
-};
-
-// What a set of totals moves the balance by (positive = they owe us more)
-const balanceChange = (t) => t.sales - t.received - t.purchases + t.paid;
-
 // Totals per party for the list screens, keyed by id, with the balance
 // (opening + sales - received - purchases + paid; positive = they owe us).
 router.get('/party-balances', async (req, res, next) => {
   try {
-    const organization = req.user.organization._id;
-    const [parties, totalsOf] = await Promise.all([
-      Party.find({ organization }).select('openingBalance').lean(),
-      partyTotals(organization),
-    ]);
-    const data = Object.fromEntries(parties.map(p => {
-      const row = totalsOf(String(p._id));
-      row.balance = (p.openingBalance || 0) + balanceChange(row);
-      return [String(p._id), row];
-    }));
-    res.json({ success: true, data });
+    res.json({ success: true, data: await partyBalances(req.user.organization._id) });
   } catch (e) { next(e); }
 });
 

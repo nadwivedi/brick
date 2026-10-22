@@ -1,64 +1,57 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { hasManyPlants } from '../lib/plants';
-import useEscapeKey from '../hooks/useEscapeKey';
 import useOpenOnNew from '../hooks/useOpenOnNew';
 import SaleFormModal from '../components/SaleFormModal';
-import Modal from '../components/Modal';
+import PartyPaymentModal from '../components/PartyPaymentModal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import PartyCell from '../components/PartyCell';
+import { balanceText, balanceClass } from '../components/BalanceCell';
 import { modeLabel } from '../lib/transport';
-import AccountPicker, { modeForAccount } from '../components/AccountPicker';
-import useAccounts from '../hooks/useAccounts';
+import { PAID_TYPES, paidType } from '../lib/paidWith';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Trash2, Loader2, CreditCard, FileText, Wallet, Scale, CalendarDays, MapPin, Truck } from 'lucide-react';
-import { NON_NEGATIVE } from '../lib/number';
+import { Plus, Trash2, HandCoins, FileText, CreditCard, Scale, CalendarDays, MapPin, Truck } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
-const STATUS_COLORS = {
-  issued: 'badge-orange',
-  partial: 'badge-orange',
-  paid: 'badge-green',
-  draft: 'badge-gray',
-  cancelled: 'badge-gray',
-};
-
-const STATUS_FILTERS = [
+const TYPE_FILTERS = [
   { key: '', label: 'All' },
-  { key: 'issued', label: 'Issued' },
+  { key: 'cash', label: 'Cash' },
   { key: 'partial', label: 'Partial' },
-  { key: 'paid', label: 'Paid' },
-  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'credit', label: 'Credit' },
 ];
+
+// Draft and cancelled invoices are not sales
+const NOT_SOLD = ['draft', 'cancelled'];
 
 export default function SalesPage() {
   const [invoices, setInvoices] = useState([]);
   const [plants, setPlants] = useState([]);
+  const [parties, setParties] = useState([]);
+  const [balances, setBalances] = useState({}); // party ledger balance per party id
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showPayModal, setShowPayModal] = useState(null);
-  useEscapeKey(!!showPayModal, () => setShowPayModal(null));
-  const manyPlants = hasManyPlants(plants);
+  const [receiving, setReceiving] = useState(null); // party id the Receive Money popup starts on ('' = none picked)
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [payForm, setPayForm] = useState({ amount: '', account: '', mode: '', referenceNumber: '', notes: '', date: dayjs().format('YYYY-MM-DD') });
-  const { accounts, defaultAccountId } = useAccounts();
-  const accountOf = (id) => accounts.find(a => a._id === (id || defaultAccountId));
-  const payMode = modeForAccount(accountOf(payForm.account), payForm.mode);
+  const [typeFilter, setTypeFilter] = useState('');
+  const manyPlants = hasManyPlants(plants);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [invRes, plantRes] = await Promise.all([
+      const [invRes, plantRes, partyRes, balRes] = await Promise.all([
         api.get('/invoices', { params: { limit: 1000 } }),
         api.get('/plants'),
+        api.get('/parties'),
+        api.get('/party-balances'),
       ]);
       setInvoices(invRes.data || []);
       setPlants(plantRes.data || []);
+      setParties((partyRes.data || []).sort((a, b) => a.name.localeCompare(b.name)));
+      setBalances(balRes.data || {});
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -68,42 +61,42 @@ export default function SalesPage() {
   const openForm = () => setShowForm(true);
   useOpenOnNew(!loading, openForm);
 
-  const handleAddPayment = async () => {
-    setSaving(true);
+  const handleDelete = async (inv) => {
+    if (!confirm(`Delete invoice ${inv.invoiceNumber}?${inv.paidAmount > 0 ? ` The ${fmt(inv.paidAmount)} received with it is removed too.` : ''}`)) return;
     try {
-      await api.post(`/invoices/${showPayModal}/payment`, { ...payForm, account: accountOf(payForm.account)?._id, mode: payMode });
-      setShowPayModal(null);
+      await api.delete(`/invoices/${inv._id}`);
       fetchData();
-    } catch (e) { alert(e.message || 'Error'); }
-    setSaving(false);
+    } catch (e) { alert(e.message || 'Could not delete the invoice'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete invoice?')) return;
-    await api.delete(`/invoices/${id}`);
-    fetchData();
-  };
+  const typeOf = (inv) => paidType(inv.paidAmount, inv.totalAmount);
+  const creditOf = (inv) => Math.max((inv.totalAmount || 0) - (inv.paidAmount || 0), 0);
 
+  const q = search.toLowerCase();
   const searched = invoices.filter(inv =>
-    (inv.customer?.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (inv.invoiceNumber || '').toLowerCase().includes(search.toLowerCase())
+    (inv.customer?.name || '').toLowerCase().includes(q) ||
+    (inv.invoiceNumber || '').toLowerCase().includes(q)
   );
-  const filtered = searched.filter(inv => !statusFilter || inv.status === statusFilter);
-  // Cancelled and draft invoices are left out of the money totals
-  const sum = (list, key) => list.reduce((t, i) => t + (i[key] || 0), 0);
-  const billable = invoices.filter(i => !['cancelled', 'draft'].includes(i.status));
-  const unpaid = billable.filter(i => i.balanceDue > 0);
-  const monthInvoices = billable.filter(i => dayjs(i.date).isSame(dayjs(), 'month'));
-  const statusCounts = searched.reduce((acc, inv) => ({ ...acc, [inv.status]: (acc[inv.status] || 0) + 1 }), {});
+  const filtered = searched.filter(inv => !typeFilter || (!NOT_SOLD.includes(inv.status) && typeOf(inv) === typeFilter));
+  const typeCounts = searched.filter(i => !NOT_SOLD.includes(i.status)).reduce((acc, inv) => ({ ...acc, [typeOf(inv)]: (acc[typeOf(inv)] || 0) + 1 }), {});
+
+  const sold = invoices.filter(i => !NOT_SOLD.includes(i.status));
+  const total = (list) => list.reduce((t, i) => t + (i.totalAmount || 0), 0);
+  const credit = (list) => list.reduce((t, i) => t + creditOf(i), 0);
+  const monthSales = sold.filter(i => dayjs(i.date).isSame(dayjs(), 'month'));
+  const creditSales = sold.filter(i => typeOf(i) !== 'cash');
+  // What parties owe right now: their ledger balance after every sale and every payment received
+  const receivable = Object.values(balances).reduce((t, b) => t + Math.max(b.balance || 0, 0), 0);
+  const owingParties = Object.values(balances).filter(b => b.balance > 0).length;
 
   return (
     <div className="space-y-4 fade-in md:space-y-5">
       {/* Totals */}
       <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-4">
-        <StatCard icon={CalendarDays} label="This Month" hint={`${monthInvoices.length} invoice${monthInvoices.length === 1 ? '' : 's'} in ${dayjs().format('MMMM')}`} value={fmt(sum(monthInvoices, 'totalAmount'))} tone="blue" />
-        <StatCard icon={FileText} label="Total Sales" hint={`${billable.length} invoice${billable.length === 1 ? '' : 's'} in all`} value={fmt(sum(billable, 'totalAmount'))} tone="indigo" />
-        <StatCard icon={Wallet} label="Received" hint="Payments received so far" value={fmt(sum(billable, 'paidAmount'))} tone="emerald" />
-        <StatCard icon={Scale} label="Outstanding" hint={`${unpaid.length} invoice${unpaid.length === 1 ? '' : 's'} not fully paid`} value={fmt(sum(unpaid, 'balanceDue'))} tone="rose" />
+        <StatCard icon={CalendarDays} label="This Month" hint={`${monthSales.length} invoice${monthSales.length === 1 ? '' : 's'} in ${dayjs().format('MMMM')}`} value={fmt(total(monthSales))} tone="blue" />
+        <StatCard icon={FileText} label="Total Sales" hint={`${sold.length} invoice${sold.length === 1 ? '' : 's'} in all`} value={fmt(total(sold))} tone="indigo" />
+        <StatCard icon={CreditCard} label="Sold on Credit" hint="Not received at the time of sale" value={fmt(credit(creditSales))} tone="amber" />
+        <StatCard icon={Scale} label="To Receive" hint={`${owingParties} part${owingParties === 1 ? 'y owes' : 'ies owe'} you, after all payments`} value={fmt(receivable)} tone="rose" />
       </section>
 
       <section className="panel">
@@ -111,10 +104,14 @@ export default function SalesPage() {
           <div className="page-header">
             <div>
               <h1 className="page-title">Sales & Invoices</h1>
-              <p className="page-subtitle">Every invoice, what was sold, and how much is still to be received</p>
+              <p className="page-subtitle">Every sale and what was received with it. Money received later goes against the party.</p>
             </div>
             <div className="flex gap-2 md:shrink-0">
-              <SearchInput className="flex-1 md:w-72 md:flex-none" value={search} onChange={setSearch} placeholder="Search customer or invoice no..." />
+              <SearchInput className="flex-1 md:w-64 md:flex-none" value={search} onChange={setSearch} placeholder="Search party or invoice no..." />
+              <button className="btn-secondary flex-shrink-0" onClick={() => setReceiving('')} title="Record money received from a party">
+                <HandCoins size={18} />
+                <span className="hidden sm:inline">Receive Money</span>
+              </button>
               <button className="btn-primary flex-shrink-0" onClick={openForm}>
                 <Plus size={18} />
                 <span className="hidden sm:inline">New Invoice</span>
@@ -123,16 +120,16 @@ export default function SalesPage() {
             </div>
           </div>
 
-          {/* Status filter */}
+          {/* Cash / credit filter */}
           <div className="scrollbar-hide mt-2.5 flex gap-2 overflow-x-auto">
-            {STATUS_FILTERS.map(({ key, label }) => {
-              const active = statusFilter === key;
-              const count = key ? statusCounts[key] || 0 : searched.length;
+            {TYPE_FILTERS.map(({ key, label }) => {
+              const active = typeFilter === key;
+              const count = key ? typeCounts[key] || 0 : searched.length;
               return (
                 <button
                   key={key || 'all'}
                   type="button"
-                  onClick={() => setStatusFilter(key)}
+                  onClick={() => setTypeFilter(key)}
                   className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition ${active ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
                 >
                   {label}{' '}
@@ -147,26 +144,28 @@ export default function SalesPage() {
         {loading ? (
           <LoadingState label="Loading invoices…" />
         ) : filtered.length === 0 ? (
-          <EmptyState icon={FileText} title="No invoices found" hint={search || statusFilter ? 'Try a different search or filter.' : 'Create your first invoice to get started.'} />
+          <EmptyState icon={FileText} title="No invoices found" hint={search || typeFilter ? 'Try a different search or filter.' : 'Create your first invoice to get started.'} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left">
+            <table className="w-full min-w-[860px] text-left">
               <thead>
                 <tr>
                   <th className="table-header">Invoice</th>
-                  <th className="table-header">Customer</th>
+                  <th className="table-header">Party</th>
                   <th className="table-header">Items</th>
                   <th className="table-header">Amount</th>
-                  <th className="table-header">Payment</th>
+                  <th className="table-header">Paid at Sale</th>
                   <th className="table-header text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(inv => {
-                  const total = inv.totalAmount || 0;
-                  const paidPct = total > 0 ? Math.min(100, ((inv.paidAmount || 0) / total) * 100) : 0;
                   const pieces = (inv.items || []).reduce((t, i) => t + (i.quantity || 0), 0);
                   const names = [...new Set((inv.items || []).map(i => i.product?.name).filter(Boolean))];
+                  const type = PAID_TYPES[typeOf(inv)];
+                  const notSold = NOT_SOLD.includes(inv.status);
+                  const partyId = inv.customer?._id;
+                  const balance = balances[partyId]?.balance;
                   return (
                     <tr key={inv._id} className="table-row">
                       <td className="table-cell whitespace-nowrap">
@@ -175,6 +174,11 @@ export default function SalesPage() {
                       </td>
                       <td className="table-cell">
                         <PartyCell name={inv.customer?.name} mobile={inv.customer?.mobile} />
+                        {partyId && balance !== undefined && (
+                          <Link to={`/masters/parties/${partyId}/ledger`} className={`mt-1 block whitespace-nowrap pl-[52px] text-xs font-semibold hover:underline ${balanceClass(balance)}`} title="Open the party's ledger">
+                            {balanceText(balance)}
+                          </Link>
+                        )}
                       </td>
                       <td className="table-cell">
                         <div className="max-w-[220px]">
@@ -191,29 +195,23 @@ export default function SalesPage() {
                         </div>
                       </td>
                       <td className="table-cell whitespace-nowrap">
-                        <p className="text-base font-bold text-slate-900">{fmt(total)}</p>
-                        <span className={`${STATUS_COLORS[inv.status] || 'badge-gray'} capitalize`}>{inv.status}</span>
+                        <p className="text-base font-bold text-slate-900">{fmt(inv.totalAmount)}</p>
+                        {notSold
+                          ? <span className="badge-gray capitalize">{inv.status}</span>
+                          : <span className={type.badge}>{type.label}</span>}
                       </td>
-                      <td className="table-cell">
-                        <div className="w-40">
-                          <p className="whitespace-nowrap text-xs">
-                            <span className="font-semibold text-emerald-700">{fmt(inv.paidAmount)} paid</span>
-                            {inv.balanceDue > 0 && <span className="font-semibold text-rose-600"> · {fmt(inv.balanceDue)} due</span>}
-                          </p>
-                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200" title={`${paidPct.toFixed(0)}% paid`}>
-                            <div className={`h-full rounded-full ${paidPct >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${paidPct}%` }} />
-                          </div>
-                        </div>
+                      <td className="table-cell whitespace-nowrap text-xs">
+                        {inv.paidAmount > 0 && <p className="font-semibold text-emerald-700">{fmt(inv.paidAmount)} received</p>}
+                        {creditOf(inv) > 0 && <p className="font-semibold text-slate-600">{fmt(creditOf(inv))} on credit</p>}
                       </td>
                       <td className="table-cell">
                         <div className="flex items-center justify-end gap-1">
-                          {inv.status !== 'paid' && (
-                            <button className="btn-secondary btn-sm mr-1 whitespace-nowrap" title="Add Payment"
-                              onClick={() => { setShowPayModal(inv._id); setPayForm({ amount: inv.balanceDue, account: '', mode: '', referenceNumber: '', notes: '', date: dayjs().format('YYYY-MM-DD') }); }}>
-                              <CreditCard size={14} /> Receive
+                          {partyId && balance > 0 && (
+                            <button className="btn-secondary btn-sm mr-1 whitespace-nowrap" title={`Record money received from ${inv.customer?.name}`} onClick={() => setReceiving(partyId)}>
+                              <HandCoins size={14} /> Receive
                             </button>
                           )}
-                          <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={() => handleDelete(inv._id)}>
+                          <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={() => handleDelete(inv)}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -227,8 +225,8 @@ export default function SalesPage() {
         )}
         <div className="table-footer flex items-center justify-between gap-3">
           <span>Showing {filtered.length} of {invoices.length} invoices</span>
-          <span className="font-semibold text-rose-600">
-            Total Outstanding: {fmt(filtered.filter(i => i.status !== 'paid').reduce((s, i) => s + i.balanceDue, 0))}
+          <span className="font-semibold text-slate-600">
+            On credit in this list: {fmt(credit(filtered.filter(i => !NOT_SOLD.includes(i.status))))}
           </span>
         </div>
       </section>
@@ -237,49 +235,10 @@ export default function SalesPage() {
         <SaleFormModal onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); fetchData(); }} />
       )}
 
-      {/* Payment Modal */}
-      {showPayModal && (
-        <Modal
-          title="Record Payment"
-          subtitle="Add a payment received against this invoice"
-          onClose={() => setShowPayModal(null)}
-          maxWidth="max-w-md"
-          footer={<>
-            <button className="btn-secondary" onClick={() => setShowPayModal(null)}>Cancel</button>
-            <button className="btn-primary" onClick={handleAddPayment} disabled={saving}>
-              {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-              Record Payment
-            </button>
-          </>}
-        >
-          <div className="space-y-3 md:space-y-4">
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div>
-                <label className="label">Payment Date</label>
-                <input type="date" className="input" value={payForm.date} onChange={e => setPayForm({ ...payForm, date: e.target.value })} />
-              </div>
-              <div>
-                <label className="label">Amount (₹)</label>
-                <input type="number" {...NON_NEGATIVE} className="input font-semibold" value={payForm.amount} onChange={e => setPayForm({ ...payForm, amount: e.target.value })} />
-              </div>
-            </div>
-            <AccountPicker label="Received In" accounts={accounts} defaultAccountId={defaultAccountId}
-              account={payForm.account} mode={payForm.mode}
-              onChange={picked => setPayForm({ ...payForm, ...picked })} />
-            {payMode !== 'cash' && (
-              <div>
-                <label className="label">{payMode === 'cheque' ? 'Cheque No.' : 'Reference / UTR No.'} (optional)</label>
-                <input className="input" placeholder={payMode === 'cheque' ? 'Cheque number' : 'UPI / bank reference number'} value={payForm.referenceNumber} onChange={e => setPayForm({ ...payForm, referenceNumber: e.target.value })} />
-              </div>
-            )}
-            <div>
-              <label className="label">Notes</label>
-              <input className="input" value={payForm.notes} onChange={e => setPayForm({ ...payForm, notes: e.target.value })} />
-            </div>
-          </div>
-        </Modal>
+      {/* Money received is recorded against the party and lowers its balance, not one invoice */}
+      {receiving !== null && (
+        <PartyPaymentModal type="customer" parties={parties} partyId={receiving} onClose={() => setReceiving(null)} onSaved={fetchData} />
       )}
-
     </div>
   );
 }

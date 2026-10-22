@@ -6,6 +6,7 @@ const Material = require('../models/Material');
 const Purchase = require('../models/Purchase');
 const VendorPayment = require('../models/VendorPayment');
 const Product = require('../models/Product');
+const { receivablePayable } = require('../utils/partyBalances');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -98,8 +99,9 @@ exports.getSummary = async (req, res, next) => {
       sumInRange(Payment, inRange, 'amount'),
       sumInRange(Expense, inRange, 'amount'),
       sumInRange(Purchase, inRange, 'totalAmount'),
-      // Outstanding dues are the current balance, not limited to the date range
-      sumInRange(Invoice, { ...baseQuery, status: { $in: ['issued', 'partial'] } }, 'balanceDue'),
+      // Outstanding dues are what parties owe right now (their ledger balance), not limited to the
+      // date range or a plant: money received later is recorded against the party, not a sale
+      receivablePayable(orgId).then(r => r.receivable),
       productionTrendByType(inRange, byMonth, start, end),
       trendInRange(Invoice, inRange, 'totalAmount', byMonth, start, end),
       trendInRange(Payment, inRange, 'amount', byMonth, start, end),
@@ -245,6 +247,11 @@ const words = (s) => (s || '').replace(/_/g, ' ');
 // @route GET /api/activity?from=YYYY-MM-DD&to=YYYY-MM-DD&plant=
 // Every operation in the period (production, purchases, sales, payments received,
 // payments made to vendors, expenses) as one list, newest first, with the period totals.
+// How a sale / purchase was paid at the time: in full (cash), in part, or not at all (credit)
+const paidWith = (paid, total) => (
+  !(paid > 0) ? 'Credit' : paid >= total ? 'Cash' : `₹${paid.toLocaleString('en-IN')} paid, rest on credit`
+);
+
 exports.getActivity = async (req, res, next) => {
   try {
     const { plant, from, to } = req.query;
@@ -284,7 +291,7 @@ exports.getActivity = async (req, res, next) => {
         detail: join([
           (p.items || []).map(i => `${i.quantity} ${i.unit || ''} ${i.material?.name || ''}`.replace(/\s+/g, ' ').trim()).join(', '),
           p.billNumber ? `Bill ${p.billNumber}` : '',
-          p.balanceDue > 0 ? `₹${p.balanceDue.toLocaleString('en-IN')} due` : 'Paid',
+          paidWith(p.paidAmount, (p.totalAmount || 0) + (p.transportCharges || 0)),
         ]),
         amount: p.totalAmount,
       })),
@@ -294,7 +301,7 @@ exports.getActivity = async (req, res, next) => {
         detail: join([
           i.invoiceNumber,
           (i.items || []).map(it => `${pcs(it.quantity)} ${it.product?.name || ''}`.trim()).join(', '),
-          i.balanceDue > 0 ? `₹${i.balanceDue.toLocaleString('en-IN')} due` : 'Paid',
+          paidWith(i.paidAmount, i.totalAmount),
         ]),
         amount: i.totalAmount,
       })),

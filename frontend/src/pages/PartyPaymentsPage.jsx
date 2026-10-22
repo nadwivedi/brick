@@ -22,7 +22,7 @@ const KINDS = {
     addLabel: 'Receive Money', icon: HandCoins, noun: 'receipt', todayTone: 'emerald', amountClass: 'text-emerald-700',
     searchPlaceholder: 'Search party or reference...',
     emptyTitle: 'No money received found', emptyHint: 'Record the first payment you receive from a party.',
-    deleteText: (r) => `Delete this receipt of ${fmt(r.amount)} from ${r.customer?.name || 'this party'}?${r.invoice?.invoiceNumber ? ` Invoice ${r.invoice.invoiceNumber} will show this amount as due again.` : ''}`,
+    deleteText: (r) => `Delete this receipt of ${fmt(r.amount)} from ${r.customer?.name || 'this party'}?${r.invoice?.invoiceNumber ? ` Invoice ${r.invoice.invoiceNumber} will show this amount as on credit.` : ''} The party's balance goes up by this amount.`,
     deleteError: 'Could not delete the receipt',
     linkedText: (r) => (r.invoice?.invoiceNumber ? `For ${r.invoice.invoiceNumber}` : ''),
   },

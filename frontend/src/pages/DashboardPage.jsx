@@ -110,7 +110,7 @@ export default function DashboardPage() {
     { icon: TrendingUp, label: 'Collections', value: fmt(data?.collection), tone: 'teal', hint: `Payments received · ${periodText}` },
     { icon: ShoppingCart, label: 'Purchases', value: fmt(data?.purchases), tone: 'indigo', hint: `Raw materials bought · ${periodText}` },
     { icon: DollarSign, label: 'Expenses', value: fmt(data?.expenses), tone: 'amber', hint: `Total spent · ${periodText}` },
-    { icon: Users, label: 'Outstanding Dues', value: fmt(data?.outstanding), tone: 'rose', hint: 'Current balance (all time)' },
+    { icon: Users, label: 'Outstanding Dues', value: fmt(data?.outstanding), tone: 'rose', hint: 'What parties owe you now, from their ledgers' },
   ];
 
   return (

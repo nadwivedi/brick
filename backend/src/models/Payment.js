@@ -4,6 +4,8 @@ const paymentSchema = new mongoose.Schema({
   date: { type: Date, required: true, default: Date.now },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Party', required: true }, // the party who paid us
   invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+  // Set on the money received with a sale when it was made; it goes when that sale is deleted
+  atSale: { type: Boolean, default: false },
   amount: { type: Number, required: true },
   mode: {
     type: String,

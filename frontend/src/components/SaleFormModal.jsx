@@ -12,6 +12,7 @@ import useAccounts from '../hooks/useAccounts';
 import { LoadingState } from './States';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { NON_NEGATIVE } from '../lib/number';
+import { PAID_TYPES, paidType } from '../lib/paidWith';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -102,6 +103,10 @@ export default function SaleFormModal({ onClose, onSaved }) {
   const qtyByProduct = form.items.reduce((m, i) => (i.product ? { ...m, [i.product]: (m[i.product] || 0) + (Number(i.quantity) || 0) } : m), {});
   const overStock = Object.keys(qtyByProduct).filter(id => qtyByProduct[id] > (brickStock[id] || 0));
   const pieces = Object.values(qtyByProduct).reduce((s, n) => s + n, 0);
+
+  // What is received now; the rest goes on the party's balance
+  const saleType = paidType(form.paidAmount, form.totalAmount);
+  const onCredit = (form.totalAmount || 0) - (Number(form.paidAmount) || 0);
 
   // Transport changes can change the charge to the party, and so the total
   const setTransport = (patch) => setForm(f => {
@@ -245,14 +250,23 @@ export default function SaleFormModal({ onClose, onSaved }) {
 
         <ModalSection number={5} title="Payment & Delivery" tone="emerald">
           <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <div>
-              <label className="label">Amount Paid Now (₹)</label>
-              <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
+            <div className="col-span-2 md:col-span-1">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="label mb-0">Received Now (₹)</label>
+                <button type="button" onClick={() => setForm({ ...form, paidAmount: form.totalAmount || 0 })} className="text-xs font-semibold text-primary-600 hover:underline">Full amount</button>
+              </div>
+              <input type="number" {...NON_NEGATIVE} className="input font-semibold text-emerald-700" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
             </div>
-            <div className="flex items-end">
-              <p className="pb-2.5 text-sm text-slate-600">
-                Balance due: <span className="font-semibold text-rose-600">{fmt((form.totalAmount || 0) - (Number(form.paidAmount) || 0))}</span>
-              </p>
+            {/* Whatever is not received now is added to the party's balance, to be received later */}
+            <div className="col-span-2 flex flex-col justify-end md:col-span-1">
+              <div className="rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-inset ring-emerald-200">
+                <p className="flex items-center justify-between gap-2">
+                  <span className={PAID_TYPES[saleType].badge}>{PAID_TYPES[saleType].label} sale</span>
+                  {onCredit > 0 && <span className="font-semibold text-slate-700">{fmt(onCredit)} on credit</span>}
+                  {onCredit < 0 && <span className="font-semibold text-emerald-700">{fmt(-onCredit)} extra as advance</span>}
+                </p>
+                {onCredit > 0 && <p className="mt-1 text-xs text-slate-500">Added to the party's balance. Receive it later from Money Received.</p>}
+              </div>
             </div>
             {/* Which cash / bank account only matters when money was received */}
             {Number(form.paidAmount) > 0 && (
