@@ -52,7 +52,7 @@ export default function SaleFormModal({ onClose, onSaved }) {
       setCustomers(custRes.data || []);
       setProducts(prodRes.data || []);
       setPlants(plantList);
-      setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plantList), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, loadingCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '', ...NO_TRANSPORT });
+      setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plantList), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '', ...NO_TRANSPORT });
     }).catch(e => { alert(e.message || 'Could not load the form'); onClose(); });
   }, []);
 
@@ -64,10 +64,10 @@ export default function SaleFormModal({ onClose, onSaved }) {
     );
   }
 
-  const calcTotals = (items, trans, load, disc) => {
+  const calcTotals = (items, trans, disc) => {
     const sub = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
     const gstTot = items.reduce((s, i) => s + (parseFloat(i.gstAmount) || 0), 0);
-    const total = sub + gstTot + (parseFloat(trans) || 0) + (parseFloat(load) || 0) - (parseFloat(disc) || 0);
+    const total = sub + gstTot + (parseFloat(trans) || 0) - (parseFloat(disc) || 0);
     return { subtotal: sub, gstTotal: gstTot, totalAmount: total };
   };
 
@@ -83,7 +83,7 @@ export default function SaleFormModal({ onClose, onSaved }) {
       const p = products.find(p => p._id === val);
       if (p) items[idx].rate = p.defaultRate;
     }
-    const totals = calcTotals(items, form.transportCharges, form.loadingCharges, form.discount);
+    const totals = calcTotals(items, form.transportCharges, form.discount);
     setForm({ ...form, items, ...totals });
   };
 
@@ -94,7 +94,7 @@ export default function SaleFormModal({ onClose, onSaved }) {
 
   const removeItem = (idx) => {
     const items = form.items.filter((_, i) => i !== idx);
-    const totals = calcTotals(items, form.transportCharges, form.loadingCharges, form.discount);
+    const totals = calcTotals(items, form.transportCharges, form.discount);
     setForm(f => ({ ...f, items, ...totals }));
   };
 
@@ -107,7 +107,7 @@ export default function SaleFormModal({ onClose, onSaved }) {
   const setTransport = (patch) => setForm(f => {
     const next = { ...f, ...patch };
     if (next.transportMode === 'party') next.transportCharges = 0;
-    return { ...next, ...calcTotals(next.items, next.transportCharges, next.loadingCharges, next.discount) };
+    return { ...next, ...calcTotals(next.items, next.transportCharges, next.discount) };
   });
 
   const handleSave = async () => {
@@ -129,9 +129,8 @@ export default function SaleFormModal({ onClose, onSaved }) {
         ...form,
         // GST is not charged for now; the fields stay at 0 so it can be switched back on later
         items: items.map(i => ({ ...i, quantity: Number(i.quantity), rate: Number(i.rate), gstPercent: 0, gstAmount: 0 })),
-        ...calcTotals(items, form.transportCharges, form.loadingCharges, form.discount),
+        ...calcTotals(items, form.transportCharges, form.discount),
         transportCharges: Number(form.transportCharges) || 0,
-        loadingCharges: Number(form.loadingCharges) || 0,
         discount: Number(form.discount) || 0,
         paidAmount: Number(form.paidAmount) || 0,
         // The cash / bank account the money received now went into
@@ -231,14 +230,9 @@ export default function SaleFormModal({ onClose, onSaved }) {
         <ModalSection number={4} title="Charges & Total" tone="purple">
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             <div>
-              <label className="label">Loading Charges (₹)</label>
-              <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.loadingCharges}
-                onChange={e => { const l = e.target.value; const tot = calcTotals(form.items, form.transportCharges, l, form.discount); setForm(f => ({ ...f, loadingCharges: l, ...tot })); }} />
-            </div>
-            <div>
               <label className="label">Discount (₹)</label>
               <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.discount}
-                onChange={e => { const d = e.target.value; const tot = calcTotals(form.items, form.transportCharges, form.loadingCharges, d); setForm(f => ({ ...f, discount: d, ...tot })); }} />
+                onChange={e => { const d = e.target.value; const tot = calcTotals(form.items, form.transportCharges, d); setForm(f => ({ ...f, discount: d, ...tot })); }} />
             </div>
           </div>
 
