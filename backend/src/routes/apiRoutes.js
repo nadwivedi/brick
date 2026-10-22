@@ -19,7 +19,7 @@ const StockMovement = require('../models/StockMovement');
 const { getSummary, getActivity, getProfitLoss, parseRange } = require('../controllers/dashboardController');
 const { getBrickStock, getBrickLedger } = require('../utils/brickStock');
 const { pickAccount, modeFor } = require('../utils/accounts');
-const { describeTransport, cleanTripRates } = require('../utils/transport');
+const { describeTransport, cleanTripRates, VEHICLE_NUMBER_MAX, cleanVehicleNumber } = require('../utils/transport');
 const Vehicle = require('../models/Vehicle');
 
 // Sales carried by a hired vehicle with a cost owed to its transporter
@@ -244,8 +244,9 @@ router.use('/vehicles', async (req, res, next) => {
   if (!['POST', 'PUT'].includes(req.method)) return next();
   try {
     const organization = req.user.organization._id;
-    const vehicleNumber = String(req.body.vehicleNumber || '').trim().toUpperCase();
+    const vehicleNumber = cleanVehicleNumber(req.body.vehicleNumber);
     if (!vehicleNumber) return res.status(400).json({ success: false, message: 'Enter the vehicle number' });
+    if (vehicleNumber.length > VEHICLE_NUMBER_MAX) return res.status(400).json({ success: false, message: `Vehicle number can be at most ${VEHICLE_NUMBER_MAX} characters` });
     const id = req.path.slice(1);
     const taken = await Vehicle.exists({ organization, vehicleNumber, ...(id ? { _id: { $ne: id } } : {}) });
     if (taken) return res.status(409).json({ success: false, message: `Vehicle ${vehicleNumber} is already added` });

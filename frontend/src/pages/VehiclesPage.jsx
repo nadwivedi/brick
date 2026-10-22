@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import CRUDPage from '../components/CRUDPage';
 import TripRatesEditor from '../components/TripRatesEditor';
-import { TRANSPORT_MODES, TRANSPORT_BASES, modeLabel, basisOf } from '../lib/transport';
+import { TRANSPORT_MODES, TRANSPORT_BASES, modeLabel, basisOf, cleanVehicleNumber } from '../lib/transport';
 
 const OWNERSHIP_BADGES = { party: 'badge-gray', own: 'badge-blue', hired: 'badge-orange' };
 
@@ -43,7 +43,7 @@ export default function VehiclesPage() {
         { key: 'isActive', label: 'Status', render: r => <span className={r.isActive !== false ? 'badge-green' : 'badge-gray'}>{r.isActive !== false ? 'Active' : 'Inactive'}</span> },
       ]}
       fields={[
-        { key: 'vehicleNumber', label: 'Vehicle Number', placeholder: 'e.g. MH 04 AB 1234' },
+        { key: 'vehicleNumber', label: 'Vehicle Number', placeholder: 'e.g. MH04AB1234', clean: cleanVehicleNumber },
         // Party vehicles come in from sales; vehicles added here are mine or hired
         { key: 'ownership', label: 'Whose Vehicle', type: 'select', options: TRANSPORT_MODES.filter(m => m.key !== 'party').map(m => ({ value: m.key, label: m.label })) },
         { key: 'party', label: 'Transporter (hired from)', type: 'select', options: partyOptions, show: f => f.ownership === 'hired' },

@@ -14,6 +14,10 @@ export const TRANSPORT_BASES = [
   { key: 'fixed', label: 'Fixed Amount', unit: '' },
 ];
 
+// Vehicle numbers are kept in capitals with no spaces, e.g. MH04AB1234 (at most 10 characters)
+export const VEHICLE_NUMBER_MAX = 10;
+export const cleanVehicleNumber = (value) => String(value || '').replace(/\s+/g, '').toUpperCase().slice(0, VEHICLE_NUMBER_MAX);
+
 export const modeLabel = (mode) => TRANSPORT_MODES.find(m => m.key === mode)?.label || 'Party Vehicle';
 export const basisOf = (basis) => TRANSPORT_BASES.find(b => b.key === basis) || TRANSPORT_BASES[0];
 

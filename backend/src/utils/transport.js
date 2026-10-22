@@ -44,10 +44,17 @@ const resolveSaleTransport = async (organization, body = {}) => {
   };
 };
 
+// Vehicle numbers are kept in capitals with no spaces, e.g. MH04AB1234 (at most 10 characters)
+const VEHICLE_NUMBER_MAX = 10;
+const cleanVehicleNumber = (value) => String(value || '').replace(/\s+/g, '').toUpperCase();
+
 // The vehicle picked or typed on a sale; a new number is added to the vehicle master
 const resolveSaleVehicle = async (organization, body, transport) => {
   const Vehicle = mongoose.model('Vehicle');
-  const vehicleNumber = String(body.vehicleNumber || '').trim().toUpperCase();
+  const vehicleNumber = cleanVehicleNumber(body.vehicleNumber);
+  if (vehicleNumber.length > VEHICLE_NUMBER_MAX) {
+    throw Object.assign(new Error(`Vehicle number can be at most ${VEHICLE_NUMBER_MAX} characters`), { statusCode: 400 });
+  }
   if (!vehicleNumber) return { vehicle: null, vehicleNumber: '' };
   let vehicle = await Vehicle.findOne({ organization, vehicleNumber });
   if (!vehicle) {
@@ -99,4 +106,4 @@ const cleanTripRates = (rows) => {
     });
 };
 
-module.exports = { TRANSPORT_MODES, TRANSPORT_BASES, transportCost, resolveSaleTransport, resolveSaleVehicle, describeTransport, cleanTripRates };
+module.exports = { TRANSPORT_MODES, TRANSPORT_BASES, transportCost, resolveSaleTransport, resolveSaleVehicle, describeTransport, cleanTripRates, VEHICLE_NUMBER_MAX, cleanVehicleNumber };

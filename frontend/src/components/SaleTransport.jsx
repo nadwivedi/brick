@@ -1,6 +1,6 @@
 import { NON_NEGATIVE } from '../lib/number';
 import { defaultPlantId } from '../lib/plants';
-import { TRANSPORT_MODES, TRANSPORT_BASES, basisOf, transportCost, saleTransportQty } from '../lib/transport';
+import { TRANSPORT_MODES, TRANSPORT_BASES, basisOf, transportCost, saleTransportQty, cleanVehicleNumber } from '../lib/transport';
 import { ArrowRight } from 'lucide-react';
 
 const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
@@ -22,7 +22,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   const mainPlant = defaultPlantId(plants);
   const salePlant = form.plant || mainPlant;
   const plantName = plants.find(p => p._id === salePlant)?.name || 'Plant';
-  const vehicle = vehicles.find(v => v.vehicleNumber === String(form.vehicleNumber || '').trim().toUpperCase());
+  const vehicle = vehicles.find(v => v.vehicleNumber === cleanVehicleNumber(form.vehicleNumber));
   const routesFor = (v) => (v?.tripRates || []).filter(r => (r.plant || mainPlant) === salePlant);
   const routes = routesFor(vehicle);
   const perTrip = mode === 'own' || (mode === 'hired' && basis.key === 'per_trip');
@@ -38,8 +38,9 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
 
   // Typing or picking a known vehicle fills in its transport, and its route when it has only one
   const pickVehicle = (value) => {
-    const v = vehicles.find(x => x.vehicleNumber === value.trim().toUpperCase());
-    if (!v) return onChange({ vehicleNumber: value });
+    const number = cleanVehicleNumber(value);
+    const v = vehicles.find(x => x.vehicleNumber === number);
+    if (!v) return onChange({ vehicleNumber: number });
     const only = routesFor(v).length === 1 ? routesFor(v)[0] : null;
     onChange({
       vehicleNumber: v.vehicleNumber,
@@ -89,7 +90,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <div className="col-span-2">
           <label className="label">Vehicle Number</label>
-          <input className="input uppercase placeholder:normal-case" list="sale-vehicles" placeholder="Type or pick, e.g. MH 04 AB 1234"
+          <input className="input uppercase placeholder:normal-case" list="sale-vehicles" placeholder="Type or pick, e.g. MH04AB1234"
             value={form.vehicleNumber} onChange={e => pickVehicle(e.target.value)} />
           <datalist id="sale-vehicles">
             {vehicles.filter(v => v.isActive !== false).map(v => <option key={v._id} value={v.vehicleNumber} />)}
