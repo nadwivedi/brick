@@ -4,6 +4,7 @@ const Organization = require('../models/Organization');
 const Plant = require('../models/Plant');
 const Unit = require('../models/Unit');
 const Product = require('../models/Product');
+const Material = require('../models/Material');
 const ExpenseCategory = require('../models/ExpenseCategory');
 
 const generateToken = (id) => {
@@ -32,6 +33,7 @@ exports.register = async (req, res, next) => {
     await Unit.ensureDefaults(org._id);
     await ExpenseCategory.ensureDefaults(org._id);
     await Product.insertMany(Product.DEFAULT_PRODUCTS.map(p => ({ ...p, organization: org._id })));
+    await Material.insertMany(Material.DEFAULT_MATERIALS.map(m => ({ ...m, organization: org._id })));
 
     const token = generateToken(user._id);
     res.status(201).json({

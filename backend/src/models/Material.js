@@ -16,4 +16,10 @@ materialSchema.statics.unitMap = async function (ids, organization) {
   return new Map(found.map(m => [String(m._id), m.unit]));
 };
 
+// Raw materials created for every new organization at signup
+const DEFAULT_MATERIALS = [
+  { name: 'Cement', unit: 'Bag' },
+];
+
 module.exports = mongoose.model('Material', materialSchema);
+module.exports.DEFAULT_MATERIALS = DEFAULT_MATERIALS;
