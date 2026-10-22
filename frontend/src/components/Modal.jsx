@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -10,9 +11,18 @@ import { X } from 'lucide-react';
  * - maxWidth: Tailwind max-width class for the panel
  */
 export default function Modal({ title, subtitle, onClose, footer, maxWidth = 'max-w-2xl', children }) {
+  // Freeze the page behind the popup so scrolling the popup never scrolls the page too
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   // Rendered on <body> so page spacing/animations can never offset the overlay
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-2 md:p-4">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center overscroll-contain bg-black/60 p-2 md:p-4">
       <div className={`flex max-h-[95vh] w-full ${maxWidth} flex-col overflow-hidden rounded-xl bg-white shadow-2xl md:rounded-2xl`} role="dialog" aria-modal="true">
         <div className="flex-shrink-0 bg-gradient-to-r from-primary-700 to-primary-500 p-3 text-white md:px-5 md:py-4">
           <div className="flex items-center justify-between gap-3">
@@ -26,7 +36,7 @@ export default function Modal({ title, subtitle, onClose, footer, maxWidth = 'ma
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 md:p-6">{children}</div>
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3 md:p-6">{children}</div>
 
         {footer && (
           <div className="flex flex-shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50 p-3 md:gap-3 md:p-4 [&>button]:flex-1 md:[&>button]:flex-none">
