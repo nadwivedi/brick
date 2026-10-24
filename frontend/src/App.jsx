@@ -1,9 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { BHATTA_PAGE, MANUFACTURING_PAGE, PRICE_PAGE } from './lib/publicNav';
 
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
+import BrickKilnPricePage from './pages/BrickKilnPricePage';
+import BhattaSoftwarePage from './pages/BhattaSoftwarePage';
+import BricksManufacturingPage from './pages/BricksManufacturingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -50,6 +54,10 @@ function AppRoutes() {
       <Route path="/" element={<PublicRoute><HomePage /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      {/* Product pages stay open to everyone, logged in or not */}
+      <Route path={PRICE_PAGE} element={<BrickKilnPricePage />} />
+      <Route path={BHATTA_PAGE} element={<BhattaSoftwarePage />} />
+      <Route path={MANUFACTURING_PAGE} element={<BricksManufacturingPage />} />
 
       {/* Protected */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

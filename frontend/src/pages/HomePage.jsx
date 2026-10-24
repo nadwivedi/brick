@@ -1,20 +1,15 @@
-import { useEffect, useId, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, BarChart3, Boxes, Building2, CheckCircle2, ClipboardList, FileText, Hammer,
-  HandCoins, HardHat, Landmark, Layers, LogIn, Menu, ShieldCheck, Smartphone, Sparkles, TrendingUp, Users, X,
+  HandCoins, HardHat, Landmark, Layers, LogIn, ShieldCheck, Smartphone, Sparkles, TrendingUp, Users,
 } from 'lucide-react';
-import Logo from '../components/Logo';
 import ContactSection from '../components/ContactSection';
 import WhatsAppButton from '../components/WhatsAppButton';
-import useEscapeKey from '../hooks/useEscapeKey';
+import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
+import { scrollToSection } from '../lib/publicNav';
 import { site } from '../lib/site';
 
-const NAV = [
-  { id: 'home', label: 'Home' },
-  { id: 'about', label: 'About Us' },
-  { id: 'contact', label: 'Contact Us' },
-];
 
 const FEATURES = [
   { icon: Hammer, title: 'Production tracking', text: 'Record daily output by plant and brick type, along with the labour and raw material that went into it.' },
@@ -48,48 +43,6 @@ const VALUES = [
   { icon: ShieldCheck, title: 'Safe & secure', text: 'Password-protected logins, with each business seeing only its own data.' },
 ];
 
-const scrollToSection = (id) => {
-  const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  document.getElementById(id)?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
-};
-
-// Faint brick-wall texture used behind the hero and the closing banner.
-function BrickPattern({ className = '' }) {
-  const id = `bricks${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  return (
-    <svg className={`pointer-events-none absolute inset-0 h-full w-full ${className}`} aria-hidden="true">
-      <defs>
-        <pattern id={id} width="56" height="28" patternUnits="userSpaceOnUse">
-          <rect x="1" y="1" width="54" height="12" rx="1.5" />
-          <rect x="-27" y="15" width="54" height="12" rx="1.5" />
-          <rect x="29" y="15" width="54" height="12" rx="1.5" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={`url(#${id})`} />
-    </svg>
-  );
-}
-
-// A small stack of bricks drawn in SVG, so the page needs no photos.
-function BrickStack({ className = '' }) {
-  const rows = [
-    { y: 64, xs: [0, 44, 88] },
-    { y: 42, xs: [22, 66] },
-    { y: 20, xs: [44] },
-  ];
-  return (
-    <svg viewBox="0 0 132 86" className={className} aria-hidden="true">
-      {rows.map(({ y, xs }) => xs.map(x => (
-        <g key={`${x}-${y}`}>
-          <rect x={x} y={y} width="42" height="20" rx="2.5" fill="#c2410c" />
-          <rect x={x} y={y} width="42" height="5" rx="2.5" fill="#ea580c" />
-          <rect x={x + 6} y={y + 10} width="8" height="4" rx="1" fill="#9a3412" opacity="0.5" />
-          <rect x={x + 28} y={y + 11} width="6" height="3" rx="1" fill="#9a3412" opacity="0.4" />
-        </g>
-      )))}
-    </svg>
-  );
-}
 
 // Illustrative preview of the dashboard, so visitors can picture the product.
 function HeroPreview() {
@@ -156,81 +109,13 @@ function HeroPreview() {
   );
 }
 
-function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  useEscapeKey(menuOpen, () => setMenuOpen(false));
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const goTo = (id) => (e) => {
-    e.preventDefault();
-    setMenuOpen(false);
-    scrollToSection(id);
-  };
-
-  return (
-    <header className={`sticky top-0 z-30 border-b transition ${scrolled || menuOpen ? 'border-slate-200 bg-white/90 shadow-sm backdrop-blur' : 'border-transparent bg-transparent'}`}>
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:h-[72px] sm:px-6" aria-label="Main">
-        <a href="#home" onClick={goTo('home')} aria-label={`${site.name} home`}>
-          <Logo name={site.name} />
-        </a>
-
-        <div className="hidden items-center gap-1 md:flex">
-          {NAV.map(n => (
-            <a key={n.id} href={`#${n.id}`} onClick={goTo(n.id)} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">
-              {n.label}
-            </a>
-          ))}
-          <Link to="/login" className="btn-primary ml-3 px-5 py-2.5">
-            <LogIn size={16} /> Login
-          </Link>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setMenuOpen(o => !o)}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-menu"
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          className="icon-btn text-slate-700 md:hidden"
-        >
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </nav>
-
-      {menuOpen && (
-        <div id="mobile-menu" className="border-t border-slate-200 bg-white px-4 pb-4 pt-2 md:hidden">
-          {NAV.map(n => (
-            <a key={n.id} href={`#${n.id}`} onClick={goTo(n.id)} className="block rounded-lg px-3 py-3 font-semibold text-slate-700 hover:bg-slate-100">
-              {n.label}
-            </a>
-          ))}
-          <Link to="/login" className="btn-primary mt-2 w-full py-3">
-            <LogIn size={16} /> Login
-          </Link>
-        </div>
-      )}
-    </header>
-  );
-}
-
-function SectionHeading({ eyebrow, title, text }) {
-  return (
-    <div className="mx-auto max-w-2xl text-center">
-      <p className="text-sm font-semibold uppercase tracking-wider text-orange-700">{eyebrow}</p>
-      <h2 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h2>
-      {text && <p className="mt-4 text-slate-600">{text}</p>}
-    </div>
-  );
-}
-
 export default function HomePage() {
+  // Arriving from another page via /#about, /#contact etc.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) scrollToSection(hash.slice(1));
+  }, [hash]);
+
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
       <Navbar />
@@ -378,12 +263,7 @@ export default function HomePage() {
         <ContactSection />
       </main>
 
-      <footer className="border-t border-slate-200 bg-slate-50">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6">
-          <Logo name={site.name} subtitle="Brick Manufacturing Management" />
-          <p>© {new Date().getFullYear()} {site.name}. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
 
       <WhatsAppButton />
     </div>

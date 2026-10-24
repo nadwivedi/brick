@@ -4,6 +4,8 @@ const env = import.meta.env;
 
 export const site = {
   name: 'Brick Manager',
+  // Public address of the website, e.g. https://www.example.com (used for canonical links)
+  url: (env.VITE_SITE_URL || '').replace(/\/$/, ''),
   phone: env.VITE_CONTACT_PHONE || '+91 XXXXX XXXXX',
   email: env.VITE_CONTACT_EMAIL || 'contact@yourdomain.com',
   address: env.VITE_CONTACT_ADDRESS || 'Your business address, City, State - PIN',
