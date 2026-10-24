@@ -6,7 +6,7 @@ const Material = require('../models/Material');
 const Purchase = require('../models/Purchase');
 const VendorPayment = require('../models/VendorPayment');
 const Product = require('../models/Product');
-const { receivablePayable } = require('../utils/partyBalances');
+const { topDues } = require('../utils/partyBalances');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -91,7 +91,7 @@ exports.getSummary = async (req, res, next) => {
     const byMonth = days > 62;
 
     const [
-      production, sales, collection, expenses, purchases, outstanding,
+      production, sales, collection, expenses, purchases, dues,
       productionTrend, salesTrend, collectionTrend
     ] = await Promise.all([
       sumInRange(ProductionEntry, inRange, 'quantityProduced'),
@@ -101,7 +101,7 @@ exports.getSummary = async (req, res, next) => {
       sumInRange(Purchase, inRange, 'totalAmount'),
       // Outstanding dues are what parties owe right now (their ledger balance), not limited to the
       // date range or a plant: money received later is recorded against the party, not a sale
-      receivablePayable(orgId).then(r => r.receivable),
+      topDues(orgId),
       productionTrendByType(inRange, byMonth, start, end),
       trendInRange(Invoice, inRange, 'totalAmount', byMonth, start, end),
       trendInRange(Payment, inRange, 'amount', byMonth, start, end),
@@ -129,7 +129,9 @@ exports.getSummary = async (req, res, next) => {
         collection,
         expenses,
         purchases,
-        outstanding,
+        outstanding: dues.receivable,
+        // Parties who owe you the most, and parties you owe the most (biggest first)
+        dues,
         lowStockCount: lowStock.length,
         lowStockItems: lowStock,
         productionTrend,

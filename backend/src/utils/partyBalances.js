@@ -80,13 +80,20 @@ const partyBalances = async (organization) => {
   }));
 };
 
-// What all parties owe us (receivable) and what we owe them (payable), right now
-const receivablePayable = async (organization) => {
-  const balances = Object.values(await partyBalances(organization)).map(r => r.balance);
+// The receivable / payable totals and the parties owing (or owed) the most, biggest first
+const topDues = async (organization, limit = 7) => {
+  const [balances, parties] = await Promise.all([
+    partyBalances(organization),
+    Party.find({ organization }).select('name mobile').lean(),
+  ]);
+  const rows = parties.map(p => ({ _id: p._id, name: p.name, mobile: p.mobile, balance: balances[String(p._id)]?.balance || 0 }));
+  const owing = rows.filter(r => r.balance > 0).sort((a, b) => b.balance - a.balance);
+  const owed = rows.filter(r => r.balance < 0).sort((a, b) => a.balance - b.balance).map(r => ({ ...r, balance: -r.balance }));
+  const sum = (list) => list.reduce((s, r) => s + r.balance, 0);
   return {
-    receivable: balances.reduce((s, b) => s + Math.max(b, 0), 0),
-    payable: balances.reduce((s, b) => s + Math.max(-b, 0), 0),
+    receivable: sum(owing), receivableCount: owing.length, topReceivable: owing.slice(0, limit),
+    payable: sum(owed), payableCount: owed.length, topPayable: owed.slice(0, limit),
   };
 };
 
-module.exports = { HIRED_TRANSPORT, partyTotals, balanceChange, partyBalances, receivablePayable };
+module.exports = { HIRED_TRANSPORT, partyTotals, balanceChange, partyBalances, topDues };
