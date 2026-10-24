@@ -1,6 +1,12 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config(); // Fallback to current working directory if available
+
+// Logins can't be signed or checked without a secret, so refuse to start rather than fail on every request
+if (!process.env.JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not set. Copy backend/.env.example to backend/.env and fill it in.');
+  process.exit(1);
+}
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -25,7 +31,7 @@ connectDB()
 
 const app = express();
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true }));
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174','http://localhost:5175'], credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));

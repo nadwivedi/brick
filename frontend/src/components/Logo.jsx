@@ -1,6 +1,6 @@
 import { BrickWall } from 'lucide-react';
 
-export default function Logo({ subtitle, size = 'md' }) {
+export default function Logo({ name = 'BrickSoft', subtitle, size = 'md' }) {
   const large = size === 'lg';
   return (
     <span className="flex items-center gap-2.5">
@@ -8,7 +8,7 @@ export default function Logo({ subtitle, size = 'md' }) {
         <BrickWall size={large ? 26 : 22} />
       </span>
       <span className="min-w-0 text-left">
-        <span className={`block font-bold leading-tight text-slate-900 ${large ? 'text-2xl' : 'text-lg'}`}>BrickSoft</span>
+        <span className={`block font-bold leading-tight text-slate-900 ${large ? 'text-2xl' : 'text-lg'}`}>{name}</span>
         {subtitle && <span className="block truncate text-[11px] font-medium text-slate-500">{subtitle}</span>}
       </span>
     </span>

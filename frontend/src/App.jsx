@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 import Layout from './components/Layout';
+import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -39,16 +40,19 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
+// Unknown links go to the dashboard when logged in, otherwise to the homepage
+const Fallback = () => <Navigate to={useAuth().user ? '/dashboard' : '/'} replace />;
+
 function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
+      <Route path="/" element={<PublicRoute><HomePage /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
       {/* Protected */}
-      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
+      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="production" element={<ProductionPage />} />
@@ -84,7 +88,7 @@ function AppRoutes() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Fallback />} />
     </Routes>
   );
 }
