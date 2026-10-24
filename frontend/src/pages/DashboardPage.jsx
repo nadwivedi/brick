@@ -9,6 +9,7 @@ import SaleFormModal from '../components/SaleFormModal';
 import PurchaseFormModal from '../components/PurchaseFormModal';
 import ExpenseFormModal from '../components/ExpenseFormModal';
 import PartyPaymentModal from '../components/PartyPaymentModal';
+import PartyCell from '../components/PartyCell';
 import { LoadingState } from '../components/States';
 import {
   Hammer, FileText, Package, DollarSign, TrendingUp,
@@ -56,6 +57,62 @@ const AXIS_TICK = { fontSize: 11, fill: '#64748b' };
 const TOOLTIP_STYLE = { borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -12px rgba(15,23,42,0.25)', fontSize: 12 };
 const CHART_BLUE = '#2563eb';
 const CHART_GREEN = '#10b981';
+
+/**
+ * Top parties by what is due, from their ledger balances. Each row opens the party's ledger.
+ * kind: 'collect' (they owe you) or 'pay' (you owe them)
+ */
+function DuesPanel({ kind, rows = [], total = 0, count = 0 }) {
+  const collect = kind === 'collect';
+  const Icon = collect ? HandCoins : Send;
+  return (
+    <section className="panel flex flex-col">
+      <div className="panel-header flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${collect ? 'bg-emerald-50 text-emerald-700 ring-emerald-100' : 'bg-rose-50 text-rose-700 ring-rose-100'}`}>
+            <Icon size={18} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-slate-900">{collect ? 'To Collect' : 'To Pay'}</h3>
+            <p className="truncate text-xs text-slate-500">{collect ? 'Parties who owe you the most' : 'Parties you owe the most'}</p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className={`text-base font-bold ${collect ? 'text-emerald-700' : 'text-rose-600'}`}>{fmt(total)}</p>
+          <p className="text-[11px] text-slate-500">{count} part{count === 1 ? 'y' : 'ies'} in all</p>
+        </div>
+      </div>
+      {rows.length === 0 ? (
+        <p className="flex flex-1 items-center justify-center px-4 py-10 text-sm text-slate-500">
+          {collect ? 'Nobody owes you anything right now.' : "You don't owe anyone right now."}
+        </p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {rows.map((r, i) => {
+            const share = total > 0 ? (r.balance / total) * 100 : 0;
+            return (
+              <li key={r._id}>
+                <Link to={`/masters/parties/${r._id}/ledger`} className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-slate-50" title="Open the party's ledger">
+                  <span className="w-4 shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <PartyCell name={r.name} mobile={r.mobile} />
+                  </div>
+                  <div className="w-28 shrink-0 text-right">
+                    <p className={`font-bold ${collect ? 'text-emerald-700' : 'text-rose-600'}`}>{fmt(r.balance)}</p>
+                    <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-100" title={`${share.toFixed(0)}% of the total`}>
+                      <div className={`ml-auto h-full rounded-full ${collect ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${share}%` }} />
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="shrink-0 text-slate-300" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 export default function DashboardPage() {
   const [data, setData] = useState(null);
@@ -234,6 +291,12 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
         </section>
+      </div>
+
+      {/* Who owes you and whom you owe, right now (not limited to the date range) */}
+      <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2">
+        <DuesPanel kind="collect" rows={data?.dues?.topReceivable} total={data?.dues?.receivable} count={data?.dues?.receivableCount} />
+        <DuesPanel kind="pay" rows={data?.dues?.topPayable} total={data?.dues?.payable} count={data?.dues?.payableCount} />
       </div>
 
       {/* Low stock table */}
