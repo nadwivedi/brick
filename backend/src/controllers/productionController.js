@@ -7,9 +7,11 @@ const StockMovement = require('../models/StockMovement');
 // @route GET /api/production
 exports.getAll = async (req, res, next) => {
   try {
-    const { plant, from, to, page = 1, limit = 20 } = req.query;
+    const { plant, product, from, to, page = 1, limit = 20 } = req.query;
     const query = { organization: req.user.organization._id };
     if (plant) query.plant = plant;
+    // One brick type only
+    if (mongoose.isValidObjectId(product)) query.product = product;
     if (from || to) {
       query.date = {};
       if (from) query.date.$gte = new Date(from);
@@ -128,7 +130,8 @@ exports.summary = async (req, res, next) => {
   try {
     const { plant, from, to } = req.query;
     const match = { organization: req.user.organization._id };
-    if (plant) match.plant = plant;
+    // An aggregate does not turn id strings into ObjectIds by itself
+    if (mongoose.isValidObjectId(plant)) match.plant = new mongoose.Types.ObjectId(String(plant));
     if (from || to) {
       match.date = {};
       if (from) match.date.$gte = new Date(from);
