@@ -88,6 +88,11 @@ export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
     setForm({ ...form, items, totalAmount: total });
   };
 
+  const removeItem = (idx) => setForm(f => {
+    const items = f.items.filter((_, i) => i !== idx);
+    return { ...f, items, totalAmount: items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) };
+  });
+
   // The bill is materials plus transport; what is not paid now goes on the party's balance
   const bill = (form.totalAmount || 0) + (Number(form.transportCharges) || 0);
   const purchaseType = paidType(form.paidAmount, bill);
@@ -140,9 +145,13 @@ export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
         </>}
       >
         <ModalSection number={1} title="Purchase Details" tone="blue">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-            <div><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
-            <div><label className="label">Bill Number</label><input className="input" placeholder="Bill no." value={form.billNumber} onChange={e => setForm({ ...form, billNumber: e.target.value })} /></div>
+          <div className="space-y-3 md:space-y-4">
+            {/* Equal columns for however many fields show (the plant only shows with more than one plant) */}
+            <div className="grid grid-cols-2 gap-3 md:auto-cols-fr md:grid-flow-col md:gap-4">
+              <div><label className="label">Date</label><input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
+              <div><label className="label">Bill Number</label><input className="input" placeholder="Bill no. (optional)" value={form.billNumber} onChange={e => setForm({ ...form, billNumber: e.target.value })} /></div>
+              <PlantSelect className="col-span-2 md:col-span-1" plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
+            </div>
             <div>
               <div className="mb-1 flex items-center justify-between gap-2">
                 <label className="label mb-0">Party</label>
@@ -150,10 +159,9 @@ export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
               </div>
               <select className="input" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })}>
                 <option value="">Select Party</option>
-                {vendors.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+                {vendors.map(v => <option key={v._id} value={v._id}>{v.name}{v.mobile ? ` (${v.mobile})` : ''}</option>)}
               </select>
             </div>
-            <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
           </div>
         </ModalSection>
 
@@ -177,10 +185,13 @@ export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end md:gap-3">
                   <div className="col-span-2 md:col-span-1">
                     <label className="label">Material</label>
-                    <select className="input" value={item.material} onChange={e => updateItem(idx, 'material', e.target.value)}>
-                      <option value="">Select Material</option>
-                      {materials.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select className="input" value={item.material} onChange={e => updateItem(idx, 'material', e.target.value)}>
+                        <option value="">Select Material</option>
+                        {materials.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                      </select>
+                      <button className="icon-btn shrink-0 hover:bg-red-50 hover:text-red-600 md:hidden" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
+                    </div>
                   </div>
                   <div>
                     <label className="label">{unit ? `How many ${unit}?` : 'Quantity'}</label>
@@ -197,7 +208,7 @@ export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
                       <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-500">/ {unit || 'unit'}</span>
                     </div>
                   </div>
-                  <button className="icon-btn col-span-2 justify-self-end hover:bg-red-50 hover:text-red-600 md:col-span-1 md:mb-0.5" title="Remove item" onClick={() => setForm(f => { const items = f.items.filter((_, i) => i !== idx); const total = items.reduce((s, i) => s + i.amount, 0); return { ...f, items, totalAmount: total }; })}><Trash2 size={16} /></button>
+                  <button className="icon-btn hidden hover:bg-red-50 hover:text-red-600 md:mb-0.5 md:inline-flex" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
                 </div>
                 <p className="mt-2 flex flex-wrap items-center justify-between gap-x-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
                   <span>{qty.toLocaleString('en-IN')} {unit || 'unit'} × {fmt(rate)} per {unit || 'unit'}</span>
@@ -208,15 +219,25 @@ export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
           })}
         </ModalSection>
 
-        <ModalSection number={3} title="Payment Information" tone="purple">
+        <ModalSection number={3} title="Bill & Payment" tone="purple">
           <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <div><label className="label">Transport Charges (₹)</label><input type="number" {...NON_NEGATIVE} className="input font-semibold" value={form.transportCharges} onChange={e => setForm({ ...form, transportCharges: e.target.value })} /></div>
             <div>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="label mb-0">Paid Now (₹)</label>
+              {/* Same height as the label row beside it, which has a button */}
+              <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Transport Charges</label></div>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="0" value={form.transportCharges} onChange={e => setForm({ ...form, transportCharges: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
+                <label className="label mb-0">Paid Now</label>
                 <button type="button" onClick={() => setForm({ ...form, paidAmount: bill })} className="text-xs font-semibold text-primary-600 hover:underline">Full amount</button>
               </div>
-              <input type="number" {...NON_NEGATIVE} className="input font-semibold text-rose-600" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold text-rose-600" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
+              </div>
             </div>
           </div>
           {/* Which cash / bank account only matters when money was paid */}
@@ -227,6 +248,11 @@ export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
                 onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
             </div>
           )}
+
+          <div className="mt-3 md:mt-4">
+            <label className="label">Notes (optional)</label>
+            <input className="input" placeholder="Anything worth remembering about this purchase" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          </div>
 
           {/* Whatever is not paid now is added to the party's balance, to be paid later */}
           <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-3 md:mt-4 md:p-4">
