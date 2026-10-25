@@ -3,6 +3,7 @@ const ProductionEntry = require('../models/ProductionEntry');
 const Product = require('../models/Product');
 const Material = require('../models/Material');
 const StockMovement = require('../models/StockMovement');
+const Invoice = require('../models/Invoice');
 
 // @route GET /api/production
 exports.getAll = async (req, res, next) => {
@@ -149,6 +150,55 @@ exports.summary = async (req, res, next) => {
       { $unwind: '$product' }
     ]);
     res.json({ success: true, data: agg });
+  } catch (error) { next(error); }
+};
+
+// @route GET /api/production/overview?from=YYYY-MM-DD&to=YYYY-MM-DD (both left out = all time)
+// Per brick type for the period: bricks made and damaged, bricks sold, and bricks per bag of cement
+// (only batches that recorded cement count towards that average). Draft and cancelled invoices are not sales.
+exports.overview = async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const from = DATE_RE.test(req.query.from || '') ? req.query.from : null;
+    const to = DATE_RE.test(req.query.to || '') ? req.query.to : null;
+    const date = {};
+    if (from) date.$gte = new Date(`${from}T00:00:00.000Z`);
+    if (to) date.$lte = new Date(`${to}T23:59:59.999Z`);
+    const inRange = Object.keys(date).length ? { date } : {};
+
+    const [products, cement, entries, sales] = await Promise.all([
+      Product.find({ organization }).select('name size isActive createdAt').sort({ createdAt: 1, _id: 1 }).lean(),
+      Material.find({ organization, name: /cement/i }).select('_id').lean(),
+      ProductionEntry.find({ organization, ...inRange }).select('product quantityProduced quantityDamaged materials').lean(),
+      Invoice.aggregate([
+        { $match: { organization, ...inRange, status: { $nin: ['draft', 'cancelled'] } } },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.product', sold: { $sum: '$items.quantity' }, soldAmount: { $sum: '$items.amount' } } },
+      ]),
+    ]);
+
+    const isCement = new Set(cement.map(c => String(c._id)));
+    const blank = () => ({ produced: 0, damaged: 0, entries: 0, sold: 0, soldAmount: 0, cementBricks: 0, bags: 0 });
+    const byProduct = {};
+    const rowOf = (id) => (byProduct[String(id)] ||= blank());
+    for (const e of entries) {
+      const row = rowOf(e.product);
+      row.produced += e.quantityProduced || 0;
+      row.damaged += e.quantityDamaged || 0;
+      row.entries += 1;
+      const bags = (e.materials || []).filter(m => isCement.has(String(m.material))).reduce((s, m) => s + (m.quantity || 0), 0);
+      if (bags > 0 && e.quantityProduced > 0) { row.cementBricks += e.quantityProduced; row.bags += bags; }
+    }
+    for (const s of sales) Object.assign(rowOf(s._id), { sold: s.sold, soldAmount: s.soldAmount });
+
+    const withRatio = (t) => ({ ...t, bricksPerBag: t.bags > 0 ? t.cementBricks / t.bags : null });
+    const rows = products.map(p => ({ product: p, ...withRatio(byProduct[String(p._id)] || blank()) }));
+    const totals = withRatio(rows.reduce((t, r) => {
+      for (const k of Object.keys(t)) t[k] += r[k];
+      return t;
+    }, blank()));
+    res.json({ success: true, data: { from, to, totals, products: rows } });
   } catch (error) { next(error); }
 };
 

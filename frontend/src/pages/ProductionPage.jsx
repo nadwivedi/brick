@@ -6,7 +6,8 @@ import ProductionFormModal from '../components/ProductionFormModal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight, Hammer, CalendarDays, CircleCheck, TriangleAlert, Sun, Sunrise, Sunset, Moon, MapPin, Layers } from 'lucide-react';
+import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight, Hammer, CircleCheck, ShoppingBag, Package, Sun, Sunrise, Sunset, Moon, MapPin, Layers } from 'lucide-react';
+import Segmented from '../components/Segmented';
 import CementRatioPanel from '../components/CementRatio';
 import { isCement, bricksPerBag, cementDiff, cementStatus, CEMENT_STATUS, fmtRatio, diffText, baselineOf } from '../lib/cement';
 import dayjs from 'dayjs';
@@ -19,11 +20,27 @@ const SHIFT_STYLES = {
 };
 
 const num = (n) => new Intl.NumberFormat('en-IN').format(n || 0);
-// Adds up the per-product rows returned by /production/summary (optionally one brick type only)
-const sumSummary = (rows, productId) => (rows || []).filter(r => !productId || String(r._id) === productId).reduce(
-  (t, r) => ({ produced: t.produced + (r.totalProduced || 0), damaged: t.damaged + (r.totalDamaged || 0), count: t.count + (r.count || 0) }),
-  { produced: 0, damaged: 0, count: 0 }
-);
+const money = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
+
+const DATE_FMT = 'YYYY-MM-DD';
+// Periods the totals, brick type cards and list can be looked at for
+const PERIODS = [
+  { key: 'today', label: 'Today', get: () => [dayjs(), dayjs()] },
+  { key: 'yesterday', label: 'Yesterday', get: () => [dayjs().subtract(1, 'day'), dayjs().subtract(1, 'day')] },
+  { key: 'last7', label: 'Last 7 Days', get: () => [dayjs().subtract(6, 'day'), dayjs()] },
+  { key: 'last30', label: 'Last 30 Days', get: () => [dayjs().subtract(29, 'day'), dayjs()] },
+  { key: 'all', label: 'All Time', get: () => [null, null] },
+];
+const periodRange = (key) => {
+  const [from, to] = (PERIODS.find(p => p.key === key) || PERIODS[0]).get();
+  return { from: from ? from.format(DATE_FMT) : undefined, to: to ? to.format(DATE_FMT) : undefined };
+};
+const rangeText = ({ from, to }) => (!from ? 'Since the first entry'
+  : from === to ? dayjs(from).format('D MMM YYYY')
+  : `${dayjs(from).format('D MMM')} – ${dayjs(to).format('D MMM YYYY')}`);
+
+const EMPTY = { produced: 0, damaged: 0, entries: 0, sold: 0, soldAmount: 0, bags: 0, cementBricks: 0, bricksPerBag: null };
+const plural = (n, one, many) => `${num(n)} ${n === 1 ? one : many}`;
 
 export default function ProductionPage() {
   const [entries, setEntries] = useState([]);
@@ -34,29 +51,25 @@ export default function ProductionPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [summary, setSummary] = useState({ all: [], month: [], today: [] }); // per brick type rows for each period
-  const [products, setProducts] = useState([]); // brick types
+  const [period, setPeriod] = useState('today');
+  const [overview, setOverview] = useState({ totals: EMPTY, products: [] }); // made, sold and bricks per bag for the period
   const [productFilter, setProductFilter] = useState(''); // '' = all brick types
   const [cement, setCement] = useState(null); // cement ratios as of today
+  const range = periodRange(period);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const today = dayjs().format('YYYY-MM-DD');
-      const [entriesRes, plantsRes, materialsRes, allRes, monthRes, todayRes, cementRes, productsRes] = await Promise.all([
-        api.get('/production', { params: { page, product: productFilter || undefined } }),
+      const today = dayjs().format(DATE_FMT);
+      const [entriesRes, plantsRes, materialsRes, overviewRes, cementRes] = await Promise.all([
+        api.get('/production', { params: { page, product: productFilter || undefined, ...range } }),
         api.get('/plants'),
         api.get('/materials'),
-        api.get('/production/summary'),
-        api.get('/production/summary', { params: { from: dayjs().startOf('month').format('YYYY-MM-DD'), to: today } }),
-        api.get('/production/summary', { params: { from: today, to: today } }),
+        api.get('/production/overview', { params: range }),
         api.get('/production/cement-ratio', { params: { asOf: today } }),
-        api.get('/products'),
       ]);
       setCement(cementRes.data || null);
-      setSummary({ all: allRes.data || [], month: monthRes.data || [], today: todayRes.data || [] });
-      // Oldest brick type first, so the list keeps the same order
-      setProducts((productsRes.data || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
+      setOverview(overviewRes.data || { totals: EMPTY, products: [] });
       setEntries(entriesRes.data || []);
       setTotalPages(entriesRes.pages || 1);
       setPlants(plantsRes.data || []);
@@ -65,22 +78,19 @@ export default function ProductionPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [page, productFilter]);
+  useEffect(() => { fetchData(); }, [page, productFilter, period]);
 
   const pickProduct = (id) => { setPage(1); setProductFilter(id); };
+  const pickPeriod = (key) => { setPage(1); setPeriod(key); };
 
-  // The cards and totals follow the brick type picked
-  const totals = {
-    all: sumSummary(summary.all, productFilter),
-    month: sumSummary(summary.month, productFilter),
-    today: sumSummary(summary.today, productFilter),
-  };
-  const everything = sumSummary(summary.all);
-  // Brick types with production, plus any still in use
-  const typeCards = products
-    .map(p => ({ product: p, all: sumSummary(summary.all, p._id), month: sumSummary(summary.month, p._id), today: sumSummary(summary.today, p._id) }))
-    .filter(t => t.all.count > 0 || t.product.isActive !== false);
-  const pickedName = products.find(p => p._id === productFilter)?.name;
+  // Brick types made or sold in the period, plus any still in use
+  const typeRows = overview.products.filter(r => r.produced > 0 || r.sold > 0 || r.product.isActive !== false);
+  const picked = typeRows.find(r => r.product._id === productFilter);
+  const pickedName = picked?.product.name;
+  // The cards follow the brick type picked
+  const totals = picked || overview.totals || EMPTY;
+  const periodLabel = PERIODS.find(p => p.key === period)?.label;
+  const damagedPct = totals.produced ? (totals.damaged / totals.produced) * 100 : 0;
 
   const findMaterial = (id) => materials.find(m => m._id === id);
 
@@ -109,28 +119,37 @@ export default function ProductionPage() {
 
   return (
     <div className="space-y-4 fade-in md:space-y-5">
-      {/* Totals (for the brick type picked below, or all) */}
+      {/* Period picker: the cards, brick types and list below all follow it */}
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-base font-bold text-slate-900">{periodLabel}{pickedName ? ` · ${pickedName}` : ''}</h2>
+          <p className="text-xs text-slate-500">{rangeText(range)}</p>
+        </div>
+        <Segmented options={PERIODS} value={period} onChange={pickPeriod} />
+      </div>
+
+      {/* Totals for the period (and the brick type picked below, or all) */}
       <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-4">
-        <StatCard icon={Hammer} label={pickedName ? `Today · ${pickedName}` : 'Today'} hint={`${totals.today.count} ${totals.today.count === 1 ? 'entry' : 'entries'} today`} value={`${num(totals.today.produced)} pcs`} tone="blue" />
-        <StatCard icon={CalendarDays} label={pickedName ? `This Month · ${pickedName}` : 'This Month'} hint={`${totals.month.count} ${totals.month.count === 1 ? 'entry' : 'entries'} in ${dayjs().format('MMMM')}`} value={`${num(totals.month.produced)} pcs`} tone="indigo" />
-        <StatCard icon={CircleCheck} label="Good Bricks" hint={`Out of ${num(totals.all.produced)} produced in all`} value={`${num(totals.all.produced - totals.all.damaged)} pcs`} tone="emerald" />
-        <StatCard icon={TriangleAlert} label="Damaged" hint={totals.all.produced ? `${((totals.all.damaged / totals.all.produced) * 100).toFixed(1)}% of all production` : 'No production yet'} value={`${num(totals.all.damaged)} pcs`} tone="rose" />
+        <StatCard icon={Hammer} label="Produced" hint={plural(totals.entries, 'entry', 'entries')} value={`${num(totals.produced)} pcs`} tone="blue" />
+        <StatCard icon={CircleCheck} label="Good Bricks" hint={totals.damaged ? `${num(totals.damaged)} damaged (${damagedPct.toFixed(1)}%)` : 'None damaged'} value={`${num(totals.produced - totals.damaged)} pcs`} tone="emerald" />
+        <StatCard icon={ShoppingBag} label="Sold" hint={totals.sold ? `Worth ${money(totals.soldAmount)}` : 'No bricks sold'} value={`${num(totals.sold)} pcs`} tone="indigo" />
+        <StatCard icon={Package} label="Avg Bricks / Bag" hint={totals.bags ? `${num(totals.cementBricks)} bricks from ${num(totals.bags)} bags of cement` : 'No cement recorded'} value={fmtRatio(totals.bricksPerBag)} tone="amber" />
       </section>
 
-      {/* Production per brick type; picking one shows only that type on this page */}
-      {typeCards.length > 0 && (
+      {/* Each brick type for the period; picking one shows only that type on this page */}
+      {typeRows.length > 0 && (
         <section className="panel">
           <div className="panel-header flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900">By Brick Type</h3>
-              <p className="text-xs text-slate-500">Total produced of each type. Pick one to see only that type.</p>
+              <p className="text-xs text-slate-500">Made, sold and bricks per bag of cement · {periodLabel}. Pick one to see only that type.</p>
             </div>
             {productFilter && (
               <button type="button" className="text-xs font-semibold text-primary-600 hover:underline" onClick={() => pickProduct('')}>Show all types</button>
             )}
           </div>
           <div className="scrollbar-hide flex gap-2.5 overflow-x-auto p-3 md:grid md:grid-cols-3 md:p-4 xl:grid-cols-4">
-            {[{ product: { _id: '', name: 'All Brick Types' }, all: everything, month: sumSummary(summary.month), today: sumSummary(summary.today) }, ...typeCards].map(t => {
+            {[{ product: { _id: '', name: 'All Brick Types' }, ...(overview.totals || EMPTY) }, ...typeRows].map(t => {
               const active = productFilter === t.product._id;
               return (
                 <button
@@ -138,7 +157,7 @@ export default function ProductionPage() {
                   type="button"
                   onClick={() => pickProduct(t.product._id)}
                   aria-pressed={active}
-                  className={`w-52 shrink-0 rounded-xl border-2 p-3 text-left transition md:w-auto ${active ? 'border-primary-600 bg-primary-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  className={`w-56 shrink-0 rounded-xl border-2 p-3 text-left transition md:w-auto ${active ? 'border-primary-600 bg-primary-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
                 >
                   <p className="flex items-center gap-2">
                     <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${active ? 'bg-primary-600 text-white ring-primary-600' : 'bg-blue-50 text-blue-700 ring-blue-100'}`}>
@@ -146,13 +165,19 @@ export default function ProductionPage() {
                     </span>
                     <span className="truncate text-sm font-bold text-slate-800">{t.product.name}</span>
                   </p>
-                  <p className="mt-2 text-xl font-bold text-slate-900">{num(t.all.produced)} <span className="text-xs font-semibold text-slate-400">pcs</span></p>
-                  <p className="text-[11px] text-slate-500">
-                    {num(t.all.produced - t.all.damaged)} good{t.all.damaged > 0 ? ` · ${num(t.all.damaged)} damaged` : ''}
-                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Produced</p>
+                      <p className="text-lg font-bold leading-tight text-slate-900">{num(t.produced)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sold</p>
+                      <p className="text-lg font-bold leading-tight text-indigo-700">{num(t.sold)}</p>
+                    </div>
+                  </div>
                   <p className="mt-1.5 flex justify-between gap-2 border-t border-slate-100 pt-1.5 text-[11px] text-slate-500">
-                    <span>Month <span className="font-semibold text-slate-700">{num(t.month.produced)}</span></span>
-                    <span>Today <span className="font-semibold text-slate-700">{num(t.today.produced)}</span></span>
+                    <span>{t.damaged > 0 ? `${num(t.damaged)} damaged` : 'None damaged'}</span>
+                    <span><span className="font-semibold text-slate-700">{fmtRatio(t.bricksPerBag)}</span> bricks/bag</span>
                   </p>
                 </button>
               );
@@ -185,7 +210,7 @@ export default function ProductionPage() {
         {loading ? (
           <LoadingState label="Loading production entries…" />
         ) : filtered.length === 0 ? (
-          <EmptyState icon={Hammer} title="No production entries found" hint={search ? 'Try a different search.' : pickedName ? `No ${pickedName} production yet.` : 'Add your first production entry to get started.'} />
+          <EmptyState icon={Hammer} title="No production entries found" hint={search ? 'Try a different search.' : period !== 'all' ? `No ${pickedName ? `${pickedName} ` : ''}production ${periodLabel.toLowerCase()}. Pick another period above.` : pickedName ? `No ${pickedName} production yet.` : 'Add your first production entry to get started.'} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[940px] text-left">
