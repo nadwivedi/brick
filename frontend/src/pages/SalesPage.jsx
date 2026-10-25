@@ -174,7 +174,8 @@ export default function SalesPage() {
                       </td>
                       <td className="table-cell">
                         <PartyCell name={inv.customer?.name} mobile={inv.customer?.mobile} />
-                        {partyId && balance !== undefined && (
+                        {/* Only what the party owes us; what we owe them is in their ledger */}
+                        {partyId && balance > 0 && (
                           <Link to={`/masters/parties/${partyId}/ledger`} className={`mt-1 block whitespace-nowrap pl-[52px] text-xs font-semibold hover:underline ${balanceClass(balance)}`} title="Open the party's ledger">
                             {balanceText(balance)}
                           </Link>
