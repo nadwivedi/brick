@@ -51,7 +51,13 @@ export default function TripRatesEditor({ value, onChange, plants, hired }) {
           </div>
         </div>
       ))}
-      <button type="button" className="btn-secondary btn-sm" onClick={add}><Plus size={14} /> Add Route</button>
+      <button
+        type="button"
+        onClick={add}
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-emerald-200 bg-white/70 px-3 py-2.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-white"
+      >
+        <Plus size={16} /> {rows.length ? 'Add another route' : 'Add Route'}
+      </button>
     </div>
   );
 }

@@ -19,8 +19,10 @@ import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
  * - rowActions: (item, refresh) => node — extra buttons shown before Edit/Delete on each row
  * - summary: (items) => node — shown above the list, e.g. stat cards
  * - searchKeys: [key] — fields the search box looks in (defaults to the column keys)
+ * - formContent: (form, setForm, editing) => node — draws the popup's fields instead of the plain list from `fields`
+ *   (`fields` still says which keys are loaded when editing); formWidth sets the popup width for it
  */
-export default function CRUDPage({ title, subtitle, endpoint, columns, fields, defaultValues, canDelete = () => true, rowActions, summary, searchKeys }) {
+export default function CRUDPage({ title, subtitle, endpoint, columns, fields, defaultValues, canDelete = () => true, rowActions, summary, searchKeys, formContent, formWidth = 'max-w-2xl' }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -159,7 +161,7 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
           title={`${editing ? 'Edit' : 'Add'} ${singular}`}
           subtitle={editing ? `Update ${singular.toLowerCase()} details` : `Add a new ${singular.toLowerCase()}`}
           onClose={() => setShowForm(false)}
-          maxWidth={twoColumns ? 'max-w-2xl' : 'max-w-md'}
+          maxWidth={formContent ? formWidth : twoColumns ? 'max-w-2xl' : 'max-w-md'}
           footer={<>
             <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
@@ -168,7 +170,7 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
             </button>
           </>}
         >
-          <div className={`grid grid-cols-1 gap-3 md:gap-4 ${twoColumns ? 'md:grid-cols-2' : ''}`}>
+          {formContent ? formContent(form, setForm, !!editing) : <div className={`grid grid-cols-1 gap-3 md:gap-4 ${twoColumns ? 'md:grid-cols-2' : ''}`}>
             {fields.filter(f => !f.show || f.show(form)).map(f => (
               <div key={f.key} className={twoColumns && ['textarea', 'custom'].includes(f.type) ? 'md:col-span-2' : ''}>
                 <label className="label">{f.label}</label>
@@ -194,7 +196,7 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
                 )}
               </div>
             ))}
-          </div>
+          </div>}
         </Modal>
       )}
     </div>
