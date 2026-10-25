@@ -64,6 +64,15 @@ const nextInvoiceNumber = async (organization) => {
   return `INV-${String(highest + 1).padStart(4, '0')}`;
 };
 
+// @route GET /api/invoices/next-number
+// The number the next invoice will get, to show on the new invoice form. Another invoice saved first
+// can still take it; the invoice then gets the next free one.
+exports.nextNumber = async (req, res, next) => {
+  try {
+    res.json({ success: true, data: await nextInvoiceNumber(req.user.organization._id) });
+  } catch (error) { next(error); }
+};
+
 // @route POST /api/invoices
 exports.create = async (req, res, next) => {
   try {
