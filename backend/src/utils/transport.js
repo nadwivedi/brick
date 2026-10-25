@@ -68,7 +68,6 @@ const resolveSaleVehicle = async (organization, body, transport) => {
       tripRates: transport.transportLocation ? [{
         plant: body.plant, location: transport.transportLocation,
         rate: transport.transportMode === 'hired' ? transport.transportRate : 0,
-        charge: transport.transportQty ? round(transport.transportCharges / transport.transportQty) : 0,
       }] : [],
     }).catch(e => {
       // Saved by another request at the same moment

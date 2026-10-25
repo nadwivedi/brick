@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { NON_NEGATIVE } from '../lib/number';
+import OptionPicker from './OptionPicker';
 import { defaultPlantId } from '../lib/plants';
 import { TRANSPORT_MODES, TRANSPORT_BASES, basisOf, transportCost, saleTransportQty, cleanVehicleNumber } from '../lib/transport';
 import { ArrowRight } from 'lucide-react';
@@ -49,6 +51,27 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
     });
   };
 
+  // My vehicles and hired vehicles are picked from a list of that kind; a new number can still be typed
+  const [typingNew, setTypingNew] = useState(false);
+  const kindVehicles = vehicles.filter(v => v.ownership === mode && v.isActive !== false);
+  const vehicleOptions = kindVehicles.map(v => ({
+    value: v.vehicleNumber,
+    label: v.vehicleNumber,
+    hint: mode === 'hired' ? parties.find(p => p._id === v.party)?.name : undefined,
+  }));
+  // A number already on this sale stays pickable even when it is not in the list
+  if (form.vehicleNumber && !vehicleOptions.some(o => o.value === form.vehicleNumber)) {
+    vehicleOptions.unshift({ value: form.vehicleNumber, label: form.vehicleNumber });
+  }
+  const showPicker = mode !== 'party' && !typingNew && kindVehicles.length > 0;
+
+  const pickMode = (key) => {
+    setTypingNew(false);
+    // A vehicle of another kind does not carry over
+    const keep = vehicle && vehicle.ownership === key;
+    onChange({ transportMode: key, ...(keep ? {} : { vehicleNumber: '', transportLocation: '' }) });
+  };
+
   const pickRoute = (location) => {
     const r = routes.find(x => x.location === location);
     onChange(r ? routePatch(r, mode) : { transportLocation: location });
@@ -72,7 +95,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
             <button
               key={m.key}
               type="button"
-              onClick={() => onChange({ transportMode: m.key })}
+              onClick={() => pickMode(m.key)}
               className={`rounded-lg border-2 px-2 py-2 text-center transition sm:px-3 sm:text-left ${active ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
             >
               <span className={`block text-xs font-semibold sm:text-sm ${active ? 'text-amber-800' : 'text-slate-700'}`}>{m.label}</span>
@@ -84,12 +107,31 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <div className="col-span-2">
-          <label className="label">Vehicle Number</label>
-          <input className="input uppercase placeholder:normal-case" list="sale-vehicles" placeholder="Type or pick, e.g. MH04AB1234"
-            value={form.vehicleNumber} onChange={e => pickVehicle(e.target.value)} />
-          <datalist id="sale-vehicles">
-            {vehicles.filter(v => v.isActive !== false).map(v => <option key={v._id} value={v.vehicleNumber} />)}
-          </datalist>
+          <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
+            <label className="label mb-0">{mode === 'own' ? 'My Vehicle' : mode === 'hired' ? 'Hired Vehicle' : 'Vehicle Number'}</label>
+            {mode !== 'party' && kindVehicles.length > 0 && (
+              <button type="button" className="text-xs font-semibold text-primary-600 hover:underline"
+                onClick={() => { setTypingNew(!typingNew); onChange({ vehicleNumber: '', transportLocation: '' }); }}>
+                {typingNew ? 'Pick from list' : '+ New Vehicle'}
+              </button>
+            )}
+          </div>
+          {showPicker ? (
+            <OptionPicker options={vehicleOptions} value={form.vehicleNumber} onChange={pickVehicle}
+              placeholder={mode === 'own' ? 'Select my vehicle' : 'Select hired vehicle'} searchPlaceholder="Search vehicle number..." />
+          ) : (
+            <>
+              <input className="input uppercase placeholder:normal-case" list={mode === 'party' ? 'sale-vehicles' : undefined}
+                placeholder={mode === 'party' ? "Party's vehicle, e.g. MH04AB1234" : 'New vehicle number, e.g. MH04AB1234'}
+                value={form.vehicleNumber} onChange={e => pickVehicle(e.target.value)} />
+              {mode === 'party' && (
+                <datalist id="sale-vehicles">
+                  {vehicles.filter(v => v.ownership === 'party' && v.isActive !== false).map(v => <option key={v._id} value={v.vehicleNumber} />)}
+                </datalist>
+              )}
+              {mode !== 'party' && <p className="mt-1 text-[11px] text-slate-500">Saved to your vehicles when the sale is saved.</p>}
+            </>
+          )}
         </div>
         {mode !== 'party' && (
           <div className="col-span-2">
