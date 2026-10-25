@@ -285,8 +285,6 @@ export default function DashboardPage() {
         {kpis.map(kpi => <StatCard key={kpi.label} {...kpi} />)}
       </section>
 
-      <CashflowPanel flow={data?.cashflow} periodText={periodText} />
-
       {/* Quick actions: the app's blue as a band of colour, with white tiles on it (as in the crusher app) */}
       <section className="panel bg-gradient-to-r from-primary-700 to-primary-600 ring-primary-700">
         <div className="panel-header flex flex-wrap items-center justify-between gap-2 border-white/15 py-3">
@@ -373,6 +371,9 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {/* Cashflow comes right after the charts */}
+      <CashflowPanel flow={data?.cashflow} periodText={periodText} />
 
       {/* Who owes you and whom you owe, right now (not limited to the date range) */}
       <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2">
