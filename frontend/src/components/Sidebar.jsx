@@ -43,8 +43,9 @@ const navGroups = [
       { to: '/masters/labour', icon: HardHat, label: 'Labour' },
       { to: '/masters/vehicles', icon: Truck, label: 'Vehicles' },
       { to: '/masters/plants', icon: Building2, label: 'Plants' },
-      { to: '/masters/brick-types', icon: Layers, label: 'Brick Types' },
       { to: '/masters/raw-materials', icon: Boxes, label: 'Raw Materials' },
+      // Set up once and rarely changed, so they sit at the end
+      { to: '/masters/brick-types', icon: Layers, label: 'Brick Types' },
       { to: '/masters/units', icon: Ruler, label: 'Units' },
       { to: '/masters/expense-categories', icon: Tags, label: 'Expense Categories' },
     ]
