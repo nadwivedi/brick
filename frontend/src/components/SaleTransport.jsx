@@ -77,15 +77,6 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
     onChange(r ? routePatch(r, mode) : { transportLocation: location });
   };
 
-  const setTrips = (value) => onChange({ transportQty: value });
-
-  const tripsInput = (
-    <div>
-      <label className="label">Trips</label>
-      <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="1" value={form.transportQty} onChange={e => setTrips(e.target.value)} />
-    </div>
-  );
-
   return (
     <div className="space-y-3 md:space-y-4">
       <div className="grid grid-cols-3 gap-2">
@@ -157,7 +148,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
               {TRANSPORT_BASES.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
             </select>
           </div>
-          {basis.key === 'per_trip' ? tripsInput : basis.key !== 'fixed' && (
+          {!['per_trip', 'fixed'].includes(basis.key) && (
             <div>
               <label className="label">{basis.key === 'per_km' ? 'Distance (km)' : basis.key === 'per_ton' ? 'Weight (tons)' : 'Bricks (×1000)'}</label>
               {basis.key === 'per_1000' ? (
@@ -168,7 +159,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
               )}
             </div>
           )}
-          <div className={basis.key === 'fixed' ? 'col-span-2' : ''}>
+          <div className={['per_trip', 'fixed'].includes(basis.key) ? 'col-span-2' : ''}>
             <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
             <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
               value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
@@ -179,7 +170,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
       {/* Where a per-trip delivery went: from this sale's plant to a location */}
       {perTrip && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          <div className="col-span-2 md:col-span-3">
+          <div className="col-span-2 md:col-span-4">
             <label className="label flex items-center gap-1.5">
               Route <span className="font-normal text-slate-400">· from {plantName}</span> <ArrowRight size={12} className="text-slate-400" /> <span className="font-normal text-slate-400">to</span>
             </label>
@@ -200,7 +191,6 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
                 value={form.transportLocation || ''} onChange={e => onChange({ transportLocation: e.target.value })} />
             )}
           </div>
-          {mode === 'own' && tripsInput}
         </div>
       )}
 
