@@ -3,14 +3,13 @@ import { NON_NEGATIVE } from '../lib/number';
 import OptionPicker from './OptionPicker';
 import { defaultPlantId } from '../lib/plants';
 import { TRANSPORT_MODES, TRANSPORT_BASES, basisOf, transportCost, saleTransportQty, cleanVehicleNumber } from '../lib/transport';
-import { ArrowRight } from 'lucide-react';
 
 const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
 
 /**
  * Transport on a sale: whose vehicle carried it, and for a hired
- * vehicle who it is hired from and what they are paid. A per-trip delivery picks a route of the
- * vehicle (from the sale's plant to a location), which fills in both per-trip rates.
+ * vehicle who it is hired from and what they are paid. A per-trip delivery goes from the sale's plant
+ * to a place typed in; a saved route of the vehicle fills in the transporter's per-trip charge.
  * Props: form (the invoice form), onChange(patch), vehicles, parties, plants, pieces (bricks on the sale)
  */
 export default function SaleTransport({ form, onChange, vehicles, parties, plants, pieces }) {
@@ -27,7 +26,6 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   const routesFor = (v) => (v?.tripRates || []).filter(r => (r.plant || mainPlant) === salePlant);
   const routes = routesFor(vehicle);
   const perTrip = mode === 'own' || (mode === 'hired' && basis.key === 'per_trip');
-  const route = routes.find(r => r.location === form.transportLocation);
 
   // A route sets where it went and what the transporter is paid per trip
   const routePatch = (r, ownership) => ({
@@ -156,46 +154,39 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
               )}
             </div>
           )}
-          <div className={hasQty ? '' : 'col-span-2 md:col-span-1'}>
-            <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
-            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
-              value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
-          </div>
+          {basis.key !== 'per_trip' && (
+            <div className={hasQty ? '' : 'col-span-2 md:col-span-1'}>
+              <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
+              <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
+                value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Where a per-trip delivery went: from this sale's plant to a location */}
+      {/* Per trip: from this sale's plant (location A) to a place typed in (location B), and what the transporter is paid */}
       {perTrip && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          <div className="col-span-2 md:col-span-4">
-            <label className="label flex items-center gap-1.5">
-              Route <span className="font-normal text-slate-400">· from {plantName}</span> <ArrowRight size={12} className="text-slate-400" /> <span className="font-normal text-slate-400">to</span>
-            </label>
-            {routes.length > 0 ? (
-              <select className="input" value={form.transportLocation || ''} onChange={e => pickRoute(e.target.value)}>
-                <option value="">Select where it is going</option>
-                {/* A location typed earlier stays pickable */}
-                {form.transportLocation && !route && <option value={form.transportLocation}>{form.transportLocation}</option>}
-                {routes.map(r => (
-                  <option key={r.location} value={r.location}>
-                    {plantName} → {r.location}
-                    {mode === 'hired' ? ` · transporter ₹${(r.rate || 0).toLocaleString('en-IN')} / trip` : ''}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input className="input" placeholder={vehicle ? 'Location (add routes to this vehicle under Masters → Vehicles)' : 'Location, e.g. Raipur'}
-                value={form.transportLocation || ''} onChange={e => onChange({ transportLocation: e.target.value })} />
-            )}
+        <div className={`grid grid-cols-2 gap-3 md:gap-4 ${mode === 'hired' ? 'md:grid-cols-3' : ''}`}>
+          <div>
+            <label className="label">From (Location A)</label>
+            <p className="input truncate bg-slate-50 font-semibold text-slate-700" title="The plant this sale is from">{plantName}</p>
           </div>
-        </div>
-      )}
-
-      {perTrip && route && mode === 'hired' && (
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
-            Transporter charges {fmt(route.rate)} / trip
-          </span>
+          <div>
+            <label className="label">To (Location B)</label>
+            {/* Saved routes of the vehicle are suggested; picking one fills in its transporter charge */}
+            <input className="input" list="sale-routes" placeholder="e.g. Raipur"
+              value={form.transportLocation || ''} onChange={e => pickRoute(e.target.value)} />
+            <datalist id="sale-routes">
+              {routes.map(r => <option key={r.location} value={r.location} />)}
+            </datalist>
+          </div>
+          {mode === 'hired' && (
+            <div className="col-span-2 md:col-span-1">
+              <label className="label">Transporter Charge (₹ / trip)</label>
+              <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
+                value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
+            </div>
+          )}
         </div>
       )}
 
