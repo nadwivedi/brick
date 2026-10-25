@@ -5,7 +5,7 @@ import Logo from './Logo';
 import Modal from './Modal';
 import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
-import { site, telLink, whatsappLink } from '../lib/site';
+import { appLink, site, telLink, whatsappLink } from '../lib/site';
 import {
   BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
   PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, useGoToSection,
@@ -88,9 +88,9 @@ export function Navbar() {
               {n.label}
             </a>
           ))}
-          <Link to="/login" className="btn-primary ml-3 px-5 py-2.5">
+          <a href={appLink('/login')} className="btn-primary ml-3 px-5 py-2.5">
             <LogIn size={16} /> Login
-          </Link>
+          </a>
         </div>
 
         <button
@@ -112,9 +112,9 @@ export function Navbar() {
               {n.label}
             </a>
           ))}
-          <Link to="/login" className="btn-primary mt-2 w-full py-3">
+          <a href={appLink('/login')} className="btn-primary mt-2 w-full py-3">
             <LogIn size={16} /> Login
-          </Link>
+          </a>
         </div>
       )}
     </header>
@@ -221,7 +221,7 @@ export function Footer() {
               {NAV.map(n => (
                 <li key={n.id}><a href={`/#${n.id}`} onClick={jump(n.id)} className={footerLinkCls}>{arrow}{n.label}</a></li>
               ))}
-              <li><Link to="/login" className={footerLinkCls}>{arrow}Login</Link></li>
+              <li><a href={appLink('/login')} className={footerLinkCls}>{arrow}Login</a></li>
             </ul>
           </div>
           {/* Product names can be long, so this column wraps instead of pushing the others aside */}

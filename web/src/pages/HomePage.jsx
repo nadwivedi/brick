@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, BarChart3, Boxes, Building2, CheckCircle2, ClipboardList, FileText, Hammer,
   HandCoins, HardHat, Landmark, Layers, LogIn, ShieldCheck, Smartphone, Sparkles, TrendingUp, Users,
@@ -8,7 +8,7 @@ import ContactSection from '../components/ContactSection';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import { scrollToSection } from '../lib/publicNav';
-import { site } from '../lib/site';
+import { appLink, site } from '../lib/site';
 
 
 const FEATURES = [
@@ -139,9 +139,9 @@ export default function HomePage() {
                 so you always know what was made, what was sold and who still has to pay.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-                <Link to="/register" className="btn-primary px-7 py-3.5 text-base">
+                <a href={appLink('/register')} className="btn-primary px-7 py-3.5 text-base">
                   Get Started <ArrowRight size={18} />
-                </Link>
+                </a>
                 <a
                   href="#contact"
                   onClick={(e) => { e.preventDefault(); scrollToSection('contact'); }}
@@ -248,12 +248,12 @@ export default function HomePage() {
                 Create your account and record your first production entry in minutes.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <Link to="/register" className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Create Your Account <ArrowRight size={18} />
-                </Link>
-                <Link to="/login" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
+                </a>
+                <a href={appLink('/login')} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   <LogIn size={18} /> Login
-                </Link>
+                </a>
               </div>
             </div>
           </div>
