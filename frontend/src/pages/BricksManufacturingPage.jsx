@@ -31,7 +31,7 @@ const AREAS = [
     title: 'Production & manufacturing records',
     features: [
       'Daily production entries by plant and brick type',
-      'Raw materials used and labour recorded with each entry',
+      'Raw materials used and damaged bricks recorded with each entry',
       'Cement check: bricks per bag compared with your 30-day, 1-year and lifetime averages',
       'Production trend on the dashboard',
     ],

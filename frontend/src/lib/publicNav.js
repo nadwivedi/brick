@@ -3,6 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 export const PRICE_PAGE = '/products/brick-kiln-software-price-in-india';
 export const BHATTA_PAGE = '/products/bhatta-software';
 export const MANUFACTURING_PAGE = '/products/bricks-manufacturing-software';
+export const PLANT_PAGE = '/products/brick-plant-management-software';
+export const ONLINE_PAGE = '/products/online-brick-kiln-management-software';
+export const PRODUCTION_PAGE = '/products/brick-kiln-production-management-software';
+export const INVENTORY_PAGE = '/products/brick-kiln-inventory-management-software';
+export const EXPENSE_PAGE = '/products/brick-kiln-expense-management-software';
+export const BILLING_PAGE = '/products/brick-kiln-billing-software';
 
 export const scrollToSection = (id) => {
   const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;

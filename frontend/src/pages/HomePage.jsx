@@ -12,7 +12,7 @@ import { site } from '../lib/site';
 
 
 const FEATURES = [
-  { icon: Hammer, title: 'Production tracking', text: 'Record daily output by plant and brick type, along with the labour and raw material that went into it.' },
+  { icon: Hammer, title: 'Production tracking', text: 'Record daily output by plant, brick type and shift, along with the raw material used and any damaged bricks.' },
   { icon: Boxes, title: 'Raw material stock', text: 'Cement, fly ash, sand and more. Stock moves with every purchase and production entry.' },
   { icon: FileText, title: 'Sales & invoices', text: 'Create invoices in seconds, with transport and trip charges worked in.' },
   { icon: Users, title: 'Party ledgers', text: 'One ledger per customer and vendor shows exactly who owes what, and since when.' },

@@ -6,7 +6,10 @@ import Modal from './Modal';
 import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { site, telLink, whatsappLink } from '../lib/site';
-import { BHATTA_PAGE, MANUFACTURING_PAGE, PRICE_PAGE, useGoToSection } from '../lib/publicNav';
+import {
+  BHATTA_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE,
+  useGoToSection,
+} from '../lib/publicNav';
 
 // Navbar, footer and artwork shared by the public pages (homepage and product pages).
 
@@ -228,6 +231,11 @@ export function Footer() {
               {[
                 { to: BHATTA_PAGE, label: 'Bhatta Software' },
                 { to: MANUFACTURING_PAGE, label: 'Bricks Manufacturing Software' },
+                { to: PLANT_PAGE, label: 'Brick Plant Management Software' },
+                { to: ONLINE_PAGE, label: 'Online Brick Kiln Management Software' },
+                { to: PRODUCTION_PAGE, label: 'Brick Kiln Production Management Software' },
+                { to: INVENTORY_PAGE, label: 'Brick Kiln Inventory Management Software' },
+                { to: EXPENSE_PAGE, label: 'Brick Kiln Expense Management Software' },
                 { to: PRICE_PAGE, label: 'Brick Kiln Software Price in India' },
               ].map(({ to, label }) => (
                 <li key={to}>

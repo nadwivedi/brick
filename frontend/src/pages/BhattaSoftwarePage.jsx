@@ -33,7 +33,7 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { icon: Hammer, title: 'Production management', text: 'Daily brick production by type, with the labour and raw material behind it.' },
+  { icon: Hammer, title: 'Production management', text: 'Daily brick production by type and shift, with the raw material used and damaged bricks.' },
   { icon: Boxes, title: 'Raw material & brick stock', text: 'Live stock of every material and every brick type, with a full stock ledger.' },
   { icon: FileText, title: 'Sales & billing', text: 'Professional invoices with transport and trip charges included.' },
   { icon: Users, title: 'Customer & vendor ledgers', text: 'Who owes you, whom you owe, and every payment in between.' },
