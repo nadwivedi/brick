@@ -315,6 +315,49 @@ router.post('/receipts', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// The changes an edit form sends for money received or paid, checked like a new entry
+const paymentEdit = async (organization, body, partyKey) => {
+  const amount = Number(body.amount);
+  if (!body[partyKey]) return { error: 'Select a party' };
+  if (!(amount > 0)) return { error: 'Enter an amount above zero' };
+  const party = await Party.findOne({ _id: body[partyKey], organization });
+  if (!party) return { error: 'Party not found', status: 404 };
+  const account = await pickAccount(organization, body.account);
+  return {
+    fields: {
+      [partyKey]: party._id, amount, account: account._id, mode: modeFor(account, body.mode),
+      ...(/^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? { date: body.date } : {}),
+      referenceNumber: (body.referenceNumber || '').trim() || undefined,
+      notes: (body.notes || '').trim() || undefined,
+    },
+  };
+};
+
+router.put('/receipts/:id', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const receipt = await Payment.findOne({ _id: req.params.id, organization });
+    if (!receipt) return res.status(404).json({ success: false, message: 'Not found' });
+    const { fields, error, status } = await paymentEdit(organization, req.body, 'customer');
+    if (error) return res.status(status || 400).json({ success: false, message: error });
+    // Money taken with an invoice belongs to that invoice's party; the invoice's paid amount follows the edit
+    if (receipt.invoice) {
+      if (String(fields.customer) !== String(receipt.customer)) {
+        return res.status(400).json({ success: false, message: 'This money was received with a sale. Change the party on the sale instead.' });
+      }
+      const invoice = await Invoice.findOne({ _id: receipt.invoice, organization });
+      if (invoice) {
+        invoice.paidAmount = Math.max(0, (invoice.paidAmount || 0) - receipt.amount + fields.amount);
+        invoice.balanceDue = invoice.totalAmount - invoice.paidAmount;
+        await invoice.save();
+      }
+    }
+    receipt.set(fields);
+    await receipt.save();
+    res.json({ success: true, data: receipt });
+  } catch (e) { next(e); }
+});
+
 router.delete('/receipts/:id', async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
@@ -382,6 +425,20 @@ router.post('/vendor-payments', async (req, res, next) => {
       organization,
     });
     res.status(201).json({ success: true, data: payment });
+  } catch (e) { next(e); }
+});
+
+// Only money paid on account is edited here; an amount paid with a purchase is changed from the purchase
+router.put('/vendor-payments/:id', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    const payment = await VendorPayment.findOne({ _id: req.params.id, organization });
+    if (!payment) return res.status(404).json({ success: false, message: 'Not found. A payment made with a purchase is changed from the purchase.' });
+    const { fields, error, status } = await paymentEdit(organization, req.body, 'vendor');
+    if (error) return res.status(status || 400).json({ success: false, message: error });
+    payment.set(fields);
+    await payment.save();
+    res.json({ success: true, data: payment });
   } catch (e) { next(e); }
 });
 

@@ -7,7 +7,7 @@ import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import PartyCell from '../components/PartyCell';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Trash2, HandCoins, Send, CalendarDays, Sun, Banknote, Landmark, BookOpen } from 'lucide-react';
+import { Plus, Edit2, Trash2, HandCoins, Send, CalendarDays, Sun, Banknote, Landmark, BookOpen } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -45,6 +45,7 @@ export default function PartyPaymentsPage({ type }) {
   const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null); // entry open in the edit popup
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState('');
 
@@ -191,11 +192,19 @@ export default function PartyPaymentsPage({ type }) {
                           )}
                           {/* An amount paid along with a purchase belongs to that purchase */}
                           {r.purchase ? (
-                            <span className="icon-btn invisible" aria-hidden="true"><Trash2 size={16} /></span>
+                            <>
+                              <span className="icon-btn invisible" aria-hidden="true"><Edit2 size={16} /></span>
+                              <span className="icon-btn invisible" aria-hidden="true"><Trash2 size={16} /></span>
+                            </>
                           ) : (
-                            <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={() => handleDelete(r)}>
-                              <Trash2 size={16} />
-                            </button>
+                            <>
+                              <button className="icon-btn hover:bg-blue-50 hover:text-blue-600" title="Edit" onClick={() => setEditing(r)}>
+                                <Edit2 size={16} />
+                              </button>
+                              <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={() => handleDelete(r)}>
+                                <Trash2 size={16} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -214,6 +223,9 @@ export default function PartyPaymentsPage({ type }) {
 
       {showForm && (
         <PartyPaymentModal type={type} parties={parties} onClose={() => setShowForm(false)} onSaved={fetchData} />
+      )}
+      {editing && (
+        <PartyPaymentModal type={type} parties={parties} payment={editing} onClose={() => setEditing(null)} onSaved={fetchData} />
       )}
     </div>
   );

@@ -15,6 +15,7 @@ const KINDS = {
   customer: {
     endpoint: '/receipts', partyKey: 'customer',
     title: 'Money Received', subtitle: 'Record money a party has paid you',
+    editTitle: 'Edit Money Received', editSubtitle: 'Change this receipt; the party ledger follows the change',
     partyLabel: 'Party Name', selectLabel: 'Select Party',
     accountLabel: 'Received In', saveLabel: 'Save Receipt', balanceLabel: 'balance after this receipt',
     sign: -1, // money in lowers what they owe us
@@ -24,6 +25,7 @@ const KINDS = {
   vendor: {
     endpoint: '/vendor-payments', partyKey: 'vendor',
     title: 'Money Paid', subtitle: 'Record money you have paid to a party',
+    editTitle: 'Edit Money Paid', editSubtitle: 'Change this payment; the party ledger follows the change',
     partyLabel: 'Party Name', selectLabel: 'Select Party',
     accountLabel: 'Paid From', saveLabel: 'Save Payment', balanceLabel: 'balance after this payment',
     sign: 1, // money out lowers what we owe them
@@ -38,11 +40,24 @@ const KINDS = {
  * - type: 'customer' (money received) or 'vendor' (money paid)
  * - parties: list to pick from
  * - partyId: the party to start on
+ * - payment: a saved receipt / payment to edit (leave out for a new one)
  * - onClose, onSaved
  */
-export default function PartyPaymentModal({ type, parties, partyId, onClose, onSaved }) {
+export default function PartyPaymentModal({ type, parties, partyId, payment, onClose, onSaved }) {
   const kind = KINDS[type];
-  const [form, setForm] = useState({
+  const editing = Boolean(payment);
+  const savedParty = payment?.[kind.partyKey]?._id || '';
+  // Money received with a sale stays with that sale's party
+  const partyLocked = editing && Boolean(payment.invoice);
+  const [form, setForm] = useState(editing ? {
+    party: savedParty,
+    date: dayjs(payment.date).format('YYYY-MM-DD'),
+    account: payment.account?._id || '',
+    mode: payment.mode || '',
+    amount: payment.amount ?? '',
+    referenceNumber: payment.referenceNumber || '',
+    notes: payment.notes || '',
+  } : {
     party: partyId || '',
     date: dayjs().format('YYYY-MM-DD'),
     account: '', // '' = the default account
@@ -70,7 +85,9 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
   const party = parties.find(p => p._id === form.party);
   const amount = Number(form.amount) || 0;
   const due = party ? (balances?.[party._id]?.balance ?? party.openingBalance ?? 0) : 0;
-  const after = due + kind.sign * amount;
+  // When editing, the party's balance already includes the saved amount
+  const already = editing && form.party === savedParty ? payment.amount || 0 : 0;
+  const after = due + kind.sign * (amount - already);
 
   const handleSave = async () => {
     const problem =
@@ -81,7 +98,8 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
     setSaving(true);
     try {
       const { party: selected, ...rest } = form;
-      await api.post(kind.endpoint, { ...rest, account: account?._id, mode, [kind.partyKey]: selected, amount });
+      const data = { ...rest, account: account?._id, mode, [kind.partyKey]: selected, amount };
+      await (editing ? api.put(`${kind.endpoint}/${payment._id}`, data) : api.post(kind.endpoint, data));
       onSaved?.();
       onClose();
     } catch (e) { alert(e.message || kind.saveError); }
@@ -90,22 +108,23 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
 
   return (
     <Modal
-      title={kind.title}
-      subtitle={kind.subtitle}
+      title={editing ? kind.editTitle : kind.title}
+      subtitle={editing ? kind.editSubtitle : kind.subtitle}
       onClose={onClose}
       maxWidth="max-w-lg"
       footer={<>
         <button className="btn-secondary" onClick={onClose}>Cancel</button>
         <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-          {saving ? 'Saving...' : kind.saveLabel}
+          {saving ? 'Saving...' : editing ? 'Save Changes' : kind.saveLabel}
         </button>
       </>}
     >
       <div className="space-y-3 md:space-y-4">
         <div>
           <label className="label">{kind.partyLabel}</label>
-          <select className="input" value={form.party} onChange={e => setForm({ ...form, party: e.target.value })}>
+          <select className="input" value={form.party} disabled={partyLocked} title={partyLocked ? 'Received with a sale; change the party on the sale' : undefined}
+            onChange={e => setForm({ ...form, party: e.target.value })}>
             <option value="">{kind.selectLabel}</option>
             {parties.map(p => <option key={p._id} value={p._id}>{p.name}{p.mobile ? ` (${p.mobile})` : ''}</option>)}
           </select>
@@ -147,7 +166,7 @@ export default function PartyPaymentModal({ type, parties, partyId, onClose, onS
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{party.name}'s {kind.balanceLabel}</p>
             <p className="mt-1 flex flex-wrap items-center gap-2 text-lg font-bold text-slate-900">
               <span className={balanceClass(due)}>{balanceText(due)}</span>
-              {amount > 0 && <>
+              {amount > 0 && after !== due && <>
                 <ArrowRight size={18} className="text-slate-400" />
                 <span className={balanceClass(after)}>{balanceText(after)}</span>
               </>}
