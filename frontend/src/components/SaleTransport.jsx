@@ -77,6 +77,15 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
     onChange(r ? routePatch(r, mode) : { transportLocation: location });
   };
 
+  const hasQty = mode === 'hired' && !['per_trip', 'fixed'].includes(basis.key);
+  const chargeInput = (
+    <div className={`col-span-2 ${mode === 'hired' && hasQty ? 'md:col-span-1' : ''}`}>
+      <label className="label">Transport Charge to Party (₹)</label>
+      <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0 = free delivery"
+        value={form.transportCharges || ''} onChange={e => onChange({ transportCharges: e.target.value })} />
+    </div>
+  );
+
   return (
     <div className="space-y-3 md:space-y-4">
       <div className="grid grid-cols-3 gap-2">
@@ -99,7 +108,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <div className="col-span-2">
           <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
-            <label className="label mb-0">{mode === 'own' ? 'My Vehicle' : mode === 'hired' ? 'Hired Vehicle' : 'Vehicle Number'}</label>
+            <label className="label mb-0">Vehicle No.</label>
             {mode !== 'party' && kindVehicles.length > 0 && (
               <button type="button" className="text-xs font-semibold text-primary-600 hover:underline"
                 onClick={() => { setTypingNew(!typingNew); onChange({ vehicleNumber: '', transportLocation: '' }); }}>
@@ -124,24 +133,22 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
             </>
           )}
         </div>
-        {mode !== 'party' && (
+        {mode === 'own' && chargeInput}
+        {mode === 'hired' && (
           <div className="col-span-2">
-            <label className="label">Transport Charge to Party (₹)</label>
-            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0 = free delivery"
-              value={form.transportCharges || ''} onChange={e => onChange({ transportCharges: e.target.value })} />
+            {/* Same height as the label row beside it, which has a button */}
+            <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Transporter</label></div>
+            <select className="input" value={form.transporter} onChange={e => onChange({ transporter: e.target.value })}>
+              <option value="">Select Transporter</option>
+              {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+            </select>
           </div>
         )}
       </div>
 
+      {/* Row 2 (hired): how the transporter is paid, then the charge to the party */}
       {mode === 'hired' && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          <div className="col-span-2 md:col-span-1">
-            <label className="label">Transporter</label>
-            <select className="input" value={form.transporter} onChange={e => onChange({ transporter: e.target.value })}>
-              <option value="">Select Party</option>
-              {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-            </select>
-          </div>
           <div className="col-span-2 md:col-span-1">
             <label className="label">Pay Transporter</label>
             <select className="input" value={form.transportBasis} onChange={e => onChange({ transportBasis: e.target.value })}>
@@ -159,11 +166,12 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
               )}
             </div>
           )}
-          <div className={['per_trip', 'fixed'].includes(basis.key) ? 'col-span-2' : ''}>
+          <div className={hasQty ? '' : 'col-span-2 md:col-span-1'}>
             <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
             <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
               value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
           </div>
+          {chargeInput}
         </div>
       )}
 
