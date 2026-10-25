@@ -94,8 +94,8 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <div className="col-span-2">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+        <div className={mode === 'hired' ? 'col-span-2 md:col-span-1' : 'col-span-2'}>
           <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
             <label className="label mb-0">Vehicle No.</label>
             {mode !== 'party' && kindVehicles.length > 0 && (
@@ -122,8 +122,8 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
             </>
           )}
         </div>
-        {mode === 'hired' && (
-          <div className="col-span-2">
+        {mode === 'hired' && <>
+          <div className="col-span-2 md:col-span-1">
             {/* Same height as the vehicle's label row, which has a button */}
             <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Transporter</label></div>
             <select className="input" value={form.transporter} onChange={e => onChange({ transporter: e.target.value })}>
@@ -131,18 +131,18 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
               {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
             </select>
           </div>
-        )}
-      </div>
-
-      {/* Row 2 (hired): how the transporter is paid */}
-      {mode === 'hired' && (
-        <div className={`grid grid-cols-2 gap-3 md:gap-4 ${hasQty ? 'md:grid-cols-3' : ''}`}>
           <div className="col-span-2 md:col-span-1">
-            <label className="label">Pay Transporter</label>
+            <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Pay Transporter</label></div>
             <select className="input" value={form.transportBasis} onChange={e => onChange({ transportBasis: e.target.value })}>
               {TRANSPORT_BASES.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
             </select>
           </div>
+        </>}
+      </div>
+
+      {/* Row 2 (hired, not per trip): how much the transporter is paid; per trip is asked with From / To below */}
+      {mode === 'hired' && basis.key !== 'per_trip' && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
           {!['per_trip', 'fixed'].includes(basis.key) && (
             <div>
               <label className="label">{basis.key === 'per_km' ? 'Distance (km)' : basis.key === 'per_ton' ? 'Weight (tons)' : 'Bricks (×1000)'}</label>
@@ -154,13 +154,11 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
               )}
             </div>
           )}
-          {basis.key !== 'per_trip' && (
-            <div className={hasQty ? '' : 'col-span-2 md:col-span-1'}>
-              <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
-              <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
-                value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
-            </div>
-          )}
+          <div className={hasQty ? '' : 'col-span-2 md:col-span-1'}>
+            <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
+            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
+              value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
+          </div>
         </div>
       )}
 
