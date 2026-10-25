@@ -8,7 +8,7 @@ import { ArrowRight } from 'lucide-react';
 const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
 
 /**
- * Transport on a sale: whose vehicle carried it, what the party is charged, and for a hired
+ * Transport on a sale: whose vehicle carried it, and for a hired
  * vehicle who it is hired from and what they are paid. A per-trip delivery picks a route of the
  * vehicle (from the sale's plant to a location), which fills in both per-trip rates.
  * Props: form (the invoice form), onChange(patch), vehicles, parties, plants, pieces (bricks on the sale)
@@ -18,7 +18,6 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   const basis = basisOf(form.transportBasis);
   const qty = saleTransportQty(form, pieces);
   const cost = mode === 'hired' ? transportCost(form.transportBasis, qty, form.transportRate) : 0;
-  const charge = Number(form.transportCharges) || 0;
 
   // Routes of the chosen vehicle that start at this sale's plant
   const mainPlant = defaultPlantId(plants);
@@ -30,7 +29,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   const perTrip = mode === 'own' || (mode === 'hired' && basis.key === 'per_trip');
   const route = routes.find(r => r.location === form.transportLocation);
 
-  // A route sets where it went and what the transporter is paid per trip; the party's charge is typed on the sale
+  // A route sets where it went and what the transporter is paid per trip
   const routePatch = (r, ownership) => ({
     transportLocation: r.location,
     ...(ownership === 'hired' ? { transportBasis: 'per_trip', transportRate: r.rate || '' } : {}),
@@ -78,16 +77,6 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   };
 
   const hasQty = mode === 'hired' && !['per_trip', 'fixed'].includes(basis.key);
-  // Asked right after the vehicle (and the transporter, for a hired vehicle)
-  const chargeInput = (
-    <div className={`col-span-2 ${mode === 'hired' ? 'md:col-span-1' : ''}`}>
-      {/* Same height as the vehicle's label row, which has a button */}
-      <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Transport Charge to Party (₹)</label></div>
-      <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0 = free delivery"
-        value={form.transportCharges || ''} onChange={e => onChange({ transportCharges: e.target.value })} />
-    </div>
-  );
-
   return (
     <div className="space-y-3 md:space-y-4">
       <div className="grid grid-cols-3 gap-2">
@@ -136,7 +125,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
           )}
         </div>
         {mode === 'hired' && (
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-2">
             {/* Same height as the vehicle's label row, which has a button */}
             <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Transporter</label></div>
             <select className="input" value={form.transporter} onChange={e => onChange({ transporter: e.target.value })}>
@@ -145,7 +134,6 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
             </select>
           </div>
         )}
-        {mode !== 'party' && chargeInput}
       </div>
 
       {/* Row 2 (hired): how the transporter is paid */}
@@ -211,19 +199,15 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-inset ring-amber-200">
-        {mode === 'party' ? (
-          <span className="text-slate-600">The party takes the bricks in their own vehicle, so there is no transport charge.</span>
-        ) : (
-          <>
-            <span className="text-slate-600">Charged to party: <span className="font-bold text-slate-900">{fmt(charge)}</span></span>
-            {mode === 'hired' && <>
-              <span className="text-slate-600">You pay transporter: <span className="font-bold text-rose-600">{fmt(cost)}</span></span>
-              <span className="text-slate-600">Margin: <span className={`font-bold ${charge - cost < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{fmt(charge - cost)}</span></span>
-            </>}
-          </>
-        )}
-      </div>
+      {mode !== 'own' && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-inset ring-amber-200">
+          {mode === 'party' ? (
+            <span className="text-slate-600">The party takes the bricks in their own vehicle.</span>
+          ) : (
+            <span className="text-slate-600">You pay transporter: <span className="font-bold text-rose-600">{fmt(cost)}</span></span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
