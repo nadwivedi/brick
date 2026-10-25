@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Banknote, Landmark, Plus } from 'lucide-react';
+import OptionPicker from './OptionPicker';
 
 const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
 
@@ -17,21 +18,30 @@ export const modeForAccount = (account, mode) =>
 /**
  * Pick the cash / bank account money went into ("Received In") or came out of ("Paid From"),
  * and for a bank account how (UPI, bank transfer, cheque). An empty `account` means the default account.
- * Props: label, accounts / defaultAccountId (from useAccounts), account, mode, onChange({ account, mode })
+ * Props: label, accounts / defaultAccountId (from useAccounts), account, mode, onChange({ account, mode }),
+ * dropdown (true shows the accounts as a dropdown instead of cards)
  */
-export default function AccountPicker({ label, accounts, defaultAccountId, account, mode, onChange }) {
+export default function AccountPicker({ label, accounts, defaultAccountId, account, mode, onChange, dropdown = false }) {
   const selectedId = account || defaultAccountId;
   const selected = accounts.find(a => a._id === selectedId);
   const pick = (a) => onChange({ account: a._id, mode: modeForAccount(a, mode) });
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-2">
+      <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
         <label className="label mb-0">{label}</label>
         <Link to="/accounts" className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700" target="_blank" title="Add or edit your cash and bank accounts">
           <Plus size={12} /> Add account
         </Link>
       </div>
+      {dropdown ? (
+        <OptionPicker
+          options={accounts.map(a => ({ value: a._id, label: a.name, hint: `${a.type === 'cash' ? 'Cash' : 'Bank'} · balance ${fmt(a.balance)}` }))}
+          value={selectedId}
+          onChange={id => { const a = accounts.find(x => x._id === id); if (a) pick(a); }}
+          placeholder="Select account" searchPlaceholder="Search cash / bank account..."
+        />
+      ) : (
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {accounts.map(a => {
           const Icon = a.type === 'cash' ? Banknote : Landmark;
@@ -52,6 +62,7 @@ export default function AccountPicker({ label, accounts, defaultAccountId, accou
           );
         })}
       </div>
+      )}
       {selected?.type === 'bank' && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {BANK_MODES.map(m => (

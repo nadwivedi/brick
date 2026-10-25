@@ -302,7 +302,8 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
         </ModalSection>
 
         <ModalSection number={4} title="Bill & Payment" tone="purple">
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
+          {/* Discount, money received now and the account it went into, side by side */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
             <div>
               {/* Same height as the label row beside it, which has a button */}
               <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Discount</label></div>
@@ -322,15 +323,13 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
                 <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold text-emerald-700" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
               </div>
             </div>
-          </div>
-          {/* Which cash / bank account only matters when money was received */}
-          {Number(form.paidAmount) > 0 && (
-            <div className="mt-3 md:mt-4">
-              <AccountPicker label="Received In" accounts={accounts} defaultAccountId={defaultAccountId}
+            {/* Which cash / bank account the money went into */}
+            <div className="col-span-2 md:col-span-1">
+              <AccountPicker dropdown label="Received In" accounts={accounts} defaultAccountId={defaultAccountId}
                 account={form.account} mode={form.paymentMode}
                 onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
             </div>
-          )}
+          </div>
 
           {/* The bill, and what is not received now goes on the party's balance */}
           <div className="mt-3 overflow-hidden rounded-lg bg-white ring-1 ring-inset ring-purple-200 md:mt-4">
