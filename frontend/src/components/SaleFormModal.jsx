@@ -206,30 +206,31 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
       >
         <ModalSection number={1} title="Invoice Details" tone="blue">
           <div className="space-y-3 md:space-y-4">
-            {/* Equal columns for however many fields show (the plant only shows with more than one plant) */}
-            <div className="grid grid-cols-2 gap-3 md:auto-cols-fr md:grid-flow-col md:gap-4">
+            {/* Date 30%, invoice no. 30%, party 40% */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-[3fr_3fr_4fr] md:gap-4">
               <div>
-                <label className="label">Date</label>
+                <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Date</label></div>
                 <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
               </div>
               <div>
-                <label className="label">Invoice No.</label>
+                <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Invoice No.</label></div>
                 {/* Given by the system when the invoice is saved */}
                 <div className="input flex items-center justify-between gap-2 bg-slate-50 font-bold text-slate-800" title={editing ? undefined : 'The number this invoice will get when you save it'}>
-                  {invoiceNumber || '—'}
+                  <span className="truncate">{invoiceNumber || '—'}</span>
                   {!editing && <span className="text-[11px] font-semibold text-slate-400">Auto</span>}
                 </div>
               </div>
-              <PlantSelect className="col-span-2 md:col-span-1" plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
-            </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="label mb-0">Party <span className="text-rose-500">*</span></label>
-                <button type="button" onClick={() => setAddingCustomer(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+              <div className="col-span-2 min-w-0 md:col-span-1">
+                <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
+                  <label className="label mb-0">Party <span className="text-rose-500">*</span></label>
+                  <button type="button" onClick={() => setAddingCustomer(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+                </div>
+                <OptionPicker options={partyOptions} value={form.customer} onChange={customer => setForm(f => ({ ...f, customer }))}
+                  placeholder="Select Party" searchPlaceholder="Search party name or mobile..." />
               </div>
-              <OptionPicker options={partyOptions} value={form.customer} onChange={customer => setForm(f => ({ ...f, customer }))}
-                placeholder="Select Party" searchPlaceholder="Search party name or mobile..." />
             </div>
+            {/* Only shows with more than one plant */}
+            <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
           </div>
         </ModalSection>
 
