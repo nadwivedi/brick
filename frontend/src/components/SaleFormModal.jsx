@@ -359,11 +359,8 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
               <label className="label">Driver Name <span className="font-normal text-slate-400">(optional)</span></label>
               <input className="input" placeholder="Driver name" value={form.driverName} onChange={e => setForm({ ...form, driverName: e.target.value })} />
             </div>
+            {/* Where it went is the route's Location B, so there is no separate site address */}
             <div>
-              <label className="label">Site / Delivery Address <span className="font-normal text-slate-400">(optional)</span></label>
-              <input className="input" placeholder="Delivery site address" value={form.siteAddress} onChange={e => setForm({ ...form, siteAddress: e.target.value })} />
-            </div>
-            <div className="sm:col-span-2">
               <label className="label">Notes <span className="font-normal text-slate-400">(optional)</span></label>
               <input className="input" placeholder="Anything worth remembering about this sale" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
             </div>
