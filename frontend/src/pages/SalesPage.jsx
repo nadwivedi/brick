@@ -12,7 +12,7 @@ import { balanceText, balanceClass } from '../components/BalanceCell';
 import { modeLabel } from '../lib/transport';
 import { PAID_TYPES, paidType } from '../lib/paidWith';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Trash2, HandCoins, FileText, CreditCard, Scale, CalendarDays, MapPin, Truck } from 'lucide-react';
+import { Plus, Edit2, Trash2, HandCoins, FileText, CreditCard, Scale, CalendarDays, MapPin, Truck } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -34,6 +34,7 @@ export default function SalesPage() {
   const [balances, setBalances] = useState({}); // party ledger balance per party id
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null); // invoice open in the edit popup
   const [receiving, setReceiving] = useState(null); // party id the Receive Money popup starts on ('' = none picked)
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -212,6 +213,9 @@ export default function SalesPage() {
                               <HandCoins size={14} /> Receive
                             </button>
                           )}
+                          <button className="icon-btn hover:bg-blue-50 hover:text-blue-600" title="Edit" onClick={() => setEditingId(inv._id)}>
+                            <Edit2 size={16} />
+                          </button>
                           <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={() => handleDelete(inv)}>
                             <Trash2 size={16} />
                           </button>
@@ -234,6 +238,9 @@ export default function SalesPage() {
 
       {showForm && (
         <SaleFormModal onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); fetchData(); }} />
+      )}
+      {editingId && (
+        <SaleFormModal invoiceId={editingId} onClose={() => setEditingId(null)} onSaved={() => { setEditingId(null); fetchData(); }} />
       )}
 
       {/* Money received is recorded against the party and lowers its balance, not one invoice */}

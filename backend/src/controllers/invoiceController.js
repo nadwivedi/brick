@@ -13,6 +13,24 @@ const withTransport = async (organization, body) => {
   return { ...body, ...transport, ...vehicle, totalAmount };
 };
 
+// The payment taken when the sale was made. Sales saved before payments were tagged `atSale`
+// have theirs created alongside the invoice, so it is the linked one made within a minute of it.
+const atSalePayment = async (invoice) => {
+  const tagged = await Payment.findOne({ organization: invoice.organization, invoice: invoice._id, atSale: true });
+  if (tagged) return tagged;
+  const madeAt = new Date(invoice.createdAt);
+  return Payment.findOne({
+    organization: invoice.organization, invoice: invoice._id,
+    createdAt: { $gte: madeAt, $lte: new Date(madeAt.getTime() + 60 * 1000) },
+  }).sort({ createdAt: 1 });
+};
+
+// Fields the sale form may change
+const EDITABLE = ['date', 'customer', 'plant', 'items', 'subtotal', 'gstTotal', 'transportCharges', 'discount', 'totalAmount', 'paidAmount',
+  'transportMode', 'vehicle', 'transporter', 'transportBasis', 'transportQty', 'transportRate', 'transportCost', 'transportLocation',
+  'vehicleNumber', 'driverName', 'siteAddress', 'notes', 'status'];
+const pick = (obj, keys) => Object.fromEntries(keys.filter(k => k in obj).map(k => [k, obj[k]]));
+
 // @route GET /api/invoices
 exports.getAll = async (req, res, next) => {
   try {
@@ -97,10 +115,15 @@ exports.create = async (req, res, next) => {
 // @route GET /api/invoices/:id
 exports.getOne = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findById(req.params.id)
+    const invoice = await Invoice.findOne({ _id: req.params.id, organization: req.user.organization._id })
       .populate('customer plant items.product createdBy');
     if (!invoice) return res.status(404).json({ success: false, message: 'Not found' });
-    res.json({ success: true, data: invoice });
+    // What was received with the sale, and into which account, for the edit form
+    const payment = await atSalePayment(invoice);
+    res.json({
+      success: true,
+      data: { ...invoice.toObject(), atSale: payment ? { amount: payment.amount, account: payment.account, mode: payment.mode } : null },
+    });
   } catch (error) { next(error); }
 };
 
@@ -120,9 +143,35 @@ exports.update = async (req, res, next) => {
       if (shortage) return res.status(400).json({ success: false, message: shortage });
     }
 
-    const body = 'transportMode' in req.body ? await withTransport(organization, req.body) : req.body;
+    const fields = pick(req.body, EDITABLE);
+    const body = 'transportMode' in fields ? await withTransport(organization, fields) : fields;
+    if ('paidAmount' in body) body.paidAmount = Math.max(Number(body.paidAmount) || 0, 0);
+    const total = body.totalAmount ?? existing.totalAmount;
+    body.balanceDue = total - (body.paidAmount ?? existing.paidAmount ?? 0);
     const invoice = await Invoice.findByIdAndUpdate(existing._id, body, { new: true, runValidators: true });
-    res.json({ success: true, data: invoice });
+
+    // Keep the money received with the sale in step with the edit
+    if ('paidAmount' in body) {
+      const payment = await atSalePayment(existing);
+      if (invoice.paidAmount > 0) {
+        const account = await pickAccount(organization, req.body.account || payment?.account);
+        const entry = {
+          date: invoice.date, customer: invoice.customer, plant: invoice.plant, amount: invoice.paidAmount,
+          account: account._id, mode: modeFor(account, req.body.paymentMode || payment?.mode), atSale: true,
+        };
+        if (payment) await Payment.updateOne({ _id: payment._id }, entry);
+        else await Payment.create({ ...entry, invoice: invoice._id, createdBy: req.user._id, organization });
+      } else if (payment) {
+        await Payment.deleteOne({ _id: payment._id });
+      }
+    }
+    // Receipts made later stay with the party they were received from
+    if (String(existing.customer) !== String(invoice.customer)) {
+      await Payment.updateMany({ organization, invoice: invoice._id, atSale: { $ne: true } }, { $unset: { invoice: 1 } });
+    }
+
+    const populated = await invoice.populate(['customer', 'plant', 'items.product', 'transporter']);
+    res.json({ success: true, data: populated });
   } catch (error) { next(error); }
 };
 

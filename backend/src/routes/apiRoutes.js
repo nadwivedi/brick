@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
@@ -483,7 +484,9 @@ router.get('/stock/summary', async (req, res, next) => {
 // Brick stock per brick type (opening + good bricks produced - sold). Optional ?plant= limits it to one plant.
 router.get('/stock/bricks', async (req, res, next) => {
   try {
-    const data = await getBrickStock(req.user.organization._id, { plant: req.query.plant });
+    // ?excludeInvoice= leaves a sale being edited out, so its own bricks count as available
+    const { plant, excludeInvoice } = req.query;
+    const data = await getBrickStock(req.user.organization._id, { plant, excludeInvoice: mongoose.isValidObjectId(excludeInvoice) ? excludeInvoice : undefined });
     res.json({ success: true, data });
   } catch (e) { next(e); }
 });

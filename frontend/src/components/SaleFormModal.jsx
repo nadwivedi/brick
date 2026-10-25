@@ -20,12 +20,32 @@ const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 // A new sale starts on the party's own vehicle
 const NO_TRANSPORT = { transportMode: 'party', transporter: '', transportBasis: 'per_trip', transportQty: '', transportRate: '', transportLocation: '' };
 
+const idOf = (v) => (v && typeof v === 'object' ? v._id : v) || '';
+
+// The form filled in from a saved sale, with what was received at the sale and into which account
+const formFromInvoice = (inv) => ({
+  date: dayjs(inv.date).format('YYYY-MM-DD'),
+  customer: idOf(inv.customer),
+  plant: idOf(inv.plant),
+  items: (inv.items || []).map(i => ({ product: idOf(i.product), quantity: i.quantity, rate: i.rate, amount: i.amount, gstPercent: 0, gstAmount: 0 })),
+  subtotal: inv.subtotal || 0, gstTotal: inv.gstTotal || 0,
+  transportCharges: inv.transportCharges || 0, discount: inv.discount || 0, totalAmount: inv.totalAmount || 0,
+  paidAmount: inv.atSale?.amount || 0, account: idOf(inv.atSale?.account), paymentMode: inv.atSale?.mode || '',
+  vehicleNumber: inv.vehicleNumber || '', driverName: inv.driverName || '', siteAddress: inv.siteAddress || '', notes: inv.notes || '',
+  transportMode: inv.transportMode || 'party', transporter: idOf(inv.transporter), transportBasis: inv.transportBasis || 'per_trip',
+  transportQty: inv.transportQty || '', transportRate: inv.transportRate || '', transportLocation: inv.transportLocation || '',
+});
+
 /**
- * "New Invoice" popup. Loads the parties, brick types, plants, stock and vehicles it needs by
- * itself, so it can be opened from the Sales page or straight from the dashboard.
- * Props: onClose, onSaved (called after a successful save; the caller closes the popup)
+ * "New Invoice" / "Edit Invoice" popup. Loads the parties, brick types, plants, stock and vehicles it
+ * needs by itself, so it can be opened from the Sales page or straight from the dashboard.
+ * Props: invoiceId (edit that sale; leave out for a new one), onClose,
+ * onSaved (called after a successful save; the caller closes the popup)
  */
-export default function SaleFormModal({ onClose, onSaved }) {
+export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
+  const editing = Boolean(invoiceId);
+  const title = editing ? 'Edit Invoice' : 'New Invoice';
+  const subtitle = editing ? 'Change this sale; the party ledger and stock follow the change' : 'Create a sales invoice for a customer';
   const [customers, setCustomers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [products, setProducts] = useState([]);
@@ -44,22 +64,25 @@ export default function SaleFormModal({ onClose, onSaved }) {
       api.get('/parties'),
       api.get('/products'),
       api.get('/plants'),
-      api.get('/stock/bricks'),
+      // When editing, this sale's own bricks count as available
+      api.get('/stock/bricks', { params: editing ? { excludeInvoice: invoiceId } : {} }),
       api.get('/vehicles'),
-    ]).then(([custRes, prodRes, plantRes, stockRes, vehRes]) => {
+      editing ? api.get(`/invoices/${invoiceId}`) : null,
+    ]).then(([custRes, prodRes, plantRes, stockRes, vehRes, invRes]) => {
       const plantList = plantRes.data || [];
       setVehicles(vehRes.data || []);
       setBrickStock(Object.fromEntries((stockRes.data || []).map(r => [r.product._id, Math.max(r.available, 0)])));
       setCustomers(custRes.data || []);
       setProducts(prodRes.data || []);
       setPlants(plantList);
+      if (invRes) { setForm(formFromInvoice(invRes.data)); return; }
       setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plantList), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '', ...NO_TRANSPORT });
     }).catch(e => { alert(e.message || 'Could not load the form'); onClose(); });
   }, []);
 
   if (!form) {
     return (
-      <Modal title="New Invoice" subtitle="Create a sales invoice for a customer" onClose={onClose} maxWidth="max-w-4xl">
+      <Modal title={title} subtitle={subtitle} onClose={onClose} maxWidth="max-w-4xl">
         <LoadingState label="Loading form…" />
       </Modal>
     );
@@ -130,7 +153,8 @@ export default function SaleFormModal({ onClose, onSaved }) {
     if (problem) { alert(problem); return; }
     setSaving(true);
     try {
-      await api.post('/invoices', {
+      const save = editing ? (data) => api.put(`/invoices/${invoiceId}`, data) : (data) => api.post('/invoices', data);
+      await save({
         ...form,
         // GST is not charged for now; the fields stay at 0 so it can be switched back on later
         items: items.map(i => ({ ...i, quantity: Number(i.quantity), rate: Number(i.rate), gstPercent: 0, gstAmount: 0 })),
@@ -155,15 +179,15 @@ export default function SaleFormModal({ onClose, onSaved }) {
   return (
     <>
       <Modal
-        title="New Invoice"
-        subtitle="Create a sales invoice for a customer"
+        title={title}
+        subtitle={subtitle}
         onClose={onClose}
         maxWidth="max-w-4xl"
         footer={<>
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn-primary px-8" onClick={handleSave} disabled={saving || overStock.length > 0}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-            {saving ? 'Saving...' : 'Create Invoice'}
+            {saving ? 'Saving...' : editing ? 'Save Changes' : 'Create Invoice'}
           </button>
         </>}
       >
