@@ -270,6 +270,10 @@ export default function DashboardPage() {
           byMonth={byMonth}
           tickFormat={tickFormat}
           labelFormat={labelFormat}
+          // Today / Yesterday still show a week, so the day can be compared with the ones before
+          note={data?.productionTrendFrom && data.productionTrendFrom < data.from
+            ? `Bricks produced by day, last ${data.productionTrend?.length || 7} days to ${dayjs(data.to).format('D MMM')}`
+            : undefined}
         />
 
         <section className="panel">

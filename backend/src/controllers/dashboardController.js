@@ -13,6 +13,8 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Dates are stored as the calendar day at 00:00 UTC (from "YYYY-MM-DD" inputs),
 // so the range is taken as whole UTC days to match.
+const TREND_MIN_DAYS = 7;
+
 const parseRange = (from, to) => {
   const todayStr = new Date().toISOString().slice(0, 10);
   const fromStr = DATE_RE.test(from || '') ? from : todayStr;
@@ -89,6 +91,10 @@ exports.getSummary = async (req, res, next) => {
     // Group charts by month when the range is longer than ~2 months
     const days = Math.round((end - start) / DAY_MS);
     const byMonth = days > 62;
+    // The production trend always shows at least the 7 days up to the end of the range,
+    // so Today or Yesterday can still be compared with the days before
+    const trendStart = new Date(Math.min(start.getTime(), Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()) - (TREND_MIN_DAYS - 1) * DAY_MS));
+    const trendRange = { ...baseQuery, date: { $gte: trendStart, $lte: end } };
 
     const [
       production, sales, collection, expenses, purchases, dues,
@@ -102,7 +108,7 @@ exports.getSummary = async (req, res, next) => {
       // Outstanding dues are what parties owe right now (their ledger balance), not limited to the
       // date range or a plant: money received later is recorded against the party, not a sale
       topDues(orgId),
-      productionTrendByType(inRange, byMonth, start, end),
+      productionTrendByType(trendRange, byMonth, trendStart, end),
       trendInRange(Invoice, inRange, 'totalAmount', byMonth, start, end),
       trendInRange(Payment, inRange, 'amount', byMonth, start, end),
     ]);
@@ -135,6 +141,7 @@ exports.getSummary = async (req, res, next) => {
         lowStockCount: lowStock.length,
         lowStockItems: lowStock,
         productionTrend,
+        productionTrendFrom: trendStart.toISOString().slice(0, 10),
         productionTypes,
         salesTrend: salesTrend.map(r => ({ _id: r._id, sales: r.total, collection: collectionByKey[r._id] || 0 })),
       }
