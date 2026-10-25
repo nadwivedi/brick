@@ -241,6 +241,58 @@ router.delete('/parties/:id', async (req, res, next) => {
 router.use('/parties', makeCRUD(Party));
 router.use('/workers', makeCRUD(Worker));
 
+// Every sale a vehicle carried, oldest first: where it went, for whom, and for a hired vehicle who it
+// was hired from, at what rate and what it cost. Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD.
+// Older sales may only have the number, so those match by number too.
+router.get('/vehicles/:id/ledger', async (req, res, next) => {
+  try {
+    const organization = req.user.organization._id;
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+    const vehicle = await Vehicle.findOne({ _id: req.params.id, organization }).populate('party', 'name mobile').lean();
+    if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const from = DATE_RE.test(req.query.from || '') ? req.query.from : null;
+    const to = DATE_RE.test(req.query.to || '') ? req.query.to : null;
+    const date = {};
+    if (from) date.$gte = new Date(`${from}T00:00:00.000Z`);
+    if (to) date.$lte = new Date(`${to}T23:59:59.999Z`);
+
+    const invoices = await Invoice.find({
+      organization, status: { $nin: ['draft', 'cancelled'] },
+      $or: [{ vehicle: vehicle._id }, { vehicleNumber: vehicle.vehicleNumber }],
+      ...(from || to ? { date } : {}),
+    }).populate('customer', 'name').populate('transporter', 'name').populate('plant', 'name')
+      .sort({ date: 1, createdAt: 1 }).lean();
+
+    const entries = invoices.map(i => ({
+      _id: i._id, date: i.date, invoiceNumber: i.invoiceNumber,
+      party: i.customer?.name || '', plant: i.plant?.name || '', location: i.transportLocation || '',
+      bricks: (i.items || []).reduce((s, it) => s + (it.quantity || 0), 0),
+      mode: i.transportMode || 'party',
+      transporter: i.transporter?.name || '',
+      basis: i.transportBasis || 'per_trip', qty: i.transportQty || 0, rate: i.transportRate || 0,
+      rateText: i.transportMode === 'hired' ? describeTransport(i.transportBasis, i.transportQty, i.transportRate, '') : '',
+      cost: i.transportMode === 'hired' ? i.transportCost || 0 : 0,
+      charge: i.transportCharges || 0,
+    }));
+    const sum = (key) => entries.reduce((s, e) => s + (e[key] || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        vehicle: {
+          _id: vehicle._id, vehicleNumber: vehicle.vehicleNumber, ownership: vehicle.ownership,
+          transporter: vehicle.party?.name || '', hireBasis: vehicle.hireBasis, hireRate: vehicle.hireRate,
+        },
+        from, to,
+        trips: entries.length, bricks: sum('bricks'), cost: sum('cost'), charged: sum('charge'),
+        entries,
+      }
+    });
+  } catch (e) { next(e); }
+});
+
 // Vehicles: one number per business; "my vehicle" has no owner party
 router.use('/vehicles', async (req, res, next) => {
   if (!['POST', 'PUT'].includes(req.method)) return next();

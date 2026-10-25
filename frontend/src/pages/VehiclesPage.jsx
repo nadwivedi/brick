@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BookOpen } from 'lucide-react';
 import api from '../lib/api';
 import CRUDPage from '../components/CRUDPage';
 import { ModalSection } from '../components/Modal';
@@ -134,6 +136,11 @@ export default function VehiclesPage() {
         { key: 'notes', label: 'Notes', placeholder: 'Optional, e.g. driver name' },
       ]}
       formContent={vehicleForm}
+      rowActions={item => (
+        <Link to={`/masters/vehicles/${item._id}/ledger`} className="icon-btn hover:bg-emerald-50 hover:text-emerald-600" title="Ledger: every trip, when and at what rate">
+          <BookOpen size={16} />
+        </Link>
+      )}
       keepFormOnEscape={!!addPartyTo}
       formWidth="max-w-3xl"
       defaultValues={{ vehicleNumber: '', ownership: 'own', party: '', hireBasis: 'per_trip', hireRate: 0, tripRates: [], notes: '' }}
