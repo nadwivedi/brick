@@ -101,15 +101,17 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
 
   const updateItem = (idx, key, val) => {
     const items = [...form.items];
-    items[idx][key] = val;
-    if (key === 'quantity' || key === 'rate') {
-      const qty = parseFloat(items[idx].quantity) || 0;
-      const rate = parseFloat(items[idx].rate) || 0;
-      items[idx].amount = qty * rate;
-    }
+    items[idx] = { ...items[idx], [key]: val };
+    const qty = parseFloat(items[idx].quantity) || 0;
     if (key === 'product') {
       const p = products.find(p => p._id === val);
       if (p) items[idx].rate = p.defaultRate;
+    }
+    if (key === 'amount') {
+      // The amount typed sets the rate per brick
+      if (qty > 0) items[idx].rate = Math.round(((parseFloat(val) || 0) / qty) * 100) / 100;
+    } else if (key === 'quantity' || key === 'rate' || key === 'product') {
+      items[idx].amount = Math.round(qty * (parseFloat(items[idx].rate) || 0) * 100) / 100;
     }
     const totals = calcTotals(items, form.transportCharges, form.discount);
     setForm({ ...form, items, ...totals });
@@ -233,14 +235,14 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
 
         <ModalSection number={2} title="Bricks Sold" tone="emerald">
           <div className="space-y-2">
-            <div className="hidden grid-cols-[minmax(0,1fr)_8rem_8rem_7rem_2.25rem] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid">
-              <span>Brick Type</span><span>Quantity</span><span>Rate</span><span className="text-right">Amount</span><span />
+            <div className="hidden grid-cols-[minmax(0,1fr)_8rem_8rem_8rem_2.25rem] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid">
+              <span>Brick Type</span><span>Quantity</span><span>Rate</span><span>Amount</span><span />
             </div>
             {form.items.map((item, idx) => {
               const short = item.product && overStock.includes(item.product);
               return (
                 <div key={idx} className="rounded-lg bg-white p-2 ring-1 ring-inset ring-emerald-100 md:bg-transparent md:p-0 md:ring-0">
-                  <div className="grid grid-cols-2 items-center gap-2 md:grid-cols-[minmax(0,1fr)_8rem_8rem_7rem_2.25rem]">
+                  <div className="grid grid-cols-2 items-center gap-2 md:grid-cols-[minmax(0,1fr)_8rem_8rem_8rem_2.25rem]">
                     <div className="col-span-2 flex items-center gap-2 md:col-span-1">
                       <OptionPicker className="min-w-0 flex-1" options={productOptions} value={item.product} onChange={id => updateItem(idx, 'product', id)}
                         placeholder="Select Brick Type" searchPlaceholder="Search brick types..." />
@@ -256,9 +258,12 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
                       <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="Rate"
                         value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} />
                     </div>
-                    <p className="col-span-2 flex items-center justify-between text-sm font-bold text-slate-900 md:col-span-1 md:block md:text-right">
-                      <span className="text-xs font-semibold text-slate-500 md:hidden">Amount</span>{fmt(item.amount)}
-                    </p>
+                    {/* Typing the amount works out the rate per brick */}
+                    <div className="relative col-span-2 md:col-span-1">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                      <input type="number" {...NON_NEGATIVE} className="input pl-7 font-bold text-slate-900" placeholder="Amount" title="Type the amount to work out the rate per brick"
+                        value={!item.amount && !item.quantity ? '' : item.amount} onChange={e => updateItem(idx, 'amount', e.target.value)} />
+                    </div>
                     <button type="button" className="icon-btn hidden hover:bg-red-50 hover:text-red-600 md:inline-flex" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
                   </div>
                   {short && (
