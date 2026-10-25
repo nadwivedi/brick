@@ -56,14 +56,17 @@ const makeCRUD = (Model, orgField = 'organization') => {
   });
   router.put('/:id', async (req, res, next) => {
     try {
-      const item = await Model.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+      // Only this business's own records, and they stay with it
+      const { [orgField]: _org, _id, ...changes } = req.body;
+      const item = await Model.findOneAndUpdate({ _id: req.params.id, [orgField]: req.user.organization._id }, changes, { new: true, runValidators: true });
       if (!item) return res.status(404).json({ success: false, message: 'Not found' });
       res.json({ success: true, data: item });
     } catch (e) { next(e); }
   });
   router.delete('/:id', async (req, res, next) => {
     try {
-      await Model.findByIdAndDelete(req.params.id);
+      const item = await Model.findOneAndDelete({ _id: req.params.id, [orgField]: req.user.organization._id });
+      if (!item) return res.status(404).json({ success: false, message: 'Not found' });
       res.json({ success: true, message: 'Deleted' });
     } catch (e) { next(e); }
   });

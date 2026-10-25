@@ -6,7 +6,7 @@ import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import useAccounts from '../hooks/useAccounts';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Trash2, Wallet } from 'lucide-react';
+import { Plus, Edit2, Trash2, Wallet } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -18,6 +18,7 @@ export default function ExpensesPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null); // expense open in the edit popup
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const { accounts } = useAccounts();
@@ -121,7 +122,10 @@ export default function ExpensesPage() {
                       {exp.paymentMode && exp.paymentMode !== 'cash' && <p className="text-xs capitalize text-slate-500">{exp.paymentMode.replace('_', ' ')}</p>}
                     </td>
                     <td className="table-cell">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
+                        <button className="icon-btn hover:bg-blue-50 hover:text-blue-600" title="Edit" onClick={() => setEditing(exp)}>
+                          <Edit2 size={16} />
+                        </button>
                         <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={async () => {
                           if (confirm('Delete?')) { await api.delete(`/expenses/${exp._id}`); fetchData(); }
                         }}><Trash2 size={16} /></button>
@@ -141,6 +145,9 @@ export default function ExpensesPage() {
 
       {showForm && (
         <ExpenseFormModal onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); fetchData(); }} />
+      )}
+      {editing && (
+        <ExpenseFormModal expense={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchData(); }} />
       )}
     </div>
   );
