@@ -9,6 +9,8 @@ export const PRODUCTION_PAGE = '/products/brick-kiln-production-management-softw
 export const INVENTORY_PAGE = '/products/brick-kiln-inventory-management-software';
 export const EXPENSE_PAGE = '/products/brick-kiln-expense-management-software';
 export const BILLING_PAGE = '/products/brick-kiln-billing-software';
+export const REPORTS_PAGE = '/products/brick-kiln-report-management-software';
+export const PAYMENT_PAGE = '/products/brick-kiln-payment-tracking-software';
 
 export const scrollToSection = (id) => {
   const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -7,8 +7,8 @@ import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { site, telLink, whatsappLink } from '../lib/site';
 import {
-  BHATTA_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE,
-  useGoToSection,
+  BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, useGoToSection,
 } from '../lib/publicNav';
 
 // Navbar, footer and artwork shared by the public pages (homepage and product pages).
@@ -236,6 +236,9 @@ export function Footer() {
                 { to: PRODUCTION_PAGE, label: 'Brick Kiln Production Management Software' },
                 { to: INVENTORY_PAGE, label: 'Brick Kiln Inventory Management Software' },
                 { to: EXPENSE_PAGE, label: 'Brick Kiln Expense Management Software' },
+                { to: BILLING_PAGE, label: 'Brick Kiln Billing Software' },
+                { to: REPORTS_PAGE, label: 'Brick Kiln Report Management Software' },
+                { to: PAYMENT_PAGE, label: 'Brick Kiln Payment Tracking Software' },
                 { to: PRICE_PAGE, label: 'Brick Kiln Software Price in India' },
               ].map(({ to, label }) => (
                 <li key={to}>

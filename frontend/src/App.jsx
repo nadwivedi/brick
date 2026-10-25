@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
-  BHATTA_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE,
+  BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
 } from './lib/publicNav';
 
 import Layout from './components/Layout';
@@ -15,6 +16,9 @@ import OnlineBrickKilnPage from './pages/OnlineBrickKilnPage';
 import BrickKilnProductionPage from './pages/BrickKilnProductionPage';
 import BrickKilnInventoryPage from './pages/BrickKilnInventoryPage';
 import BrickKilnExpensePage from './pages/BrickKilnExpensePage';
+import BrickKilnBillingPage from './pages/BrickKilnBillingPage';
+import BrickKilnReportsPage from './pages/BrickKilnReportsPage';
+import BrickKilnPaymentPage from './pages/BrickKilnPaymentPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -70,6 +74,9 @@ function AppRoutes() {
       <Route path={PRODUCTION_PAGE} element={<BrickKilnProductionPage />} />
       <Route path={INVENTORY_PAGE} element={<BrickKilnInventoryPage />} />
       <Route path={EXPENSE_PAGE} element={<BrickKilnExpensePage />} />
+      <Route path={BILLING_PAGE} element={<BrickKilnBillingPage />} />
+      <Route path={REPORTS_PAGE} element={<BrickKilnReportsPage />} />
+      <Route path={PAYMENT_PAGE} element={<BrickKilnPaymentPage />} />
 
       {/* Protected */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
