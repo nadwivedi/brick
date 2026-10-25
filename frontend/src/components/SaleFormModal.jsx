@@ -12,7 +12,7 @@ import AccountPicker, { modeForAccount } from './AccountPicker';
 import useAccounts from '../hooks/useAccounts';
 import { LoadingState } from './States';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
-import { NON_NEGATIVE } from '../lib/number';
+import { NON_NEGATIVE, blankZero, noLeadingZeros } from '../lib/number';
 import { PAID_TYPES, paidType } from '../lib/paidWith';
 import dayjs from 'dayjs';
 
@@ -251,19 +251,19 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
                     </div>
                     <div className="relative">
                       <input type="number" {...NON_NEGATIVE} className={`input pr-10 font-semibold ${short ? 'border-rose-400 text-rose-700' : ''}`} placeholder="Qty"
-                        value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} />
+                        value={blankZero(item.quantity)} onChange={e => updateItem(idx, 'quantity', noLeadingZeros(e.target.value))} />
                       <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-400">pcs</span>
                     </div>
                     <div className="relative">
                       <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
                       <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="Rate"
-                        value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} />
+                        value={blankZero(item.rate)} onChange={e => updateItem(idx, 'rate', noLeadingZeros(e.target.value))} />
                     </div>
                     {/* Typing the amount works out the rate per brick */}
                     <div className="relative col-span-2 md:col-span-1">
                       <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
                       <input type="number" {...NON_NEGATIVE} className="input pl-7 font-bold text-slate-900" placeholder="Amount" title="Type the amount to work out the rate per brick"
-                        value={!item.amount && !item.quantity ? '' : item.amount} onChange={e => updateItem(idx, 'amount', e.target.value)} />
+                        value={blankZero(item.amount)} onChange={e => updateItem(idx, 'amount', noLeadingZeros(e.target.value))} />
                     </div>
                     <button type="button" className="icon-btn hidden hover:bg-red-50 hover:text-red-600 md:inline-flex" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
                   </div>
@@ -310,8 +310,8 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
               <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Discount</label></div>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
-                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="0" value={form.discount}
-                  onChange={e => { const d = e.target.value; setForm(f => ({ ...f, discount: d, ...calcTotals(f.items, f.transportCharges, d) })); }} />
+                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="0" value={blankZero(form.discount)}
+                  onChange={e => { const d = noLeadingZeros(e.target.value); setForm(f => ({ ...f, discount: d, ...calcTotals(f.items, f.transportCharges, d) })); }} />
               </div>
             </div>
             <div>
@@ -321,7 +321,7 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
               </div>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
-                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold text-emerald-700" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
+                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold text-emerald-700" placeholder="0 = on credit" value={blankZero(form.paidAmount)} onChange={e => setForm({ ...form, paidAmount: noLeadingZeros(e.target.value) })} />
               </div>
             </div>
             {/* Which cash / bank account the money went into */}
