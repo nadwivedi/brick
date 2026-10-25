@@ -35,7 +35,7 @@ export default function VehiclesPage() {
           if (!routes.length) return '-';
           const first = routes[0];
           return (
-            <span title={routes.map(t => `${t.location}: pay ₹${t.rate || 0}, charge ₹${t.charge || 0} / trip`).join(', ')}>
+            <span title={routes.map(t => r.ownership === 'hired' ? `${t.location}: ₹${t.rate || 0} / trip` : t.location).join(', ')}>
               {first.location}{routes.length > 1 ? ` +${routes.length - 1} more` : ''}
             </span>
           );

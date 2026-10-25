@@ -26,14 +26,12 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   const routesFor = (v) => (v?.tripRates || []).filter(r => (r.plant || mainPlant) === salePlant);
   const routes = routesFor(vehicle);
   const perTrip = mode === 'own' || (mode === 'hired' && basis.key === 'per_trip');
-  const trips = Number(form.transportQty) || 1;
   const route = routes.find(r => r.location === form.transportLocation);
 
-  // A route sets where it went, what the transporter is paid per trip and what the party is charged
-  const routePatch = (r, ownership, tripCount) => ({
+  // A route sets where it went and what the transporter is paid per trip; the party's charge is typed on the sale
+  const routePatch = (r, ownership) => ({
     transportLocation: r.location,
     ...(ownership === 'hired' ? { transportBasis: 'per_trip', transportRate: r.rate || '' } : {}),
-    ...(r.charge > 0 ? { transportCharges: r.charge * tripCount } : {}),
   });
 
   // Typing or picking a known vehicle fills in its transport, and its route when it has only one
@@ -47,19 +45,16 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
       transportMode: v.ownership,
       transportLocation: '',
       ...(v.ownership === 'hired' ? { transporter: v.party || '', transportBasis: v.hireBasis || 'per_trip', transportRate: v.hireRate || '' } : {}),
-      ...(only && (v.ownership === 'own' || (v.hireBasis || 'per_trip') === 'per_trip') ? routePatch(only, v.ownership, trips) : {}),
+      ...(only && (v.ownership === 'own' || (v.hireBasis || 'per_trip') === 'per_trip') ? routePatch(only, v.ownership) : {}),
     });
   };
 
   const pickRoute = (location) => {
     const r = routes.find(x => x.location === location);
-    onChange(r ? routePatch(r, mode, trips) : { transportLocation: location });
+    onChange(r ? routePatch(r, mode) : { transportLocation: location });
   };
 
-  const setTrips = (value) => onChange({
-    transportQty: value,
-    ...(route?.charge > 0 ? { transportCharges: route.charge * (Number(value) || 1) } : {}),
-  });
+  const setTrips = (value) => onChange({ transportQty: value });
 
   const tripsInput = (
     <div>
@@ -154,8 +149,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
                 {routes.map(r => (
                   <option key={r.location} value={r.location}>
                     {plantName} → {r.location}
-                    {mode === 'hired' ? ` · transporter ₹${(r.rate || 0).toLocaleString('en-IN')}` : ''}
-                    {r.charge > 0 ? ` · party ₹${r.charge.toLocaleString('en-IN')}` : ''} / trip
+                    {mode === 'hired' ? ` · transporter ₹${(r.rate || 0).toLocaleString('en-IN')} / trip` : ''}
                   </option>
                 ))}
               </select>
@@ -168,21 +162,11 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
         </div>
       )}
 
-      {perTrip && route && (
+      {perTrip && route && mode === 'hired' && (
         <div className="flex flex-wrap gap-2 text-xs">
-          {mode === 'hired' && (
-            <span className="rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
-              Transporter charges {fmt(route.rate)} / trip
-            </span>
-          )}
-          <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
-            {route.charge > 0 ? `We charge party ${fmt(route.charge)} / trip` : 'No party rate saved for this route'}
+          <span className="rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+            Transporter charges {fmt(route.rate)} / trip
           </span>
-          {mode === 'hired' && route.charge > 0 && (
-            <span className={`rounded-full px-3 py-1 font-semibold ring-1 ring-inset ${route.charge - route.rate < 0 ? 'bg-rose-50 text-rose-700 ring-rose-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>
-              Margin {fmt(route.charge - route.rate)} / trip
-            </span>
-          )}
         </div>
       )}
 
