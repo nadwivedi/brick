@@ -162,6 +162,21 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
         </div>
       )}
 
+      {/* Party vehicle: from a place typed in (location A) to this sale's plant (location B) */}
+      {mode === 'party' && (
+        <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <div>
+            <label className="label">From (Location A)</label>
+            <input className="input" placeholder="Where the vehicle comes from"
+              value={form.transportLocation || ''} onChange={e => onChange({ transportLocation: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">To (Location B)</label>
+            <p className="input truncate bg-slate-50 font-semibold text-slate-700" title="The plant this sale is from">{plantName}</p>
+          </div>
+        </div>
+      )}
+
       {/* Per trip: from this sale's plant (location A) to a place typed in (location B), and what the transporter is paid */}
       {perTrip && (
         <div className={`grid grid-cols-2 gap-3 md:gap-4 ${mode === 'hired' ? 'md:grid-cols-3' : ''}`}>
@@ -188,13 +203,9 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
         </div>
       )}
 
-      {mode !== 'own' && (
+      {mode === 'hired' && (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-inset ring-amber-200">
-          {mode === 'party' ? (
-            <span className="text-slate-600">The party takes the bricks in their own vehicle.</span>
-          ) : (
-            <span className="text-slate-600">You pay transporter: <span className="font-bold text-rose-600">{fmt(cost)}</span></span>
-          )}
+          <span className="text-slate-600">You pay transporter: <span className="font-bold text-rose-600">{fmt(cost)}</span></span>
         </div>
       )}
     </div>

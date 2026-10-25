@@ -21,10 +21,10 @@ const resolveSaleTransport = async (organization, body = {}) => {
   const Party = mongoose.model('Party');
   const mode = TRANSPORT_MODES.includes(body.transportMode) ? body.transportMode : 'party';
   const none = { transportMode: mode, transporter: null, transportBasis: 'per_trip', transportQty: 0, transportRate: 0, transportCost: 0, transportLocation: '' };
-  // The party's own vehicle: nothing to charge or pay
-  if (mode === 'party') return { ...none, transportCharges: 0 };
-  const transportCharges = num(body.transportCharges);
   const transportLocation = String(body.transportLocation || '').trim();
+  // The party's own vehicle: nothing to charge or pay; the location is where it came from to the plant
+  if (mode === 'party') return { ...none, transportCharges: 0, transportLocation };
+  const transportCharges = num(body.transportCharges);
   // My vehicle: a delivery to a location counts trips (1 unless typed)
   if (mode === 'own') return { ...none, transportCharges, transportLocation, transportQty: transportLocation ? num(body.transportQty) || 1 : 0 };
 
@@ -65,7 +65,7 @@ const resolveSaleVehicle = async (organization, body, transport) => {
       hireBasis: transport.transportBasis,
       hireRate: transport.transportRate,
       // The route this sale went on becomes the vehicle's first per-trip rate
-      tripRates: transport.transportLocation ? [{
+      tripRates: transport.transportLocation && transport.transportMode !== 'party' ? [{
         plant: body.plant, location: transport.transportLocation,
         rate: transport.transportMode === 'hired' ? transport.transportRate : 0,
       }] : [],
