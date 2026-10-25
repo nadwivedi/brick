@@ -1,24 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import {
-  BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
-  PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
-} from './lib/publicNav';
 
 import Layout from './components/Layout';
-import HomePage from './pages/HomePage';
-import BrickKilnPricePage from './pages/BrickKilnPricePage';
-import BhattaSoftwarePage from './pages/BhattaSoftwarePage';
-import BricksManufacturingPage from './pages/BricksManufacturingPage';
-import BrickPlantManagementPage from './pages/BrickPlantManagementPage';
-import OnlineBrickKilnPage from './pages/OnlineBrickKilnPage';
-import BrickKilnProductionPage from './pages/BrickKilnProductionPage';
-import BrickKilnInventoryPage from './pages/BrickKilnInventoryPage';
-import BrickKilnExpensePage from './pages/BrickKilnExpensePage';
-import BrickKilnBillingPage from './pages/BrickKilnBillingPage';
-import BrickKilnReportsPage from './pages/BrickKilnReportsPage';
-import BrickKilnPaymentPage from './pages/BrickKilnPaymentPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -55,31 +39,20 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// Unknown links go to the dashboard when logged in, otherwise to the homepage
-const Fallback = () => <Navigate to={useAuth().user ? '/dashboard' : '/'} replace />;
+// Unknown links go to the dashboard, which sends logged-out visitors to the login page
+const Fallback = () => <Navigate to="/dashboard" replace />;
 
 function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
-      <Route path="/" element={<PublicRoute><HomePage /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-      {/* Product pages stay open to everyone, logged in or not */}
-      <Route path={PRICE_PAGE} element={<BrickKilnPricePage />} />
-      <Route path={BHATTA_PAGE} element={<BhattaSoftwarePage />} />
-      <Route path={MANUFACTURING_PAGE} element={<BricksManufacturingPage />} />
-      <Route path={PLANT_PAGE} element={<BrickPlantManagementPage />} />
-      <Route path={ONLINE_PAGE} element={<OnlineBrickKilnPage />} />
-      <Route path={PRODUCTION_PAGE} element={<BrickKilnProductionPage />} />
-      <Route path={INVENTORY_PAGE} element={<BrickKilnInventoryPage />} />
-      <Route path={EXPENSE_PAGE} element={<BrickKilnExpensePage />} />
-      <Route path={BILLING_PAGE} element={<BrickKilnBillingPage />} />
-      <Route path={REPORTS_PAGE} element={<BrickKilnReportsPage />} />
-      <Route path={PAYMENT_PAGE} element={<BrickKilnPaymentPage />} />
 
       {/* Protected */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        {/* The public website (homepage, product pages) is the separate app in web/ */}
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="production" element={<ProductionPage />} />

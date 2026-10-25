@@ -1,122 +1,50 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import {
+  BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
+} from './lib/publicNav';
 
-function App() {
-  const [count, setCount] = useState(0)
+import HomePage from './pages/HomePage';
+import BrickKilnPricePage from './pages/BrickKilnPricePage';
+import BhattaSoftwarePage from './pages/BhattaSoftwarePage';
+import BricksManufacturingPage from './pages/BricksManufacturingPage';
+import BrickPlantManagementPage from './pages/BrickPlantManagementPage';
+import OnlineBrickKilnPage from './pages/OnlineBrickKilnPage';
+import BrickKilnProductionPage from './pages/BrickKilnProductionPage';
+import BrickKilnInventoryPage from './pages/BrickKilnInventoryPage';
+import BrickKilnExpensePage from './pages/BrickKilnExpensePage';
+import BrickKilnBillingPage from './pages/BrickKilnBillingPage';
+import BrickKilnReportsPage from './pages/BrickKilnReportsPage';
+import BrickKilnPaymentPage from './pages/BrickKilnPaymentPage';
 
+// The public website: homepage and product pages. Login, register and the dashboard live in the frontend/ app.
+export default function App() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path={PRICE_PAGE} element={<BrickKilnPricePage />} />
+        <Route path={BHATTA_PAGE} element={<BhattaSoftwarePage />} />
+        <Route path={MANUFACTURING_PAGE} element={<BricksManufacturingPage />} />
+        <Route path={PLANT_PAGE} element={<BrickPlantManagementPage />} />
+        <Route path={ONLINE_PAGE} element={<OnlineBrickKilnPage />} />
+        <Route path={PRODUCTION_PAGE} element={<BrickKilnProductionPage />} />
+        <Route path={INVENTORY_PAGE} element={<BrickKilnInventoryPage />} />
+        <Route path={EXPENSE_PAGE} element={<BrickKilnExpensePage />} />
+        <Route path={BILLING_PAGE} element={<BrickKilnBillingPage />} />
+        <Route path={REPORTS_PAGE} element={<BrickKilnReportsPage />} />
+        <Route path={PAYMENT_PAGE} element={<BrickKilnPaymentPage />} />
+        {/* Unknown links go to the homepage */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: { fontSize: '14px', fontFamily: 'Poppins, sans-serif' },
+          success: { iconTheme: { primary: '#2563eb', secondary: '#fff' } },
+        }}
+      />
+    </BrowserRouter>
+  );
 }
-
-export default App
