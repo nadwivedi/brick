@@ -22,7 +22,7 @@ const resolveSaleTransport = async (organization, body = {}) => {
   const mode = TRANSPORT_MODES.includes(body.transportMode) ? body.transportMode : 'party';
   const none = { transportMode: mode, transporter: null, transportBasis: 'per_trip', transportQty: 0, transportRate: 0, transportCost: 0, transportLocation: '' };
   const transportLocation = String(body.transportLocation || '').trim();
-  // The party's own vehicle: nothing to charge or pay; the location is where it came from to the plant
+  // The party's own vehicle: nothing to charge or pay; the location is where it goes from the plant
   if (mode === 'party') return { ...none, transportCharges: 0, transportLocation };
   const transportCharges = num(body.transportCharges);
   // My vehicle: a delivery to a location counts trips (1 unless typed)

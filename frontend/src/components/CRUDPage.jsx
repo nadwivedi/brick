@@ -21,8 +21,9 @@ import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
  * - searchKeys: [key] — fields the search box looks in (defaults to the column keys)
  * - formContent: (form, setForm, editing) => node — draws the popup's fields instead of the plain list from `fields`
  *   (`fields` still says which keys are loaded when editing); formWidth sets the popup width for it
+ * - keepFormOnEscape: true while another popup is open over the form, so Escape closes only that one
  */
-export default function CRUDPage({ title, subtitle, endpoint, columns, fields, defaultValues, canDelete = () => true, rowActions, summary, searchKeys, formContent, formWidth = 'max-w-2xl' }) {
+export default function CRUDPage({ title, subtitle, endpoint, columns, fields, defaultValues, canDelete = () => true, rowActions, summary, searchKeys, formContent, formWidth = 'max-w-2xl', keepFormOnEscape = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -31,7 +32,7 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
 
-  useEscapeKey(showForm, () => setShowForm(false));
+  useEscapeKey(showForm && !keepFormOnEscape, () => setShowForm(false));
 
   const fetchItems = async () => {
     setLoading(true);

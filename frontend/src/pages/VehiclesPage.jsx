@@ -3,6 +3,7 @@ import api from '../lib/api';
 import CRUDPage from '../components/CRUDPage';
 import { ModalSection } from '../components/Modal';
 import OptionPicker from '../components/OptionPicker';
+import PartyFormModal from '../components/PartyFormModal';
 import TripRatesEditor from '../components/TripRatesEditor';
 import { NON_NEGATIVE } from '../lib/number';
 import { TRANSPORT_MODES, TRANSPORT_BASES, modeLabel, basisOf, cleanVehicleNumber } from '../lib/transport';
@@ -14,6 +15,7 @@ const OWNERSHIPS = TRANSPORT_MODES.filter(m => m.key !== 'party');
 export default function VehiclesPage() {
   const [parties, setParties] = useState([]);
   const [plants, setPlants] = useState([]);
+  const [addPartyTo, setAddPartyTo] = useState(null); // the vehicle form's setForm while "+ New Party" is open
 
   useEffect(() => {
     api.get('/parties').then(res => setParties((res.data || []).sort((a, b) => a.name.localeCompare(b.name)))).catch(console.error);
@@ -52,7 +54,10 @@ export default function VehiclesPage() {
           <ModalSection number={++n} title="Hire Details" tone="amber">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4">
               <div className={basis === 'per_trip' ? '' : 'sm:col-span-2'}>
-                <label className="label">Transporter (hired from)</label>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="label mb-0">Transporter (hired from)</label>
+                  <button type="button" onClick={() => setAddPartyTo(() => setForm)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+                </div>
                 <OptionPicker options={partyOptions} value={form.party} onChange={party => set({ party })}
                   placeholder="Select Transporter" searchPlaceholder="Search party name..." />
               </div>
@@ -91,6 +96,7 @@ export default function VehiclesPage() {
   };
 
   return (
+    <>
     <CRUDPage
       title="Vehicles"
       subtitle="Vehicles that carry your bricks. Picking one on a sale fills in its transport. New numbers typed on a sale are added here."
@@ -128,8 +134,21 @@ export default function VehiclesPage() {
         { key: 'notes', label: 'Notes', placeholder: 'Optional, e.g. driver name' },
       ]}
       formContent={vehicleForm}
+      keepFormOnEscape={!!addPartyTo}
       formWidth="max-w-3xl"
       defaultValues={{ vehicleNumber: '', ownership: 'own', party: '', hireBasis: 'per_trip', hireRate: 0, tripRates: [], notes: '' }}
     />
+
+    {/* New transporter from the vehicle form; it is selected once saved */}
+    {addPartyTo && (
+      <PartyFormModal
+        onClose={() => setAddPartyTo(null)}
+        onSaved={party => {
+          setParties(list => [...list, party].sort((a, b) => a.name.localeCompare(b.name)));
+          addPartyTo(f => ({ ...f, party: party._id }));
+        }}
+      />
+    )}
+    </>
   );
 }

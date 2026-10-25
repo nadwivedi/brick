@@ -109,14 +109,14 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
 
   const hasQty = mode === 'hired' && !['per_trip', 'fixed'].includes(basis.key);
   const showRoute = mode === 'party' || perTrip;
-  // Party vehicle comes from a place to the plant; my and hired vehicles go from the plant to a place
+  // Every vehicle goes from this sale's plant (A) to a place typed in (B)
   const plantBox = (
     <p className="input flex items-center gap-2 truncate bg-slate-50 font-semibold text-slate-700" title="The plant this sale is from">
       <Factory size={15} className="shrink-0 text-slate-400" /> <span className="truncate">{plantName}</span>
     </p>
   );
   const placeBox = mode === 'party' ? (
-    <input className="input" placeholder="Where the vehicle comes from"
+    <input className="input" placeholder="e.g. Raipur"
       value={form.transportLocation || ''} onChange={e => onChange({ transportLocation: e.target.value })} />
   ) : (
     <>
@@ -128,7 +128,7 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
       </datalist>
     </>
   );
-  const [fromBox, toBox] = mode === 'party' ? [placeBox, plantBox] : [plantBox, placeBox];
+  const [fromBox, toBox] = [plantBox, placeBox];
 
   return (
     <div className="space-y-3 md:space-y-4">
