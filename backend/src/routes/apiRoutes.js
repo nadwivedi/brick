@@ -683,65 +683,88 @@ router.get('/stock/ledger/:materialId', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Everything recorded against one party, oldest first. The balance runs from the party's
-// side: positive = they owe us (receivable), negative = we owe them (payable).
-//  - debit (raises it):  bricks sold to them, money we paid them
-//  - credit (lowers it): money they paid us, material we bought from them, their vehicle hired for a sale
+// Everything recorded against one party, oldest first, one row per entry like a ledger book.
+// The balance runs from the party's side: positive = they owe us (receivable), negative = we owe them (payable).
+// Each row's impact on the balance is debit - credit:
+//  - a sale is debited in full and the money taken with it credited (amount / paidAmount / due)
+//  - a purchase is credited in full and the money paid with it debited
+//  - money received is a credit, money paid a debit, their vehicle hired for a sale a credit
 const partyRows = async (organization, partyId) => {
-  const money = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
-  const words = (s) => (s || '').replace(/_/g, ' ');
+  const words = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const join = (parts) => parts.filter(Boolean).join(' · ');
+  const num = (n) => (n || 0).toLocaleString('en-IN');
   const [invoices, received, purchases, paid, hired] = await Promise.all([
     Invoice.find({ organization, customer: partyId, status: { $nin: ['draft', 'cancelled'] } })
       .populate('plant', 'name').populate('items.product', 'name').lean(),
-    Payment.find({ organization, customer: partyId }).populate('plant', 'name').populate('invoice', 'invoiceNumber').lean(),
+    Payment.find({ organization, customer: partyId }).populate('plant', 'name').populate('invoice', 'invoiceNumber createdAt').lean(),
     Purchase.find({ organization, vendor: partyId }).populate('plant', 'name').populate('items.material', 'name').lean(),
     VendorPayment.find({ organization, vendor: partyId }).lean(),
     Invoice.find({ ...HIRED_TRANSPORT, organization, transporter: partyId }).populate('plant', 'name').populate('customer', 'name').lean(),
   ]);
+
+  // The money taken with a sale: tagged atSale, or (older sales) its linked payment made within a minute of it
+  const atSale = new Map();
+  for (const p of received) {
+    const inv = p.invoice;
+    if (!inv || atSale.has(String(inv._id))) continue;
+    const gap = new Date(p.createdAt) - new Date(inv.createdAt);
+    if (p.atSale || (gap >= 0 && gap <= 60 * 1000)) atSale.set(String(inv._id), p);
+  }
+  const atSaleIds = new Set([...atSale.values()].map(p => String(p._id)));
+
   return [
-    ...invoices.map(i => ({
-      type: 'sale', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
-      title: `Sale · Invoice ${i.invoiceNumber}`,
-      detail: join([
-        (i.items || []).map(it => `${(it.quantity || 0).toLocaleString('en-IN')} pcs ${it.product?.name || ''} @ ${money(it.rate)}`.trim()).join(', '),
-        i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : '',
-      ]),
-      debit: i.totalAmount || 0, credit: 0,
-    })),
-    ...received.map(p => ({
-      type: 'received', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
-      title: 'Payment received',
-      detail: join([words(p.mode), p.invoice?.invoiceNumber ? `for ${p.invoice.invoiceNumber}` : '', p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
+    ...invoices.map(i => {
+      const pay = atSale.get(String(i._id));
+      const pcs = (i.items || []).reduce((s, it) => s + (it.quantity || 0), 0);
+      return {
+        type: 'sale', label: 'Sale', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
+        refNumber: i.invoiceNumber,
+        item: (i.items || []).map(it => it.product?.name).filter(Boolean).join(', '),
+        vehicle: i.vehicleNumber || '',
+        quantity: pcs ? `${num(pcs)} pcs` : '', pcs,
+        amount: i.totalAmount || 0, paidAmount: pay?.amount || 0,
+        note: pay ? words(pay.mode) : '',
+        debit: i.totalAmount || 0, credit: pay?.amount || 0,
+      };
+    }),
+    ...received.filter(p => !atSaleIds.has(String(p._id))).map(p => ({
+      type: 'received', label: 'Receipt', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+      refNumber: p.referenceNumber || '',
+      item: join([words(p.mode), p.invoice?.invoiceNumber ? `for ${p.invoice.invoiceNumber}` : '']),
+      vehicle: '', quantity: '', note: p.notes || '',
+      amount: p.amount || 0, paidAmount: null,
       debit: 0, credit: p.amount || 0, order: 1,
     })),
-    ...purchases.flatMap(p => [
-      {
-        type: 'purchase', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
-        title: p.billNumber ? `Purchase · Bill ${p.billNumber}` : 'Purchase',
-        detail: join([
-          (p.items || []).map(i => `${i.quantity} ${i.unit || ''} ${i.material?.name || ''} @ ${money(i.rate)}`.replace(/\s+/g, ' ').trim()).join(', '),
-          p.transportCharges ? `Transport ${money(p.transportCharges)}` : '',
-        ]),
-        debit: 0, credit: (p.totalAmount || 0) + (p.transportCharges || 0),
-      },
-      ...(p.paidAmount > 0 ? [{
-        type: 'paid', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
-        title: 'Payment made',
-        detail: join([words(p.paymentMode), p.billNumber ? `for Bill ${p.billNumber}` : '']),
-        debit: p.paidAmount, credit: 0, order: 1,
-      }] : []),
-    ]),
+    ...purchases.map(p => {
+      const total = (p.totalAmount || 0) + (p.transportCharges || 0);
+      const units = [...new Set((p.items || []).map(i => i.unit).filter(Boolean))];
+      const qty = (p.items || []).reduce((s, i) => s + (i.quantity || 0), 0);
+      return {
+        type: 'purchase', label: 'Purchase', refId: p._id, date: p.date, createdAt: p.createdAt, plant: p.plant?.name || '',
+        refNumber: p.billNumber ? `Bill ${p.billNumber}` : '',
+        item: (p.items || []).map(i => i.material?.name).filter(Boolean).join(', '),
+        vehicle: '',
+        // Quantities only add up when they share a unit
+        quantity: qty && units.length <= 1 ? `${num(qty)} ${units[0] || ''}`.trim() : '',
+        amount: total, paidAmount: p.paidAmount || 0,
+        note: p.paidAmount > 0 ? words(p.paymentMode) : '',
+        debit: p.paidAmount || 0, credit: total,
+      };
+    }),
     ...hired.map(i => ({
-      type: 'transport', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
-      title: `Vehicle hire · Invoice ${i.invoiceNumber}`,
-      detail: join([describeTransport(i.transportBasis, i.transportQty, i.transportRate, i.transportLocation), i.vehicleNumber ? `Vehicle ${i.vehicleNumber}` : '', i.customer?.name ? `to ${i.customer.name}` : '']),
+      type: 'transport', label: 'Vehicle Hire', refId: i._id, date: i.date, createdAt: i.createdAt, plant: i.plant?.name || '',
+      refNumber: i.invoiceNumber,
+      item: join([i.transportLocation ? `To ${i.transportLocation}` : '', i.customer?.name ? `for ${i.customer.name}` : '']),
+      vehicle: i.vehicleNumber || '',
+      quantity: describeTransport(i.transportBasis, i.transportQty, i.transportRate, ''),
+      amount: i.transportCost || 0, paidAmount: null, note: '',
       debit: 0, credit: i.transportCost || 0,
     })),
     ...paid.map(p => ({
-      type: 'paid', refId: p._id, date: p.date, createdAt: p.createdAt, plant: '',
-      title: 'Payment made',
-      detail: join([words(p.mode), p.referenceNumber ? `Ref ${p.referenceNumber}` : '', p.notes]),
+      type: 'paid', label: 'Payment', refId: p._id, date: p.date, createdAt: p.createdAt, plant: '',
+      refNumber: p.referenceNumber || '',
+      item: words(p.mode), vehicle: '', quantity: '', note: p.notes || '',
+      amount: p.amount || 0, paidAmount: null,
       debit: p.amount || 0, credit: 0,
     })),
   ].sort((a, b) => (new Date(a.date) - new Date(b.date)) || (new Date(a.createdAt) - new Date(b.createdAt)) || ((a.order || 0) - (b.order || 0)));
@@ -771,7 +794,8 @@ router.get('/party-ledger/:id', async (req, res, next) => {
     const opening = start + sum(before, 'debit') - sum(before, 'credit');
     const totalDebit = sum(entries, 'debit');
     const totalCredit = sum(entries, 'credit');
-    const totalOf = (type) => entries.filter(r => r.type === type).reduce((s, r) => s + r.debit + r.credit, 0);
+    const of = (type) => entries.filter(r => r.type === type);
+    const total = (list, key = 'amount') => list.reduce((s, r) => s + (r[key] || 0), 0);
 
     res.json({
       success: true,
@@ -779,7 +803,10 @@ router.get('/party-ledger/:id', async (req, res, next) => {
         party: { _id: party._id, name: party.name, mobile: party.mobile, address: party.address, gstin: party.gstin },
         from, to,
         opening, totalDebit, totalCredit, closing: opening + totalDebit - totalCredit,
-        sales: totalOf('sale'), received: totalOf('received'), purchases: totalOf('purchase') + totalOf('transport'), paid: totalOf('paid'),
+        // Money taken with a sale counts as received, money paid with a purchase as paid
+        sales: total(of('sale')), received: total(of('received')) + total(of('sale'), 'paidAmount'),
+        purchases: total(of('purchase')) + total(of('transport')), paid: total(of('paid')) + total(of('purchase'), 'paidAmount'),
+        bricksSold: total(of('sale'), 'pcs'),
         currentBalance: balance,
         entries,
       }
