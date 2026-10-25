@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import api from '../lib/api';
 import { NON_NEGATIVE } from '../lib/number';
 import OptionPicker from './OptionPicker';
 import { UserRound, Truck, Handshake, MapPin, ArrowRight, Factory } from 'lucide-react';
@@ -18,9 +19,10 @@ const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
  * Transport on a sale: whose vehicle carried it, and for a hired
  * vehicle who it is hired from and what they are paid. A per-trip delivery goes from the sale's plant
  * to a place typed in; a saved route of the vehicle fills in the transporter's per-trip charge.
- * Props: form (the invoice form), onChange(patch), vehicles, parties, plants, pieces (bricks on the sale)
+ * Props: form (the invoice form), onChange(patch), vehicles, parties, plants, pieces (bricks on the sale),
+ * onVehicleAdded(vehicle) when a new vehicle is added from here
  */
-export default function SaleTransport({ form, onChange, vehicles, parties, plants, pieces }) {
+export default function SaleTransport({ form, onChange, vehicles, parties, plants, pieces, onVehicleAdded }) {
   const mode = form.transportMode || 'party';
   const basis = basisOf(form.transportBasis);
   const qty = saleTransportQty(form, pieces);
@@ -56,8 +58,9 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
     });
   };
 
-  // My vehicles and hired vehicles are picked from a list of that kind; a new number can still be typed
-  const [typingNew, setTypingNew] = useState(false);
+  // My vehicles and hired vehicles are always picked from a list of that kind, so each sale is on that
+  // vehicle's ledger; "+ New Vehicle" adds one to the list straight away. A party vehicle is plain text.
+  const [adding, setAdding] = useState(null); // null = closed, else { number, transporter, saving, error }
   const kindVehicles = vehicles.filter(v => v.ownership === mode && v.isActive !== false);
   const vehicleOptions = kindVehicles.map(v => ({
     value: v.vehicleNumber,
@@ -68,10 +71,32 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   if (form.vehicleNumber && !vehicleOptions.some(o => o.value === form.vehicleNumber)) {
     vehicleOptions.unshift({ value: form.vehicleNumber, label: form.vehicleNumber });
   }
-  const showPicker = mode !== 'party' && !typingNew && kindVehicles.length > 0;
+
+  const openAdd = () => setAdding({ number: '', transporter: form.transporter || '', saving: false, error: '' });
+  const saveNew = async () => {
+    const number = cleanVehicleNumber(adding.number);
+    if (!number) return setAdding(a => ({ ...a, error: 'Enter the vehicle number' }));
+    if (mode === 'hired' && !adding.transporter) return setAdding(a => ({ ...a, error: 'Select the transporter' }));
+    setAdding(a => ({ ...a, saving: true, error: '' }));
+    try {
+      const res = await api.post('/vehicles', {
+        vehicleNumber: number, ownership: mode,
+        ...(mode === 'hired' ? { party: adding.transporter, hireBasis: form.transportBasis || 'per_trip' } : {}),
+      });
+      const v = res.data;
+      onVehicleAdded?.(v);
+      onChange({
+        vehicleNumber: v.vehicleNumber, transportLocation: '',
+        ...(mode === 'hired' ? { transporter: v.party || adding.transporter } : {}),
+      });
+      setAdding(null);
+    } catch (e) {
+      setAdding(a => ({ ...a, saving: false, error: e.message || 'Could not add the vehicle' }));
+    }
+  };
 
   const pickMode = (key) => {
-    setTypingNew(false);
+    setAdding(null);
     // A vehicle of another kind does not carry over
     const keep = vehicle && vehicle.ownership === key;
     onChange({ transportMode: key, ...(keep ? {} : { vehicleNumber: '', transportLocation: '' }) });
@@ -139,27 +164,41 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
           <div className={mode === 'hired' ? 'col-span-2 md:col-span-1' : 'col-span-2'}>
             <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
               <label className="label mb-0">Vehicle No.</label>
-              {mode !== 'party' && kindVehicles.length > 0 && (
-                <button type="button" className="text-xs font-semibold text-primary-600 hover:underline"
-                  onClick={() => { setTypingNew(!typingNew); onChange({ vehicleNumber: '', transportLocation: '' }); }}>
-                  {typingNew ? 'Pick from list' : '+ New Vehicle'}
-                </button>
+              {mode !== 'party' && !adding && (
+                <button type="button" className="text-xs font-semibold text-primary-600 hover:underline" onClick={openAdd}>+ New Vehicle</button>
               )}
             </div>
-            {showPicker ? (
-              <OptionPicker options={vehicleOptions} value={form.vehicleNumber} onChange={pickVehicle}
-                placeholder={mode === 'own' ? 'Select my vehicle' : 'Select hired vehicle'} searchPlaceholder="Search vehicle number..." />
+            {mode === 'party' ? (
+              <input className="input font-semibold uppercase placeholder:font-normal placeholder:normal-case" placeholder="Party's vehicle, e.g. MH04AB1234"
+                value={form.vehicleNumber} onChange={e => onChange({ vehicleNumber: e.target.value.toUpperCase() })} />
+            ) : adding ? (
+              /* Adds the vehicle to the list now and picks it */
+              <div className="space-y-2 rounded-lg bg-slate-50 p-2.5 ring-1 ring-inset ring-slate-200">
+                <input autoFocus className="input font-semibold uppercase tracking-wide placeholder:font-normal placeholder:normal-case placeholder:tracking-normal"
+                  placeholder="New vehicle number, e.g. MH04AB1234" value={adding.number}
+                  onChange={e => setAdding(a => ({ ...a, number: cleanVehicleNumber(e.target.value), error: '' }))}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveNew(); } }} />
+                {mode === 'hired' && (
+                  <select className="input" value={adding.transporter} onChange={e => setAdding(a => ({ ...a, transporter: e.target.value, error: '' }))}>
+                    <option value="">Hired from (transporter)</option>
+                    {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                  </select>
+                )}
+                {adding.error && <p className="text-xs font-semibold text-rose-600">{adding.error}</p>}
+                <div className="flex gap-2">
+                  <button type="button" className="btn-primary btn-sm flex-1" onClick={saveNew} disabled={adding.saving}>
+                    {adding.saving ? 'Adding...' : `Add ${mode === 'own' ? 'My' : 'Hired'} Vehicle`}
+                  </button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(null)}>Cancel</button>
+                </div>
+              </div>
             ) : (
               <>
-                <input className="input font-semibold uppercase tracking-wide placeholder:font-normal placeholder:normal-case placeholder:tracking-normal" list={mode === 'party' ? 'sale-vehicles' : undefined}
-                  placeholder={mode === 'party' ? "Party's vehicle, e.g. MH04AB1234" : 'New vehicle number, e.g. MH04AB1234'}
-                  value={form.vehicleNumber} onChange={e => pickVehicle(e.target.value)} />
-                {mode === 'party' && (
-                  <datalist id="sale-vehicles">
-                    {vehicles.filter(v => v.ownership === 'party' && v.isActive !== false).map(v => <option key={v._id} value={v.vehicleNumber} />)}
-                  </datalist>
+                <OptionPicker options={vehicleOptions} value={form.vehicleNumber} onChange={pickVehicle}
+                  placeholder={mode === 'own' ? 'Select my vehicle' : 'Select hired vehicle'} searchPlaceholder="Search vehicle number..." />
+                {kindVehicles.length === 0 && (
+                  <p className="mt-1 text-[11px] text-slate-500">No {mode === 'own' ? 'vehicles of your own' : 'hired vehicles'} yet. Use + New Vehicle.</p>
                 )}
-                {mode !== 'party' && <p className="mt-1 text-[11px] text-slate-500">Saved to your vehicles when the sale is saved.</p>}
               </>
             )}
           </div>

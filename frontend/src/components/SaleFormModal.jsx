@@ -292,7 +292,8 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
         </ModalSection>
 
         <ModalSection number={3} title="Transport" tone="amber">
-          <SaleTransport form={form} onChange={setTransport} vehicles={vehicles} parties={customers} plants={plants} pieces={pieces} />
+          <SaleTransport form={form} onChange={setTransport} vehicles={vehicles} parties={customers} plants={plants} pieces={pieces}
+            onVehicleAdded={v => setVehicles(list => [...list, v])} />
         </ModalSection>
 
         <ModalSection number={4} title="Bill & Payment" tone="purple">

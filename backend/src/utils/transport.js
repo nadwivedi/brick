@@ -51,6 +51,8 @@ const cleanVehicleNumber = (value) => String(value || '').replace(/\s+/g, '').to
 // The vehicle picked or typed on a sale; a new number is added to the vehicle master
 const resolveSaleVehicle = async (organization, body, transport) => {
   const Vehicle = mongoose.model('Vehicle');
+  // A party's vehicle is kept as typed, only on the sale
+  if (transport.transportMode === 'party') return { vehicle: null, vehicleNumber: String(body.vehicleNumber || '').trim().toUpperCase().slice(0, 30) };
   const vehicleNumber = cleanVehicleNumber(body.vehicleNumber);
   if (vehicleNumber.length > VEHICLE_NUMBER_MAX) {
     throw Object.assign(new Error(`Vehicle number can be at most ${VEHICLE_NUMBER_MAX} characters`), { statusCode: 400 });
