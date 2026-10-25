@@ -31,7 +31,10 @@ connectDB()
 
 const app = express();
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174','http://localhost:5175'], credentials: true }));
+// Frontend addresses allowed to call the API, comma separated in FRONTEND_URL
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:5174,http://localhost:5175')
+  .split(',').map(o => o.trim().replace(/\/+$/, '')).filter(Boolean);
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
