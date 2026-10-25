@@ -422,50 +422,69 @@ router.get('/purchases', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Fields the purchase form may set
+const PURCHASE_FIELDS = ['date', 'vendor', 'plant', 'totalAmount', 'transportCharges', 'paidAmount', 'billNumber', 'notes'];
+
+// The purchase as saved: each item in the material's own stock unit, whatever unit the client sent,
+// with how it was paid and what was left on credit
+const purchaseBody = async (organization, body) => {
+  const units = await Material.unitMap((body.items || []).map(i => i.material), organization);
+  const items = (body.items || []).map(i => ({
+    material: i.material, quantity: Number(i.quantity) || 0, rate: Number(i.rate) || 0,
+    amount: Number(i.amount) || 0, unit: units.get(String(i.material)) || i.unit,
+  }));
+  const fields = Object.fromEntries(PURCHASE_FIELDS.filter(k => k in body).map(k => [k, body[k]]));
+  const bill = (Number(fields.totalAmount) || 0) + (Number(fields.transportCharges) || 0);
+  return { ...fields, items, ...(await paidFrom(organization, body)), balanceDue: bill - (Number(fields.paidAmount) || 0) };
+};
+
+// Adds a purchase's materials to stock, or takes them back out (sign -1) when it is changed or deleted
+const purchaseStock = async (purchase, sign = 1) => {
+  for (const item of purchase.items) {
+    await Material.findByIdAndUpdate(item.material, { $inc: { currentStock: sign * item.quantity } });
+  }
+  if (sign < 0) {
+    await StockMovement.deleteMany({ organization: purchase.organization, refType: 'purchase', refId: purchase._id });
+    return;
+  }
+  await StockMovement.insertMany(purchase.items.map(item => ({
+    date: purchase.date, plant: purchase.plant, itemType: 'material', itemId: item.material,
+    qtyIn: item.quantity, unit: item.unit, refType: 'purchase', refId: purchase._id, organization: purchase.organization,
+  })));
+};
+
 router.post('/purchases', async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
-    // Record each item in the material's own stock unit, whatever unit the client sent
-    const units = await Material.unitMap((req.body.items || []).map(i => i.material), organization);
-    const items = (req.body.items || []).map(i => ({ ...i, unit: units.get(String(i.material)) || i.unit }));
-    const purchase = await Purchase.create({
-      ...req.body,
-      ...(await paidFrom(organization, req.body)),
-      items,
-      balanceDue: req.body.totalAmount + (req.body.transportCharges || 0) - (req.body.paidAmount || 0),
-      organization
-    });
-    // Update stock
-    for (const item of items) {
-      await Material.findByIdAndUpdate(item.material, { $inc: { currentStock: item.quantity } });
-      await StockMovement.create({
-        date: purchase.date,
-        plant: purchase.plant,
-        itemType: 'material',
-        itemId: item.material,
-        qtyIn: item.quantity,
-        unit: item.unit,
-        refType: 'purchase',
-        refId: purchase._id,
-        organization
-      });
-    }
+    const purchase = await Purchase.create({ ...(await purchaseBody(organization, req.body)), createdBy: req.user._id, organization });
+    await purchaseStock(purchase);
     res.status(201).json({ success: true, data: purchase });
   } catch (e) { next(e); }
 });
 
+// Editing a purchase swaps its old materials in stock for the new ones; the party ledger reads
+// the purchase itself, so its bill and what was paid with it follow the edit
 router.put('/purchases/:id', async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
-    const body = 'paidAmount' in req.body ? { ...req.body, ...(await paidFrom(organization, req.body)) } : req.body;
-    const p = await Purchase.findOneAndUpdate({ _id: req.params.id, organization }, body, { new: true });
-    res.json({ success: true, data: p });
+    const existing = await Purchase.findOne({ _id: req.params.id, organization });
+    if (!existing) return res.status(404).json({ success: false, message: 'Purchase not found' });
+    const body = await purchaseBody(organization, req.body);
+    if (!body.items.length) return res.status(400).json({ success: false, message: 'Add at least one material' });
+    await purchaseStock(existing, -1);
+    const purchase = await Purchase.findByIdAndUpdate(existing._id, body, { new: true, runValidators: true });
+    await purchaseStock(purchase);
+    res.json({ success: true, data: purchase });
   } catch (e) { next(e); }
 });
 
 router.delete('/purchases/:id', async (req, res, next) => {
   try {
-    await Purchase.findByIdAndDelete(req.params.id);
+    const organization = req.user.organization._id;
+    const purchase = await Purchase.findOneAndDelete({ _id: req.params.id, organization });
+    if (!purchase) return res.status(404).json({ success: false, message: 'Purchase not found' });
+    // The materials it brought in leave stock with it
+    await purchaseStock(purchase, -1);
     res.json({ success: true });
   } catch (e) { next(e); }
 });

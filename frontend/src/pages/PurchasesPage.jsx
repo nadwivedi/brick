@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { hasManyPlants } from '../lib/plants';
 import useOpenOnNew from '../hooks/useOpenOnNew';
 import PurchaseFormModal from '../components/PurchaseFormModal';
-import PartyPaymentModal from '../components/PartyPaymentModal';
-import { balanceText, balanceClass } from '../components/BalanceCell';
 import { PAID_TYPES, paidType } from '../lib/paidWith';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import PartyCell from '../components/PartyCell';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Trash2, ShoppingCart, CalendarDays, CreditCard, Scale, MapPin, Truck, Receipt, Send } from 'lucide-react';
+import { Plus, Edit2, Trash2, ShoppingCart, CalendarDays, CreditCard, Scale, MapPin, Truck, Receipt } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -34,9 +31,8 @@ const TYPE_FILTERS = [
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState([]);
   const [plants, setPlants] = useState([]);
-  const [parties, setParties] = useState([]);
-  const [balances, setBalances] = useState({}); // party ledger balance per party id
-  const [paying, setPaying] = useState(null); // party id the Pay Money popup starts on ('' = none picked)
+  const [balances, setBalances] = useState({}); // party ledger balance per party id, for the To Pay total
+  const [editing, setEditing] = useState(null); // purchase open in the edit popup
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
@@ -46,12 +42,11 @@ export default function PurchasesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [pRes, plantRes, partyRes, balRes] = await Promise.all([
-        api.get('/purchases'), api.get('/plants'), api.get('/parties'), api.get('/party-balances'),
+      const [pRes, plantRes, balRes] = await Promise.all([
+        api.get('/purchases'), api.get('/plants'), api.get('/party-balances'),
       ]);
       setPurchases(pRes.data || []);
       setPlants(plantRes.data || []);
-      setParties((partyRes.data || []).sort((a, b) => a.name.localeCompare(b.name)));
       setBalances(balRes.data || {});
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -101,14 +96,10 @@ export default function PurchasesPage() {
           <div className="page-header">
             <div>
               <h1 className="page-title">Material Purchases</h1>
-              <p className="page-subtitle">Raw materials bought and what was paid with them. Money paid later goes against the party.</p>
+              <p className="page-subtitle">Raw materials bought as cash, partial or credit purchases. What is still owed is in each party's ledger.</p>
             </div>
             <div className="flex gap-2 md:shrink-0">
               <SearchInput className="flex-1 md:w-64 md:flex-none" value={search} onChange={setSearch} placeholder="Search party, bill no. or material..." />
-              <button className="btn-secondary flex-shrink-0" onClick={() => setPaying('')} title="Record money paid to a party">
-                <Send size={18} />
-                <span className="hidden sm:inline">Pay Money</span>
-              </button>
               <button className="btn-primary flex-shrink-0" onClick={openForm}>
                 <Plus size={18} />
                 <span className="hidden sm:inline">New Purchase</span>
@@ -159,8 +150,6 @@ export default function PurchasesPage() {
                 {filtered.map(p => {
                   const bill = billOf(p);
                   const type = PAID_TYPES[typeOf(p)];
-                  const partyId = p.vendor?._id;
-                  const balance = balances[partyId]?.balance;
                   const items = p.items || [];
                   const names = items.map(i => i.material?.name).filter(Boolean);
                   return (
@@ -173,11 +162,6 @@ export default function PurchasesPage() {
                       </td>
                       <td className="table-cell">
                         <PartyCell name={p.vendor?.name} mobile={p.vendor?.mobile} />
-                        {partyId && balance !== undefined && (
-                          <Link to={`/masters/parties/${partyId}/ledger`} className={`mt-1 block whitespace-nowrap pl-[52px] text-xs font-semibold hover:underline ${balanceClass(balance)}`} title="Open the party's ledger">
-                            {balanceText(balance)}
-                          </Link>
-                        )}
                       </td>
                       <td className="table-cell">
                         <div className="max-w-[240px]">
@@ -201,7 +185,7 @@ export default function PurchasesPage() {
                       </td>
                       <td className="table-cell whitespace-nowrap">
                         <p className="text-base font-bold text-slate-900">{fmt(bill)}</p>
-                        <span className={type.badge}>{type.label}</span>
+                        <span className={type.badge}>{type.label} Purchase</span>
                       </td>
                       <td className="table-cell whitespace-nowrap text-xs">
                         {p.paidAmount > 0 && <p className="font-semibold text-rose-600">{fmt(p.paidAmount)} paid</p>}
@@ -209,11 +193,9 @@ export default function PurchasesPage() {
                       </td>
                       <td className="table-cell">
                         <div className="flex items-center justify-end gap-1">
-                          {partyId && balance < 0 && (
-                            <button className="btn-secondary btn-sm mr-1 whitespace-nowrap" title={`Record money paid to ${p.vendor?.name}`} onClick={() => setPaying(partyId)}>
-                              <Send size={14} /> Pay
-                            </button>
-                          )}
+                          <button className="icon-btn hover:bg-blue-50 hover:text-blue-600" title="Edit" onClick={() => setEditing(p)}>
+                            <Edit2 size={16} />
+                          </button>
                           <button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Delete" onClick={() => handleDelete(p)}>
                             <Trash2 size={16} />
                           </button>
@@ -237,10 +219,8 @@ export default function PurchasesPage() {
       {showForm && (
         <PurchaseFormModal onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); fetchData(); }} />
       )}
-
-      {/* Money paid is recorded against the party and lowers what you owe it, not one purchase */}
-      {paying !== null && (
-        <PartyPaymentModal type="vendor" parties={parties} partyId={paying} onClose={() => setPaying(null)} onSaved={fetchData} />
+      {editing && (
+        <PurchaseFormModal purchase={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); fetchData(); }} />
       )}
     </div>
   );

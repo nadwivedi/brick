@@ -15,12 +15,28 @@ import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
+const idOf = (v) => (v && typeof v === 'object' ? v._id : v) || '';
+
+// The form filled in from a saved purchase
+const formFromPurchase = (p) => ({
+  date: dayjs(p.date).format('YYYY-MM-DD'),
+  vendor: idOf(p.vendor), plant: idOf(p.plant),
+  items: (p.items || []).map(i => ({ material: idOf(i.material), quantity: i.quantity, unit: i.unit, rate: i.rate, amount: i.amount })),
+  totalAmount: p.totalAmount || 0, transportCharges: p.transportCharges || 0, paidAmount: p.paidAmount || 0,
+  account: idOf(p.account), paymentMode: p.paymentMode === 'credit' ? '' : p.paymentMode || '',
+  billNumber: p.billNumber || '', notes: p.notes || '',
+});
+
 /**
- * "New Purchase" popup. Loads the parties, plants and materials it needs by itself, so it can be
- * opened from the Purchases page or straight from the dashboard.
- * Props: onClose, onSaved (called after a successful save; the caller closes the popup)
+ * "New Purchase" / "Edit Purchase" popup. Loads the parties, plants and materials it needs by
+ * itself, so it can be opened from the Purchases page or straight from the dashboard.
+ * Props: purchase (a saved purchase to edit; leave out for a new one), onClose,
+ * onSaved (called after a successful save; the caller closes the popup)
  */
-export default function PurchaseFormModal({ onClose, onSaved }) {
+export default function PurchaseFormModal({ purchase, onClose, onSaved }) {
+  const editing = Boolean(purchase);
+  const title = editing ? 'Edit Purchase' : 'New Purchase';
+  const subtitle = editing ? 'Change this purchase; the party ledger and stock follow the change' : 'Record raw materials bought from a vendor';
   const [vendors, setVendors] = useState([]);
   const [plants, setPlants] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -39,6 +55,7 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
         setVendors(vRes.data || []);
         setPlants(plantList);
         setMaterials(mRes.data || []);
+        if (editing) { setForm(formFromPurchase(purchase)); return; }
         setForm({
           date: dayjs().format('YYYY-MM-DD'),
           vendor: '', plant: defaultPlantId(plantList),
@@ -51,7 +68,7 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
 
   if (!form) {
     return (
-      <Modal title="New Purchase" subtitle="Record raw materials bought from a vendor" onClose={onClose} maxWidth="max-w-3xl">
+      <Modal title={title} subtitle={subtitle} onClose={onClose} maxWidth="max-w-3xl">
         <LoadingState label="Loading form…" />
       </Modal>
     );
@@ -88,7 +105,8 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
     if (problem) { alert(problem); return; }
     setSaving(true);
     try {
-      await api.post('/purchases', {
+      const save = editing ? (data) => api.put(`/purchases/${purchase._id}`, data) : (data) => api.post('/purchases', data);
+      await save({
         ...form,
         items: items.map(i => ({ ...i, quantity: Number(i.quantity), rate: Number(i.rate) })),
         totalAmount: items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0),
@@ -109,15 +127,15 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
   return (
     <>
       <Modal
-        title="New Purchase"
-        subtitle="Record raw materials bought from a vendor"
+        title={title}
+        subtitle={subtitle}
         onClose={onClose}
         maxWidth="max-w-3xl"
         footer={<>
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-            Save Purchase
+            {editing ? 'Save Changes' : 'Save Purchase'}
           </button>
         </>}
       >
@@ -213,7 +231,7 @@ export default function PurchaseFormModal({ onClose, onSaved }) {
           {/* Whatever is not paid now is added to the party's balance, to be paid later */}
           <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-3 md:mt-4 md:p-4">
             <p className="flex items-center justify-between gap-2">
-              <span className={PAID_TYPES[purchaseType].badge}>{PAID_TYPES[purchaseType].label} purchase</span>
+              <span className={PAID_TYPES[purchaseType].badge}>{PAID_TYPES[purchaseType].label} Purchase</span>
               <span className="text-lg font-bold text-slate-900">Total: {fmt(bill)}</span>
             </p>
             {Number(form.transportCharges) > 0 && <p className="text-right text-xs text-slate-500">Materials {fmt(form.totalAmount)} + transport {fmt(Number(form.transportCharges))}</p>}
