@@ -31,9 +31,17 @@ connectDB()
 
 const app = express();
 
-// Frontend addresses allowed to call the API, comma separated in FRONTEND_URL
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:5174,http://localhost:5175')
+// Live sites, always allowed to call the API
+const liveOrigins = [
+  'https://brickmanager.in',
+  'https://www.brickmanager.in',
+  'https://app.brickmanager.in',
+  'https://adm.brickmanager.in',
+];
+// Other frontend addresses allowed to call the API, comma separated in FRONTEND_URL
+const extraOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:5174,http://localhost:5175')
   .split(',').map(o => o.trim().replace(/\/+$/, '')).filter(Boolean);
+const allowedOrigins = [...new Set([...liveOrigins, ...extraOrigins])];
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
