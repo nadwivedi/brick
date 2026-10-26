@@ -1,22 +1,32 @@
+import { useState } from 'react';
+import api from '../lib/api';
 import { NON_NEGATIVE } from '../lib/number';
+import OptionPicker from './OptionPicker';
+import { UserRound, Truck, Handshake, MapPin, ArrowRight, Factory } from 'lucide-react';
 import { defaultPlantId } from '../lib/plants';
 import { TRANSPORT_MODES, TRANSPORT_BASES, basisOf, transportCost, saleTransportQty, cleanVehicleNumber } from '../lib/transport';
-import { ArrowRight } from 'lucide-react';
+
+// Colour and icon for each kind of vehicle (same colours as the Vehicles list)
+const MODE_LOOK = {
+  party: { icon: UserRound, active: 'border-slate-500 bg-slate-50', tile: 'bg-slate-600 text-white', text: 'text-slate-800' },
+  own: { icon: Truck, active: 'border-blue-500 bg-blue-50', tile: 'bg-blue-600 text-white', text: 'text-blue-800' },
+  hired: { icon: Handshake, active: 'border-orange-500 bg-orange-50', tile: 'bg-orange-500 text-white', text: 'text-orange-800' },
+};
 
 const fmt = (n) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
 
 /**
- * Transport on a sale: whose vehicle carried it, what the party is charged, and for a hired
- * vehicle who it is hired from and what they are paid. A per-trip delivery picks a route of the
- * vehicle (from the sale's plant to a location), which fills in both per-trip rates.
- * Props: form (the invoice form), onChange(patch), vehicles, parties, plants, pieces (bricks on the sale)
+ * Transport on a sale: whose vehicle carried it, and for a hired
+ * vehicle who it is hired from and what they are paid. A per-trip delivery goes from the sale's plant
+ * to a place typed in; a saved route of the vehicle fills in the transporter's per-trip charge.
+ * Props: form (the invoice form), onChange(patch), vehicles, parties, plants, pieces (bricks on the sale),
+ * onVehicleAdded(vehicle) when a new vehicle is added from here
  */
-export default function SaleTransport({ form, onChange, vehicles, parties, plants, pieces }) {
+export default function SaleTransport({ form, onChange, vehicles, parties, plants, pieces, onVehicleAdded }) {
   const mode = form.transportMode || 'party';
   const basis = basisOf(form.transportBasis);
   const qty = saleTransportQty(form, pieces);
   const cost = mode === 'hired' ? transportCost(form.transportBasis, qty, form.transportRate) : 0;
-  const charge = Number(form.transportCharges) || 0;
 
   // Routes of the chosen vehicle that start at this sale's plant
   const mainPlant = defaultPlantId(plants);
@@ -26,14 +36,11 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
   const routesFor = (v) => (v?.tripRates || []).filter(r => (r.plant || mainPlant) === salePlant);
   const routes = routesFor(vehicle);
   const perTrip = mode === 'own' || (mode === 'hired' && basis.key === 'per_trip');
-  const trips = Number(form.transportQty) || 1;
-  const route = routes.find(r => r.location === form.transportLocation);
 
-  // A route sets where it went, what the transporter is paid per trip and what the party is charged
-  const routePatch = (r, ownership, tripCount) => ({
+  // A route sets where it went and what the transporter is paid per trip
+  const routePatch = (r, ownership) => ({
     transportLocation: r.location,
     ...(ownership === 'hired' ? { transportBasis: 'per_trip', transportRate: r.rate || '' } : {}),
-    ...(r.charge > 0 ? { transportCharges: r.charge * tripCount } : {}),
   });
 
   // Typing or picking a known vehicle fills in its transport, and its route when it has only one
@@ -47,80 +54,173 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
       transportMode: v.ownership,
       transportLocation: '',
       ...(v.ownership === 'hired' ? { transporter: v.party || '', transportBasis: v.hireBasis || 'per_trip', transportRate: v.hireRate || '' } : {}),
-      ...(only && (v.ownership === 'own' || (v.hireBasis || 'per_trip') === 'per_trip') ? routePatch(only, v.ownership, trips) : {}),
+      ...(only && (v.ownership === 'own' || (v.hireBasis || 'per_trip') === 'per_trip') ? routePatch(only, v.ownership) : {}),
     });
+  };
+
+  // My vehicles and hired vehicles are always picked from a list of that kind, so each sale is on that
+  // vehicle's ledger; "+ New Vehicle" adds one to the list straight away. A party vehicle is plain text.
+  const [adding, setAdding] = useState(null); // null = closed, else { number, transporter, saving, error }
+  const kindVehicles = vehicles.filter(v => v.ownership === mode && v.isActive !== false);
+  const vehicleOptions = kindVehicles.map(v => ({
+    value: v.vehicleNumber,
+    label: v.vehicleNumber,
+    hint: mode === 'hired' ? parties.find(p => p._id === v.party)?.name : undefined,
+  }));
+  // A number already on this sale stays pickable even when it is not in the list
+  if (form.vehicleNumber && !vehicleOptions.some(o => o.value === form.vehicleNumber)) {
+    vehicleOptions.unshift({ value: form.vehicleNumber, label: form.vehicleNumber });
+  }
+
+  const openAdd = () => setAdding({ number: '', transporter: form.transporter || '', saving: false, error: '' });
+  const saveNew = async () => {
+    const number = cleanVehicleNumber(adding.number);
+    if (!number) return setAdding(a => ({ ...a, error: 'Enter the vehicle number' }));
+    if (mode === 'hired' && !adding.transporter) return setAdding(a => ({ ...a, error: 'Select the transporter' }));
+    setAdding(a => ({ ...a, saving: true, error: '' }));
+    try {
+      const res = await api.post('/vehicles', {
+        vehicleNumber: number, ownership: mode,
+        ...(mode === 'hired' ? { party: adding.transporter, hireBasis: form.transportBasis || 'per_trip' } : {}),
+      });
+      const v = res.data;
+      onVehicleAdded?.(v);
+      onChange({
+        vehicleNumber: v.vehicleNumber, transportLocation: '',
+        ...(mode === 'hired' ? { transporter: v.party || adding.transporter } : {}),
+      });
+      setAdding(null);
+    } catch (e) {
+      setAdding(a => ({ ...a, saving: false, error: e.message || 'Could not add the vehicle' }));
+    }
+  };
+
+  const pickMode = (key) => {
+    setAdding(null);
+    // A vehicle of another kind does not carry over
+    const keep = vehicle && vehicle.ownership === key;
+    onChange({ transportMode: key, ...(keep ? {} : { vehicleNumber: '', transportLocation: '' }) });
   };
 
   const pickRoute = (location) => {
     const r = routes.find(x => x.location === location);
-    onChange(r ? routePatch(r, mode, trips) : { transportLocation: location });
+    onChange(r ? routePatch(r, mode) : { transportLocation: location });
   };
 
-  const setTrips = (value) => onChange({
-    transportQty: value,
-    ...(route?.charge > 0 ? { transportCharges: route.charge * (Number(value) || 1) } : {}),
-  });
-
-  const tripsInput = (
-    <div>
-      <label className="label">Trips</label>
-      <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="1" value={form.transportQty} onChange={e => setTrips(e.target.value)} />
-    </div>
+  const hasQty = mode === 'hired' && !['per_trip', 'fixed'].includes(basis.key);
+  const showRoute = mode === 'party' || perTrip;
+  // Every vehicle goes from this sale's plant (A) to a place typed in (B)
+  const plantBox = (
+    <p className="input flex items-center gap-2 truncate bg-slate-50 font-semibold text-slate-700" title="The plant this sale is from">
+      <Factory size={15} className="shrink-0 text-slate-400" /> <span className="truncate">{plantName}</span>
+    </p>
   );
+  const placeBox = mode === 'party' ? (
+    <input className="input" placeholder="e.g. Raipur"
+      value={form.transportLocation || ''} onChange={e => onChange({ transportLocation: e.target.value })} />
+  ) : (
+    <>
+      {/* Saved routes of the vehicle are suggested; picking one fills in its transporter charge */}
+      <input className="input" list="sale-routes" placeholder="e.g. Raipur"
+        value={form.transportLocation || ''} onChange={e => pickRoute(e.target.value)} />
+      <datalist id="sale-routes">
+        {routes.map(r => <option key={r.location} value={r.location} />)}
+      </datalist>
+    </>
+  );
+  const [fromBox, toBox] = [plantBox, placeBox];
 
   return (
     <div className="space-y-3 md:space-y-4">
+      {/* Whose vehicle: each kind has its own colour and icon */}
       <div className="grid grid-cols-3 gap-2">
         {TRANSPORT_MODES.map(m => {
           const active = mode === m.key;
+          const look = MODE_LOOK[m.key];
+          const Icon = look.icon;
           return (
             <button
               key={m.key}
               type="button"
-              onClick={() => onChange({ transportMode: m.key })}
-              className={`rounded-lg border-2 px-2 py-2 text-center transition sm:px-3 sm:text-left ${active ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+              onClick={() => pickMode(m.key)}
+              aria-pressed={active}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-2.5 text-center transition sm:flex-row sm:gap-2.5 sm:px-3 sm:text-left ${active ? look.active : 'border-slate-200 bg-white hover:border-slate-300'}`}
             >
-              <span className={`block text-xs font-semibold sm:text-sm ${active ? 'text-amber-800' : 'text-slate-700'}`}>{m.label}</span>
-              <span className="mt-0.5 hidden text-[11px] text-slate-500 sm:block">{m.hint}</span>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? look.tile : 'bg-slate-100 text-slate-500'}`}>
+                <Icon size={17} />
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-xs font-semibold sm:text-sm ${active ? look.text : 'text-slate-700'}`}>{m.label}</span>
+                <span className="mt-0.5 hidden text-[11px] text-slate-500 sm:block">{m.hint}</span>
+              </span>
             </button>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <div className="col-span-2">
-          <label className="label">Vehicle Number</label>
-          <input className="input uppercase placeholder:normal-case" list="sale-vehicles" placeholder="Type or pick, e.g. MH04AB1234"
-            value={form.vehicleNumber} onChange={e => pickVehicle(e.target.value)} />
-          <datalist id="sale-vehicles">
-            {vehicles.filter(v => v.isActive !== false).map(v => <option key={v._id} value={v.vehicleNumber} />)}
-          </datalist>
-        </div>
-        {mode !== 'party' && (
-          <div className="col-span-2">
-            <label className="label">Transport Charge to Party (₹)</label>
-            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0 = free delivery"
-              value={form.transportCharges || ''} onChange={e => onChange({ transportCharges: e.target.value })} />
+      {/* Vehicle (and, for a hired one, who it is from and how they are paid) */}
+      <div className="rounded-xl bg-white p-3 ring-1 ring-inset ring-slate-200 md:p-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+          <div className={mode === 'hired' ? 'col-span-2 md:col-span-1' : 'col-span-2'}>
+            <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
+              <label className="label mb-0">Vehicle No.</label>
+              {mode !== 'party' && !adding && (
+                <button type="button" className="text-xs font-semibold text-primary-600 hover:underline" onClick={openAdd}>+ New Vehicle</button>
+              )}
+            </div>
+            {mode === 'party' ? (
+              <input className="input font-semibold uppercase placeholder:font-normal placeholder:normal-case" placeholder="Party's vehicle, e.g. MH04AB1234"
+                value={form.vehicleNumber} onChange={e => onChange({ vehicleNumber: e.target.value.toUpperCase() })} />
+            ) : adding ? (
+              /* Adds the vehicle to the list now and picks it */
+              <div className="space-y-2 rounded-lg bg-slate-50 p-2.5 ring-1 ring-inset ring-slate-200">
+                <input autoFocus className="input font-semibold uppercase tracking-wide placeholder:font-normal placeholder:normal-case placeholder:tracking-normal"
+                  placeholder="New vehicle number, e.g. MH04AB1234" value={adding.number}
+                  onChange={e => setAdding(a => ({ ...a, number: cleanVehicleNumber(e.target.value), error: '' }))}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveNew(); } }} />
+                {mode === 'hired' && (
+                  <select className="input" value={adding.transporter} onChange={e => setAdding(a => ({ ...a, transporter: e.target.value, error: '' }))}>
+                    <option value="">Hired from (transporter)</option>
+                    {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                  </select>
+                )}
+                {adding.error && <p className="text-xs font-semibold text-rose-600">{adding.error}</p>}
+                <div className="flex gap-2">
+                  <button type="button" className="btn-primary btn-sm flex-1" onClick={saveNew} disabled={adding.saving}>
+                    {adding.saving ? 'Adding...' : `Add ${mode === 'own' ? 'My' : 'Hired'} Vehicle`}
+                  </button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(null)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <OptionPicker options={vehicleOptions} value={form.vehicleNumber} onChange={pickVehicle}
+                  placeholder={mode === 'own' ? 'Select my vehicle' : 'Select hired vehicle'} searchPlaceholder="Search vehicle number..." />
+                {kindVehicles.length === 0 && (
+                  <p className="mt-1 text-[11px] text-slate-500">No {mode === 'own' ? 'vehicles of your own' : 'hired vehicles'} yet. Use + New Vehicle.</p>
+                )}
+              </>
+            )}
           </div>
-        )}
-      </div>
+          {mode === 'hired' && <>
+            <div className="col-span-2 md:col-span-1">
+              {/* Same height as the vehicle's label row, which has a button */}
+              <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Transporter</label></div>
+              <select className="input" value={form.transporter} onChange={e => onChange({ transporter: e.target.value })}>
+                <option value="">Select Transporter</option>
+                {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2 md:col-span-1">
+              <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Pay Transporter</label></div>
+              <select className="input" value={form.transportBasis} onChange={e => onChange({ transportBasis: e.target.value })}>
+                {TRANSPORT_BASES.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
+              </select>
+            </div>
+          </>}
 
-      {mode === 'hired' && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          <div className="col-span-2 md:col-span-1">
-            <label className="label">Transporter</label>
-            <select className="input" value={form.transporter} onChange={e => onChange({ transporter: e.target.value })}>
-              <option value="">Select Party</option>
-              {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="col-span-2 md:col-span-1">
-            <label className="label">Pay Transporter</label>
-            <select className="input" value={form.transportBasis} onChange={e => onChange({ transportBasis: e.target.value })}>
-              {TRANSPORT_BASES.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
-            </select>
-          </div>
-          {basis.key === 'per_trip' ? tripsInput : basis.key !== 'fixed' && (
+          {/* Hired, not per trip: how much the transporter is paid; per trip is asked with the route */}
+          {mode === 'hired' && hasQty && (
             <div>
               <label className="label">{basis.key === 'per_km' ? 'Distance (km)' : basis.key === 'per_ton' ? 'Weight (tons)' : 'Bricks (×1000)'}</label>
               {basis.key === 'per_1000' ? (
@@ -131,74 +231,52 @@ export default function SaleTransport({ form, onChange, vehicles, parties, plant
               )}
             </div>
           )}
-          <div className={basis.key === 'fixed' ? 'col-span-2' : ''}>
-            <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
-            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
-              value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
-          </div>
+          {mode === 'hired' && basis.key !== 'per_trip' && (
+            <div className={hasQty ? '' : 'col-span-2 md:col-span-1'}>
+              <label className="label">{basis.key === 'fixed' ? 'Amount to Transporter (₹)' : `Rate (₹ / ${basis.unit})`}</label>
+              <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0"
+                value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Where a per-trip delivery went: from this sale's plant to a location */}
-      {perTrip && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          <div className="col-span-2 md:col-span-3">
-            <label className="label flex items-center gap-1.5">
-              Route <span className="font-normal text-slate-400">· from {plantName}</span> <ArrowRight size={12} className="text-slate-400" /> <span className="font-normal text-slate-400">to</span>
-            </label>
-            {routes.length > 0 ? (
-              <select className="input" value={form.transportLocation || ''} onChange={e => pickRoute(e.target.value)}>
-                <option value="">Select where it is going</option>
-                {/* A location typed earlier stays pickable */}
-                {form.transportLocation && !route && <option value={form.transportLocation}>{form.transportLocation}</option>}
-                {routes.map(r => (
-                  <option key={r.location} value={r.location}>
-                    {plantName} → {r.location}
-                    {mode === 'hired' ? ` · transporter ₹${(r.rate || 0).toLocaleString('en-IN')}` : ''}
-                    {r.charge > 0 ? ` · party ₹${r.charge.toLocaleString('en-IN')}` : ''} / trip
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input className="input" placeholder={vehicle ? 'Location (add routes to this vehicle under Masters → Vehicles)' : 'Location, e.g. Raipur'}
-                value={form.transportLocation || ''} onChange={e => onChange({ transportLocation: e.target.value })} />
+      {/* Route: From (A) → To (B), and for a hired per-trip vehicle what the transporter is paid */}
+      {showRoute && (
+        <div className="rounded-xl bg-white p-3 ring-1 ring-inset ring-slate-200 md:p-4">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <MapPin size={14} className="text-slate-400" /> Route
+          </p>
+          <div className={`grid grid-cols-1 items-end gap-3 md:gap-4 ${mode === 'hired' ? 'sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,1fr)]' : 'sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'}`}>
+            <div>
+              <label className="label flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> From (Location A)</label>
+              {fromBox}
+            </div>
+            <ArrowRight size={18} className="mb-3 hidden text-slate-300 sm:block" />
+            <div>
+              <label className="label flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500" /> To (Location B)</label>
+              {toBox}
+            </div>
+            {mode === 'hired' && (
+              <div className="sm:col-span-3 md:col-span-1">
+                <label className="label">Transporter Charge (₹ / trip)</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                  <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="0"
+                    value={form.transportRate} onChange={e => onChange({ transportRate: e.target.value })} />
+                </div>
+              </div>
             )}
           </div>
-          {mode === 'own' && tripsInput}
         </div>
       )}
 
-      {perTrip && route && (
-        <div className="flex flex-wrap gap-2 text-xs">
-          {mode === 'hired' && (
-            <span className="rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
-              Transporter charges {fmt(route.rate)} / trip
-            </span>
-          )}
-          <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
-            {route.charge > 0 ? `We charge party ${fmt(route.charge)} / trip` : 'No party rate saved for this route'}
-          </span>
-          {mode === 'hired' && route.charge > 0 && (
-            <span className={`rounded-full px-3 py-1 font-semibold ring-1 ring-inset ${route.charge - route.rate < 0 ? 'bg-rose-50 text-rose-700 ring-rose-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>
-              Margin {fmt(route.charge - route.rate)} / trip
-            </span>
-          )}
+      {mode === 'hired' && (
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-orange-50 px-3 py-2.5 ring-1 ring-inset ring-orange-200 md:px-4">
+          <span className="text-sm font-medium text-orange-800">You pay transporter</span>
+          <span className="text-lg font-bold text-orange-700">{fmt(cost)}</span>
         </div>
       )}
-
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-inset ring-amber-200">
-        {mode === 'party' ? (
-          <span className="text-slate-600">The party takes the bricks in their own vehicle, so there is no transport charge.</span>
-        ) : (
-          <>
-            <span className="text-slate-600">Charged to party: <span className="font-bold text-slate-900">{fmt(charge)}</span></span>
-            {mode === 'hired' && <>
-              <span className="text-slate-600">You pay transporter: <span className="font-bold text-rose-600">{fmt(cost)}</span></span>
-              <span className="text-slate-600">Margin: <span className={`font-bold ${charge - cost < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{fmt(charge - cost)}</span></span>
-            </>}
-          </>
-        )}
-      </div>
     </div>
   );
 }

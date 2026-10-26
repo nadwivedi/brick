@@ -45,8 +45,9 @@ function TrendTooltip({ active, payload, label, labelFormat, series }) {
 /**
  * Bricks produced per day/month as stacked bars, one colour per brick type; the bar height is the total.
  * - rows: [{ _id: period, total, [productId]: qty }], types: [{ _id, name }] in creation order
+ * - note: replaces the subtitle, e.g. when the chart shows more days than the selected range
  */
-export default function ProductionTrendChart({ rows = [], types = [], byMonth, tickFormat, labelFormat }) {
+export default function ProductionTrendChart({ rows = [], types = [], byMonth, tickFormat, labelFormat, note }) {
   const { data, series, totals } = seriesFor(types, rows);
   const grandTotal = rows.reduce((t, r) => t + (r.total || 0), 0);
 
@@ -56,7 +57,7 @@ export default function ProductionTrendChart({ rows = [], types = [], byMonth, t
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="text-sm font-bold text-slate-900">Production Trend</h3>
-            <p className="text-xs text-slate-500">Bricks produced {byMonth ? 'by month' : 'by day'}, by brick type</p>
+            <p className="text-xs text-slate-500">{note || `Bricks produced ${byMonth ? 'by month' : 'by day'}, by brick type`}</p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold leading-tight text-slate-900">{fmtNum(grandTotal)} <span className="text-xs font-semibold text-slate-500">pcs</span></p>

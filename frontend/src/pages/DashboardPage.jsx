@@ -13,7 +13,8 @@ import PartyCell from '../components/PartyCell';
 import { LoadingState } from '../components/States';
 import {
   Hammer, FileText, Package, DollarSign, TrendingUp,
-  AlertTriangle, Users, ShoppingCart, ChevronRight, HandCoins, Send, Layers
+  AlertTriangle, Users, ShoppingCart, ChevronRight, HandCoins, Send, Layers,
+  ArrowDownLeft, ArrowUpRight, Scale, Banknote, Landmark
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -109,6 +110,80 @@ function DuesPanel({ kind, rows = [], total = 0, count = 0 }) {
             );
           })}
         </ul>
+      )}
+    </section>
+  );
+}
+
+/** Money in and money out of the cash / bank accounts for the period, what it was for, and by account. */
+function CashflowPanel({ flow, periodText }) {
+  if (!flow) return null;
+  const outLines = [
+    { label: 'Paid to parties', value: flow.paid },
+    { label: 'Paid with purchases', value: flow.purchases },
+    { label: 'Expenses', value: flow.expenses },
+  ].filter(l => l.value > 0);
+  const positive = flow.net >= 0;
+  return (
+    <section className="panel">
+      <div className="panel-header flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Cashflow</h3>
+          <p className="text-xs text-slate-500">Money in and out of your cash and bank accounts · {periodText}</p>
+        </div>
+        <Link to="/accounts" className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">
+          Cash & Bank <ChevronRight size={14} />
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="p-4">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100"><ArrowDownLeft size={16} /></span>
+            Money In
+          </p>
+          <p className="mt-2 text-2xl font-bold text-emerald-700">{fmt(flow.in)}</p>
+          <p className="mt-1 text-xs text-slate-500">{flow.received > 0 ? 'Received from parties' : 'Nothing received'}</p>
+        </div>
+        <div className="p-4">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100"><ArrowUpRight size={16} /></span>
+            Money Out
+          </p>
+          <p className="mt-2 text-2xl font-bold text-rose-600">{fmt(flow.out)}</p>
+          {outLines.length === 0 ? (
+            <p className="mt-1 text-xs text-slate-500">Nothing paid out</p>
+          ) : (
+            <ul className="mt-1 space-y-0.5 text-xs text-slate-500">
+              {outLines.map(l => (
+                <li key={l.label} className="flex justify-between gap-3"><span>{l.label}</span><span className="font-semibold text-slate-700">{fmt(l.value)}</span></li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="p-4">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span className={`flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-inset ${positive ? 'bg-blue-50 text-blue-700 ring-blue-100' : 'bg-amber-50 text-amber-700 ring-amber-100'}`}><Scale size={16} /></span>
+            Net Cashflow
+          </p>
+          <p className={`mt-2 text-2xl font-bold ${positive ? 'text-blue-700' : 'text-amber-600'}`}>{flow.net < 0 ? '−' : ''}{fmt(Math.abs(flow.net))}</p>
+          <p className="mt-1 text-xs text-slate-500">{flow.net > 0 ? 'More came in than went out' : flow.net < 0 ? 'More went out than came in' : 'In and out are equal'}</p>
+        </div>
+      </div>
+      {/* Where the money moved: each account with its in and out */}
+      {flow.byAccount?.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-3">
+          {flow.byAccount.map(a => {
+            const Icon = a.type === 'cash' ? Banknote : Landmark;
+            return (
+              <span key={a._id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs ring-1 ring-inset ring-slate-200">
+                <Icon size={14} className={a.type === 'cash' ? 'text-amber-600' : 'text-indigo-600'} />
+                <span className="font-semibold text-slate-700">{a.name}</span>
+                {a.in > 0 && <span className="font-semibold text-emerald-700">+{fmt(a.in)}</span>}
+                {a.out > 0 && <span className="font-semibold text-rose-600">−{fmt(a.out)}</span>}
+              </span>
+            );
+          })}
+        </div>
       )}
     </section>
   );
@@ -270,6 +345,10 @@ export default function DashboardPage() {
           byMonth={byMonth}
           tickFormat={tickFormat}
           labelFormat={labelFormat}
+          // Today / Yesterday still show a week, so the day can be compared with the ones before
+          note={data?.productionTrendFrom && data.productionTrendFrom < data.from
+            ? `Bricks produced by day, last ${data.productionTrend?.length || 7} days to ${dayjs(data.to).format('D MMM')}`
+            : undefined}
         />
 
         <section className="panel">
@@ -292,6 +371,9 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {/* Cashflow comes right after the charts */}
+      <CashflowPanel flow={data?.cashflow} periodText={periodText} />
 
       {/* Who owes you and whom you owe, right now (not limited to the date range) */}
       <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2">

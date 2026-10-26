@@ -10,3 +10,9 @@ export const NON_NEGATIVE = {
     if (Number(e.clipboardData.getData('text')) < 0) e.preventDefault();
   },
 };
+
+// For the value of a number box: a stored 0 shows as an empty box (the placeholder), so typing
+// does not end up after it as "022"
+export const blankZero = (v) => (v === 0 ? '' : v);
+// For a typed number: "022" becomes "22" (a lone "0" and "0.5" stay as typed)
+export const noLeadingZeros = (v) => String(v).replace(/^0+(?=\d)/, '');

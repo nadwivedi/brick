@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import PlantSelect from './PlantSelect';
 import { defaultPlantId } from '../lib/plants';
+import OptionPicker from './OptionPicker';
 import useEscapeKey from '../hooks/useEscapeKey';
 import PartyFormModal from './PartyFormModal';
 import Modal, { ModalSection } from './Modal';
@@ -11,11 +12,12 @@ import AccountPicker, { modeForAccount } from './AccountPicker';
 import useAccounts from '../hooks/useAccounts';
 import { LoadingState } from './States';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
-import { NON_NEGATIVE } from '../lib/number';
+import { NON_NEGATIVE, blankZero, noLeadingZeros } from '../lib/number';
 import { PAID_TYPES, paidType } from '../lib/paidWith';
 import dayjs from 'dayjs';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
+const num = (n) => (n || 0).toLocaleString('en-IN');
 
 // A new sale starts on the party's own vehicle
 const NO_TRANSPORT = { transportMode: 'party', transporter: '', transportBasis: 'per_trip', transportQty: '', transportRate: '', transportLocation: '' };
@@ -53,6 +55,7 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
   const [brickStock, setBrickStock] = useState({}); // pcs available per brick type id
   const [form, setForm] = useState(null); // filled in once the lists above have loaded
   const [saving, setSaving] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState(''); // this invoice's number, or the one a new invoice will get
   const [addingCustomer, setAddingCustomer] = useState(false); // inline "+ New Party" popup over the invoice form
   const { accounts, defaultAccountId } = useAccounts();
   const accountOf = (id) => accounts.find(a => a._id === (id || defaultAccountId));
@@ -67,7 +70,7 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
       // When editing, this sale's own bricks count as available
       api.get('/stock/bricks', { params: editing ? { excludeInvoice: invoiceId } : {} }),
       api.get('/vehicles'),
-      editing ? api.get(`/invoices/${invoiceId}`) : null,
+      editing ? api.get(`/invoices/${invoiceId}`) : api.get('/invoices/next-number'),
     ]).then(([custRes, prodRes, plantRes, stockRes, vehRes, invRes]) => {
       const plantList = plantRes.data || [];
       setVehicles(vehRes.data || []);
@@ -75,7 +78,8 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
       setCustomers(custRes.data || []);
       setProducts(prodRes.data || []);
       setPlants(plantList);
-      if (invRes) { setForm(formFromInvoice(invRes.data)); return; }
+      if (editing) { setInvoiceNumber(invRes.data.invoiceNumber); setForm(formFromInvoice(invRes.data)); return; }
+      setInvoiceNumber(invRes.data);
       setForm({ date: dayjs().format('YYYY-MM-DD'), customer: '', plant: defaultPlantId(plantList), items: [{ product: '', quantity: '', rate: '', amount: 0, gstPercent: 0, gstAmount: 0 }], subtotal: 0, gstTotal: 0, transportCharges: 0, discount: 0, totalAmount: 0, paidAmount: 0, account: '', paymentMode: '', vehicleNumber: '', driverName: '', siteAddress: '', notes: '', ...NO_TRANSPORT });
     }).catch(e => { alert(e.message || 'Could not load the form'); onClose(); });
   }, []);
@@ -97,15 +101,17 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
 
   const updateItem = (idx, key, val) => {
     const items = [...form.items];
-    items[idx][key] = val;
-    if (key === 'quantity' || key === 'rate') {
-      const qty = parseFloat(items[idx].quantity) || 0;
-      const rate = parseFloat(items[idx].rate) || 0;
-      items[idx].amount = qty * rate;
-    }
+    items[idx] = { ...items[idx], [key]: val };
+    const qty = parseFloat(items[idx].quantity) || 0;
     if (key === 'product') {
       const p = products.find(p => p._id === val);
       if (p) items[idx].rate = p.defaultRate;
+    }
+    if (key === 'amount') {
+      // The amount typed sets the rate per brick
+      if (qty > 0) items[idx].rate = Math.round(((parseFloat(val) || 0) / qty) * 100) / 100;
+    } else if (key === 'quantity' || key === 'rate' || key === 'product') {
+      items[idx].amount = Math.round(qty * (parseFloat(items[idx].rate) || 0) * 100) / 100;
     }
     const totals = calcTotals(items, form.transportCharges, form.discount);
     setForm({ ...form, items, ...totals });
@@ -126,6 +132,13 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
   const qtyByProduct = form.items.reduce((m, i) => (i.product ? { ...m, [i.product]: (m[i.product] || 0) + (Number(i.quantity) || 0) } : m), {});
   const overStock = Object.keys(qtyByProduct).filter(id => qtyByProduct[id] > (brickStock[id] || 0));
   const pieces = Object.values(qtyByProduct).reduce((s, n) => s + n, 0);
+
+  // Searchable lists: parties by name or mobile, brick types with the stock available to sell
+  const partyOptions = customers.map(c => ({ value: c._id, label: c.name, hint: c.mobile }));
+  const productOptions = products.filter(p => p.isActive !== false || form.items.some(i => i.product === p._id)).map(p => {
+    const left = brickStock[p._id] || 0;
+    return { value: p._id, label: p.name, hint: p.size, badge: { text: `${num(left)} pcs in stock`, tone: left > 0 ? 'green' : 'gray' } };
+  });
 
   // What is received now; the rest goes on the party's balance
   const saleType = paidType(form.paidAmount, form.totalAmount);
@@ -192,121 +205,164 @@ export default function SaleFormModal({ invoiceId, onClose, onSaved }) {
         </>}
       >
         <ModalSection number={1} title="Invoice Details" tone="blue">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-            <div>
-              <label className="label">Date</label>
-              <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-            </div>
-            <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
-            <div className="col-span-2">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="label mb-0">Party</label>
-                <button type="button" onClick={() => setAddingCustomer(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+          <div className="space-y-3 md:space-y-4">
+            {/* Date 30%, invoice no. 30%, party 40% */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-[3fr_3fr_4fr] md:gap-4">
+              <div>
+                <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Date</label></div>
+                <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
               </div>
-              <select className="input" value={form.customer} onChange={e => setForm({ ...form, customer: e.target.value })}>
-                <option value="">Select Party</option>
-                {customers.map(c => <option key={c._id} value={c._id}>{c.name} ({c.mobile})</option>)}
-              </select>
+              <div>
+                <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Invoice No.</label></div>
+                {/* Given by the system when the invoice is saved */}
+                <div className="input flex items-center justify-between gap-2 bg-slate-50 font-bold text-slate-800" title={editing ? undefined : 'The number this invoice will get when you save it'}>
+                  <span className="truncate">{invoiceNumber || '—'}</span>
+                  {!editing && <span className="text-[11px] font-semibold text-slate-400">Auto</span>}
+                </div>
+              </div>
+              <div className="col-span-2 min-w-0 md:col-span-1">
+                <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
+                  <label className="label mb-0">Party <span className="text-rose-500">*</span></label>
+                  <button type="button" onClick={() => setAddingCustomer(true)} className="text-xs font-semibold text-primary-600 hover:underline">+ New Party</button>
+                </div>
+                <OptionPicker options={partyOptions} value={form.customer} onChange={customer => setForm(f => ({ ...f, customer }))}
+                  placeholder="Select Party" searchPlaceholder="Search party name or mobile..." />
+              </div>
             </div>
+            {/* Only shows with more than one plant */}
+            <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
           </div>
         </ModalSection>
 
-        {/* Items */}
-        <ModalSection
-          number={2}
-          title="Invoice Items"
-          tone="slate"
-          action={<button className="btn-secondary btn-sm" onClick={addItem}><Plus size={14} /> Add Item</button>}
-        >
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead><tr>
-                <th className="table-header">Product</th>
-                <th className="table-header">Qty</th>
-                <th className="table-header">Rate (₹)</th>
-                <th className="table-header text-right">Amount</th>
-                <th className="table-header"></th>
-              </tr></thead>
-              <tbody>
-                {form.items.map((item, idx) => (
-                  <tr key={idx} className="border-t border-slate-100">
-                    <td className="px-2 py-1.5">
-                      <select className="input min-w-36 py-1.5" value={item.product} onChange={e => updateItem(idx, 'product', e.target.value)}>
-                        <option value="">Select</option>
-                        {products.map(p => <option key={p._id} value={p._id}>{p.name} ({(brickStock[p._id] || 0).toLocaleString('en-IN')} pcs)</option>)}
-                      </select>
-                      {item.product && (
-                        <p className={`mt-0.5 whitespace-nowrap text-[11px] font-semibold ${overStock.includes(item.product) ? 'text-rose-600' : 'text-slate-400'}`}>
-                          {overStock.includes(item.product) ? 'Not enough stock · ' : ''}{(brickStock[item.product] || 0).toLocaleString('en-IN')} pcs available
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5"><input type="number" {...NON_NEGATIVE} className="input w-24 py-1.5" placeholder="Qty" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} /></td>
-                    <td className="px-2 py-1.5"><input type="number" {...NON_NEGATIVE} className="input w-28 py-1.5" placeholder="Rate" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} /></td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-right font-semibold text-slate-800">{fmt(item.amount)}</td>
-                    <td className="px-2 py-1.5"><button className="icon-btn hover:bg-red-50 hover:text-red-600" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={14} /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <ModalSection number={2} title="Bricks Sold" tone="emerald">
+          <div className="space-y-2">
+            <div className="hidden grid-cols-[minmax(0,1fr)_8rem_8rem_8rem_2.25rem] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid">
+              <span>Brick Type</span><span>Quantity</span><span>Rate</span><span>Amount</span><span />
+            </div>
+            {form.items.map((item, idx) => {
+              const short = item.product && overStock.includes(item.product);
+              return (
+                <div key={idx} className="rounded-lg bg-white p-2 ring-1 ring-inset ring-emerald-100 md:bg-transparent md:p-0 md:ring-0">
+                  <div className="grid grid-cols-2 items-center gap-2 md:grid-cols-[minmax(0,1fr)_8rem_8rem_8rem_2.25rem]">
+                    <div className="col-span-2 flex items-center gap-2 md:col-span-1">
+                      <OptionPicker className="min-w-0 flex-1" options={productOptions} value={item.product} onChange={id => updateItem(idx, 'product', id)}
+                        placeholder="Select Brick Type" searchPlaceholder="Search brick types..." />
+                      <button type="button" className="icon-btn shrink-0 hover:bg-red-50 hover:text-red-600 md:hidden" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
+                    </div>
+                    <div className="relative">
+                      <input type="number" {...NON_NEGATIVE} className={`input pr-10 font-semibold ${short ? 'border-rose-400 text-rose-700' : ''}`} placeholder="Qty"
+                        value={blankZero(item.quantity)} onChange={e => updateItem(idx, 'quantity', noLeadingZeros(e.target.value))} />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-400">pcs</span>
+                    </div>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                      <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="Rate"
+                        value={blankZero(item.rate)} onChange={e => updateItem(idx, 'rate', noLeadingZeros(e.target.value))} />
+                    </div>
+                    {/* Typing the amount works out the rate per brick */}
+                    <div className="relative col-span-2 md:col-span-1">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                      <input type="number" {...NON_NEGATIVE} className="input pl-7 font-bold text-slate-900" placeholder="Amount" title="Type the amount to work out the rate per brick"
+                        value={blankZero(item.amount)} onChange={e => updateItem(idx, 'amount', noLeadingZeros(e.target.value))} />
+                    </div>
+                    <button type="button" className="icon-btn hidden hover:bg-red-50 hover:text-red-600 md:inline-flex" title="Remove item" onClick={() => removeItem(idx)}><Trash2 size={16} /></button>
+                  </div>
+                  {short && (
+                    <p className="mt-1 px-1 text-xs font-semibold text-rose-600">
+                      Not enough stock · only {num(brickStock[item.product] || 0)} pcs available
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={addItem}
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-emerald-200 bg-white/70 px-3 py-2.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-white"
+          >
+            <Plus size={16} /> Add another brick type
+          </button>
+
+          {/* Live summary of the bricks on this invoice */}
+          <div className="mt-3 grid grid-cols-2 divide-x divide-slate-100 overflow-hidden rounded-lg bg-white text-center ring-1 ring-inset ring-emerald-200 md:mt-4">
+            <div className="px-2 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Pieces</p>
+              <p className="font-bold text-slate-800">{num(pieces)}</p>
+            </div>
+            <div className="bg-emerald-50/60 px-2 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Bricks amount</p>
+              <p className="text-lg font-bold leading-tight text-emerald-700">{fmt(form.subtotal)}</p>
+            </div>
           </div>
         </ModalSection>
 
         <ModalSection number={3} title="Transport" tone="amber">
-          <SaleTransport form={form} onChange={setTransport} vehicles={vehicles} parties={customers} plants={plants} pieces={pieces} />
+          <SaleTransport form={form} onChange={setTransport} vehicles={vehicles} parties={customers} plants={plants} pieces={pieces}
+            onVehicleAdded={v => setVehicles(list => [...list, v])} />
         </ModalSection>
 
-        <ModalSection number={4} title="Charges & Total" tone="purple">
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
+        <ModalSection number={4} title="Bill & Payment" tone="purple">
+          {/* Discount, money received now and the account it went into, side by side */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
             <div>
-              <label className="label">Discount (₹)</label>
-              <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" value={form.discount}
-                onChange={e => { const d = e.target.value; const tot = calcTotals(form.items, form.transportCharges, d); setForm(f => ({ ...f, discount: d, ...tot })); }} />
+              {/* Same height as the label row beside it, which has a button */}
+              <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Discount</label></div>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold" placeholder="0" value={blankZero(form.discount)}
+                  onChange={e => { const d = noLeadingZeros(e.target.value); setForm(f => ({ ...f, discount: d, ...calcTotals(f.items, f.transportCharges, d) })); }} />
+              </div>
             </div>
-          </div>
-
-          <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-3 text-right md:mt-4 md:p-4">
-            <div className="text-sm text-slate-600">Subtotal: <span className="font-semibold text-slate-800">{fmt(form.subtotal)}</span></div>
-            {Number(form.transportCharges) > 0 && <div className="text-sm text-slate-600">Transport: <span className="font-semibold text-slate-800">{fmt(Number(form.transportCharges))}</span></div>}
-            <div className="text-lg font-bold text-slate-900">Total: {fmt(form.totalAmount)}</div>
-          </div>
-        </ModalSection>
-
-        <ModalSection number={5} title="Payment & Delivery" tone="emerald">
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <div className="col-span-2 md:col-span-1">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="label mb-0">Received Now (₹)</label>
+            <div>
+              <div className="mb-1 flex min-h-[1.25rem] items-center justify-between gap-2">
+                <label className="label mb-0">Received Now</label>
                 <button type="button" onClick={() => setForm({ ...form, paidAmount: form.totalAmount || 0 })} className="text-xs font-semibold text-primary-600 hover:underline">Full amount</button>
               </div>
-              <input type="number" {...NON_NEGATIVE} className="input font-semibold text-emerald-700" placeholder="0 = on credit" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} />
-            </div>
-            {/* Whatever is not received now is added to the party's balance, to be received later */}
-            <div className="col-span-2 flex flex-col justify-end md:col-span-1">
-              <div className="rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-inset ring-emerald-200">
-                <p className="flex items-center justify-between gap-2">
-                  <span className={PAID_TYPES[saleType].badge}>{PAID_TYPES[saleType].label} sale</span>
-                  {onCredit > 0 && <span className="font-semibold text-slate-700">{fmt(onCredit)} on credit</span>}
-                  {onCredit < 0 && <span className="font-semibold text-emerald-700">{fmt(-onCredit)} extra as advance</span>}
-                </p>
-                {onCredit > 0 && <p className="mt-1 text-xs text-slate-500">Added to the party's balance. Receive it later from Money Received.</p>}
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₹</span>
+                <input type="number" {...NON_NEGATIVE} className="input pl-7 font-semibold text-emerald-700" placeholder="0 = on credit" value={blankZero(form.paidAmount)} onChange={e => setForm({ ...form, paidAmount: noLeadingZeros(e.target.value) })} />
               </div>
             </div>
-            {/* Which cash / bank account only matters when money was received */}
-            {Number(form.paidAmount) > 0 && (
-              <div className="col-span-2">
-                <AccountPicker label="Received In" accounts={accounts} defaultAccountId={defaultAccountId}
-                  account={form.account} mode={form.paymentMode}
-                  onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
-              </div>
-            )}
+            {/* Which cash / bank account the money went into */}
             <div className="col-span-2 md:col-span-1">
-              <label className="label">Driver Name</label>
+              <AccountPicker dropdown label="Received In" accounts={accounts} defaultAccountId={defaultAccountId}
+                account={form.account} mode={form.paymentMode}
+                onChange={({ account, mode }) => setForm({ ...form, account, paymentMode: mode })} />
+            </div>
+          </div>
+
+          {/* The bill, and what is not received now goes on the party's balance */}
+          <div className="mt-3 overflow-hidden rounded-lg bg-white ring-1 ring-inset ring-purple-200 md:mt-4">
+            <div className="space-y-1 px-3 py-2.5 text-sm md:px-4">
+              <p className="flex justify-between text-slate-600"><span>Bricks</span><span className="font-semibold text-slate-800">{fmt(form.subtotal)}</span></p>
+              {Number(form.transportCharges) > 0 && <p className="flex justify-between text-slate-600"><span>Transport</span><span className="font-semibold text-slate-800">{fmt(Number(form.transportCharges))}</span></p>}
+              {Number(form.discount) > 0 && <p className="flex justify-between text-slate-600"><span>Discount</span><span className="font-semibold text-rose-600">−{fmt(Number(form.discount))}</span></p>}
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-purple-100 bg-purple-50/50 px-3 py-2.5 md:px-4">
+              <span className={PAID_TYPES[saleType].badge}>{PAID_TYPES[saleType].label} Sale</span>
+              <span className="text-lg font-bold text-slate-900">Total: {fmt(form.totalAmount)}</span>
+            </div>
+            {onCredit !== 0 && (
+              <p className="border-t border-purple-100 px-3 py-2 text-right text-sm md:px-4">
+                {onCredit > 0
+                  ? <><span className="font-semibold text-slate-800">{fmt(onCredit)} on credit</span><span className="text-slate-600">, added to the party's balance. Receive it later from Money Received.</span></>
+                  : <span className="font-semibold text-emerald-700">{fmt(-onCredit)} extra received as advance</span>}
+              </p>
+            )}
+          </div>
+        </ModalSection>
+
+        <ModalSection number={5} title="Delivery" tone="slate">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4">
+            <div>
+              <label className="label">Driver Name <span className="font-normal text-slate-400">(optional)</span></label>
               <input className="input" placeholder="Driver name" value={form.driverName} onChange={e => setForm({ ...form, driverName: e.target.value })} />
             </div>
-            <div className="col-span-2 md:col-span-1">
-              <label className="label">Site / Delivery Address</label>
-              <input className="input" placeholder="Delivery site address" value={form.siteAddress} onChange={e => setForm({ ...form, siteAddress: e.target.value })} />
+            {/* Where it went is the route's Location B, so there is no separate site address */}
+            <div>
+              <label className="label">Notes <span className="font-normal text-slate-400">(optional)</span></label>
+              <input className="input" placeholder="Anything worth remembering about this sale" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
             </div>
           </div>
         </ModalSection>

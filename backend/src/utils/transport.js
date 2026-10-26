@@ -21,10 +21,10 @@ const resolveSaleTransport = async (organization, body = {}) => {
   const Party = mongoose.model('Party');
   const mode = TRANSPORT_MODES.includes(body.transportMode) ? body.transportMode : 'party';
   const none = { transportMode: mode, transporter: null, transportBasis: 'per_trip', transportQty: 0, transportRate: 0, transportCost: 0, transportLocation: '' };
-  // The party's own vehicle: nothing to charge or pay
-  if (mode === 'party') return { ...none, transportCharges: 0 };
-  const transportCharges = num(body.transportCharges);
   const transportLocation = String(body.transportLocation || '').trim();
+  // The party's own vehicle: nothing to charge or pay; the location is where it goes from the plant
+  if (mode === 'party') return { ...none, transportCharges: 0, transportLocation };
+  const transportCharges = num(body.transportCharges);
   // My vehicle: a delivery to a location counts trips (1 unless typed)
   if (mode === 'own') return { ...none, transportCharges, transportLocation, transportQty: transportLocation ? num(body.transportQty) || 1 : 0 };
 
@@ -51,6 +51,8 @@ const cleanVehicleNumber = (value) => String(value || '').replace(/\s+/g, '').to
 // The vehicle picked or typed on a sale; a new number is added to the vehicle master
 const resolveSaleVehicle = async (organization, body, transport) => {
   const Vehicle = mongoose.model('Vehicle');
+  // A party's vehicle is kept as typed, only on the sale
+  if (transport.transportMode === 'party') return { vehicle: null, vehicleNumber: String(body.vehicleNumber || '').trim().toUpperCase().slice(0, 30) };
   const vehicleNumber = cleanVehicleNumber(body.vehicleNumber);
   if (vehicleNumber.length > VEHICLE_NUMBER_MAX) {
     throw Object.assign(new Error(`Vehicle number can be at most ${VEHICLE_NUMBER_MAX} characters`), { statusCode: 400 });
@@ -65,10 +67,9 @@ const resolveSaleVehicle = async (organization, body, transport) => {
       hireBasis: transport.transportBasis,
       hireRate: transport.transportRate,
       // The route this sale went on becomes the vehicle's first per-trip rate
-      tripRates: transport.transportLocation ? [{
+      tripRates: transport.transportLocation && transport.transportMode !== 'party' ? [{
         plant: body.plant, location: transport.transportLocation,
         rate: transport.transportMode === 'hired' ? transport.transportRate : 0,
-        charge: transport.transportQty ? round(transport.transportCharges / transport.transportQty) : 0,
       }] : [],
     }).catch(e => {
       // Saved by another request at the same moment

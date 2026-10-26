@@ -7,12 +7,15 @@ const Purchase = require('../models/Purchase');
 const VendorPayment = require('../models/VendorPayment');
 const Product = require('../models/Product');
 const { topDues } = require('../utils/partyBalances');
+const { loadAccountBook } = require('../utils/accounts');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Dates are stored as the calendar day at 00:00 UTC (from "YYYY-MM-DD" inputs),
 // so the range is taken as whole UTC days to match.
+const TREND_MIN_DAYS = 7;
+
 const parseRange = (from, to) => {
   const todayStr = new Date().toISOString().slice(0, 10);
   const fromStr = DATE_RE.test(from || '') ? from : todayStr;
@@ -75,6 +78,32 @@ const productionTrendByType = async (match, byMonth, start, end) => {
   return periodKeys(byMonth, start, end).map(k => ({ _id: k, total: 0, ...byPeriod[k] }));
 };
 
+// Money that came into and went out of the cash / bank accounts between start and end, by kind and
+// by account. Transfers between your own accounts move no money in or out of the business, so they are left out.
+const cashflowInRange = async (organization, start, end) => {
+  const { accounts, movements } = await loadAccountBook(organization);
+  const inRange = movements.filter(m => m.type !== 'transfer' && new Date(m.date) >= start && new Date(m.date) <= end);
+  const sum = (list) => list.reduce((s, m) => s + m.amount, 0);
+  const ofType = (type) => sum(inRange.filter(m => m.type === type));
+  const moneyIn = sum(inRange.filter(m => m.direction === 'in'));
+  const moneyOut = sum(inRange.filter(m => m.direction === 'out'));
+  return {
+    in: moneyIn,
+    out: moneyOut,
+    net: moneyIn - moneyOut,
+    received: ofType('received'),
+    paid: ofType('paid'),
+    purchases: ofType('purchase'),
+    expenses: ofType('expense'),
+    entries: inRange.length,
+    // Accounts that had money moving, in the account book's order (default account first)
+    byAccount: accounts.map(a => {
+      const own = inRange.filter(m => m.accountId === String(a._id));
+      return { _id: a._id, name: a.name, type: a.type, in: sum(own.filter(m => m.direction === 'in')), out: sum(own.filter(m => m.direction === 'out')) };
+    }).filter(a => a.in || a.out),
+  };
+};
+
 // @route GET /api/dashboard/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&plant=
 exports.getSummary = async (req, res, next) => {
   try {
@@ -89,10 +118,14 @@ exports.getSummary = async (req, res, next) => {
     // Group charts by month when the range is longer than ~2 months
     const days = Math.round((end - start) / DAY_MS);
     const byMonth = days > 62;
+    // The production trend always shows at least the 7 days up to the end of the range,
+    // so Today or Yesterday can still be compared with the days before
+    const trendStart = new Date(Math.min(start.getTime(), Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()) - (TREND_MIN_DAYS - 1) * DAY_MS));
+    const trendRange = { ...baseQuery, date: { $gte: trendStart, $lte: end } };
 
     const [
       production, sales, collection, expenses, purchases, dues,
-      productionTrend, salesTrend, collectionTrend
+      productionTrend, salesTrend, collectionTrend, cashflow
     ] = await Promise.all([
       sumInRange(ProductionEntry, inRange, 'quantityProduced'),
       sumInRange(Invoice, inRange, 'totalAmount'),
@@ -102,9 +135,11 @@ exports.getSummary = async (req, res, next) => {
       // Outstanding dues are what parties owe right now (their ledger balance), not limited to the
       // date range or a plant: money received later is recorded against the party, not a sale
       topDues(orgId),
-      productionTrendByType(inRange, byMonth, start, end),
+      productionTrendByType(trendRange, byMonth, trendStart, end),
       trendInRange(Invoice, inRange, 'totalAmount', byMonth, start, end),
       trendInRange(Payment, inRange, 'amount', byMonth, start, end),
+      // Cash and bank are shared by all plants, so the cashflow is for the whole business
+      cashflowInRange(orgId, start, end),
     ]);
 
     // Brick types in the order they were created, so each keeps the same chart colour
@@ -132,9 +167,11 @@ exports.getSummary = async (req, res, next) => {
         outstanding: dues.receivable,
         // Parties who owe you the most, and parties you owe the most (biggest first)
         dues,
+        cashflow,
         lowStockCount: lowStock.length,
         lowStockItems: lowStock,
         productionTrend,
+        productionTrendFrom: trendStart.toISOString().slice(0, 10),
         productionTypes,
         salesTrend: salesTrend.map(r => ({ _id: r._id, sales: r.total, collection: collectionByKey[r._id] || 0 })),
       }

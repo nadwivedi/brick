@@ -19,6 +19,7 @@ import AccountsPage from './pages/AccountsPage';
 import AccountLedgerPage from './pages/AccountLedgerPage';
 import MastersPage from './pages/MastersPage';
 import PartyLedgerPage from './pages/PartyLedgerPage';
+import VehicleLedgerPage from './pages/VehicleLedgerPage';
 import ReportsPage from './pages/ReportsPage';
 import LowStockPage from './pages/LowStockPage';
 import SettingsPage from './pages/SettingsPage';
@@ -69,6 +70,7 @@ function AppRoutes() {
         <Route path="masters" element={<MastersPage />} />
         <Route path="masters/:tab" element={<MastersPage />} />
         <Route path="masters/parties/:id/ledger" element={<PartyLedgerPage />} />
+        <Route path="masters/vehicles/:id/ledger" element={<VehicleLedgerPage />} />
         {/* Customers and vendors became parties with the same ids, so old ledger links still work */}
         <Route path="masters/customers/:id/ledger" element={<OldLedgerLink />} />
         <Route path="masters/vendors/:id/ledger" element={<OldLedgerLink />} />

@@ -4,7 +4,7 @@ import useEscapeKey from '../hooks/useEscapeKey';
 import Modal from './Modal';
 import AccountPicker, { modeForAccount } from './AccountPicker';
 import useAccounts from '../hooks/useAccounts';
-import { NON_NEGATIVE } from '../lib/number';
+import { NON_NEGATIVE, blankZero, noLeadingZeros } from '../lib/number';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import dayjs from 'dayjs';
 
@@ -111,7 +111,7 @@ export default function PartyPaymentModal({ type, parties, partyId, payment, onC
       title={editing ? kind.editTitle : kind.title}
       subtitle={editing ? kind.editSubtitle : kind.subtitle}
       onClose={onClose}
-      maxWidth="max-w-lg"
+      maxWidth="max-w-2xl"
       footer={<>
         <button className="btn-secondary" onClick={onClose}>Cancel</button>
         <button className="btn-primary px-8" onClick={handleSave} disabled={saving}>
@@ -121,36 +121,39 @@ export default function PartyPaymentModal({ type, parties, partyId, payment, onC
       </>}
     >
       <div className="space-y-3 md:space-y-4">
-        <div>
-          <label className="label">{kind.partyLabel}</label>
-          <select className="input" value={form.party} disabled={partyLocked} title={partyLocked ? 'Received with a sale; change the party on the sale' : undefined}
-            onChange={e => setForm({ ...form, party: e.target.value })}>
-            <option value="">{kind.selectLabel}</option>
-            {parties.map(p => <option key={p._id} value={p._id}>{p.name}{p.mobile ? ` (${p.mobile})` : ''}</option>)}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 md:gap-4">
+        {/* Date and party on one row; the party gets more room */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_2fr] md:gap-4">
           <div>
             <label className="label">Date</label>
             <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
           </div>
           <div>
-            <label className="label">Amount (₹)</label>
-            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" autoFocus={!!partyId}
-              value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+            <label className="label">{kind.partyLabel}</label>
+            <select className="input" value={form.party} disabled={partyLocked} title={partyLocked ? 'Received with a sale; change the party on the sale' : undefined}
+              onChange={e => setForm({ ...form, party: e.target.value })}>
+              <option value="">{kind.selectLabel}</option>
+              {parties.map(p => <option key={p._id} value={p._id}>{p.name}{p.mobile ? ` (${p.mobile})` : ''}</option>)}
+            </select>
           </div>
         </div>
 
-        {/* Cash book or bank account, and for a bank: UPI / bank transfer / cheque */}
-        <AccountPicker
-          label={kind.accountLabel}
-          accounts={accounts}
-          defaultAccountId={defaultAccountId}
-          account={form.account}
-          mode={form.mode}
-          onChange={picked => setForm({ ...form, ...picked })}
-        />
+        {/* Amount and the cash / bank account on one row; for a bank: UPI / bank transfer / cheque below */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4">
+          <div>
+            <div className="mb-1 flex min-h-[1.25rem] items-center"><label className="label mb-0">Amount (₹)</label></div>
+            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="0" autoFocus={!!partyId}
+              value={blankZero(form.amount)} onChange={e => setForm({ ...form, amount: noLeadingZeros(e.target.value) })} />
+          </div>
+          <AccountPicker
+            dropdown
+            label={kind.accountLabel}
+            accounts={accounts}
+            defaultAccountId={defaultAccountId}
+            account={form.account}
+            mode={form.mode}
+            onChange={picked => setForm({ ...form, ...picked })}
+          />
+        </div>
 
         {mode !== 'cash' && (
           <div>
