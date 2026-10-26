@@ -53,7 +53,7 @@ function HeroPreview() {
       {/* Drawn before the card, so the bricks peek out from behind its top edge */}
       <BrickStack className="absolute -top-[46px] right-6 w-24 drop-shadow-lg sm:-top-[58px] sm:right-10 sm:w-[7.5rem]" />
 
-      <div className="relative rounded-2xl bg-white p-5 shadow-2xl shadow-slate-300/70 ring-1 ring-slate-200 sm:p-6">
+      <div className="relative rounded-2xl bg-white p-[1.125rem] shadow-2xl shadow-slate-300/70 ring-1 ring-slate-200 sm:p-[1.35rem] lg:p-[0.9rem]">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-slate-500">Today at your plant</p>
@@ -62,35 +62,35 @@ function HeroPreview() {
           <span className="badge-gray">Sample view</span>
         </div>
 
-        <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className="mt-[1.125rem] grid grid-cols-3 gap-[0.675rem] lg:mt-[0.675rem]">
           {[
             { icon: Hammer, label: 'Made today', value: '12,500', tone: 'bg-orange-50 text-orange-700' },
             { icon: Layers, label: 'Ready stock', value: '48,200', tone: 'bg-primary-50 text-primary-700' },
             { icon: HandCoins, label: 'Dues', value: '₹1.8L', tone: 'bg-emerald-50 text-emerald-700' },
           ].map(({ icon: Icon, label, value, tone }) => (
-            <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-              <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tone}`}><Icon size={16} /></span>
-              <p className="mt-2 text-[11px] font-medium text-slate-500">{label}</p>
+            <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/70 p-[0.675rem] lg:p-[0.5625rem]">
+              <span className={`flex h-8 w-8 items-center justify-center rounded-lg lg:h-7 lg:w-7 ${tone}`}><Icon size={16} /></span>
+              <p className="mt-[0.45rem] text-[11px] font-medium text-slate-500 lg:mt-[0.225rem]">{label}</p>
               <p className="text-sm font-bold text-slate-900 sm:text-base">{value}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 rounded-xl border border-slate-100 p-4">
+        <div className="mt-[0.9rem] rounded-xl border border-slate-100 p-[0.9rem] lg:mt-[0.675rem] lg:p-[0.675rem]">
           <p className="text-xs font-semibold text-slate-600">Production this week</p>
-          <div className="mt-3 flex h-24 items-end gap-2">
+          <div className="mt-[0.675rem] flex h-24 items-end gap-[0.45rem] lg:mt-[0.45rem] lg:h-12">
             {bars.map((h, i) => (
               <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-orange-600 to-orange-400" style={{ height: `${h}%` }} />
             ))}
           </div>
         </div>
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-[0.9rem] space-y-[0.45rem] lg:mt-[0.5625rem]">
           {[
             { label: 'Invoice #1042 · 4,000 bricks', status: 'Paid', cls: 'badge-green' },
             { label: 'Cement purchase · 50 bags', status: 'Due', cls: 'badge-orange' },
           ].map(r => (
-            <div key={r.label} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
+            <div key={r.label} className="flex items-center justify-between rounded-lg bg-slate-50 px-[0.675rem] py-[0.45rem] text-xs lg:py-[0.3375rem]">
               <span className="truncate font-medium text-slate-700">{r.label}</span>
               <span className={r.cls}>{r.status}</span>
             </div>
@@ -98,7 +98,7 @@ function HeroPreview() {
         </div>
       </div>
 
-      <div className="absolute -bottom-5 -left-3 flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-lg ring-1 ring-slate-200 sm:-left-8">
+      <div className="absolute -bottom-5 -left-3 flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-lg ring-1 ring-slate-200 sm:-left-8 lg:-bottom-7">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><AlertTriangle size={16} /></span>
         <span className="text-xs">
           <span className="block font-semibold text-slate-900">Low stock: Cement</span>
@@ -124,21 +124,21 @@ export default function HomePage() {
         {/* Hero */}
         <section id="home" className="relative scroll-mt-20 overflow-hidden">
           <BrickPattern className="fill-orange-900/[0.035] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-2 lg:gap-12 lg:pb-28 lg:pt-20">
+          <div className="relative mx-auto grid max-w-6xl items-center gap-[3.15rem] px-4 pb-[1.35rem] pt-[1.35rem] sm:px-6 sm:pt-[1.8rem] lg:grid-cols-[1.1fr_1fr] lg:gap-[2.25rem] lg:pb-[1.575rem] lg:pt-[3.6rem]">
             <div className="text-center lg:text-left">
               <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/80 px-3.5 py-1.5 text-xs font-semibold text-orange-800 shadow-sm">
                 <Sparkles size={14} /> Software for brick manufacturers
               </span>
-              <h1 className="mt-6 text-4xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.4rem]">
+              <h1 className="mt-[1.35rem] text-4xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-5xl lg:mt-[0.9rem] lg:text-[2.6rem]">
                 Run your brick plant{' '}
                 <span className="bg-gradient-to-r from-orange-700 to-amber-600 bg-clip-text text-transparent">smarter</span>,
                 from one dashboard
               </h1>
-              <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-slate-600 lg:mx-0">
+              <p className="mx-auto mt-[1.35rem] max-w-xl text-lg leading-relaxed text-slate-600 lg:mx-0 lg:mt-[0.9rem] lg:text-base">
                 {site.name} tracks production, raw material stock, sales, dues and expenses for your brick business,
                 so you always know what was made, what was sold and who still has to pay.
               </p>
-              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+              <div className="mt-[1.8rem] flex flex-col justify-center gap-[0.675rem] sm:flex-row lg:mt-[1.125rem] lg:justify-start">
                 <a href={appLink('/register')} className="btn-primary px-7 py-3.5 text-base">
                   Get Started <ArrowRight size={18} />
                 </a>
@@ -150,7 +150,7 @@ export default function HomePage() {
                   Request a Demo
                 </a>
               </div>
-              <ul className="mt-8 flex flex-col items-center gap-x-6 gap-y-2 text-sm font-medium text-slate-600 sm:flex-row sm:justify-center lg:justify-start">
+              <ul className="mt-[1.8rem] flex flex-col items-center gap-x-[1.35rem] gap-y-[0.45rem] text-sm font-medium text-slate-600 sm:flex-row sm:justify-center lg:mt-[0.9rem] lg:justify-start">
                 {['Works on any device', 'Multiple plants', 'Secure login'].map(t => (
                   <li key={t} className="flex items-center gap-1.5"><CheckCircle2 size={16} className="text-emerald-600" /> {t}</li>
                 ))}
@@ -217,7 +217,7 @@ export default function HomePage() {
         </section>
 
         {/* About */}
-        <section id="about" className="scroll-mt-20 py-20 sm:py-24">
+        <section id="about" className="scroll-mt-20 pb-20 pt-10 sm:pb-24 sm:pt-12">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <SectionHeading
               eyebrow="About Us"
