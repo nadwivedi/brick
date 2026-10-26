@@ -1,5 +1,5 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('dotenv').config(); // Fallback to current working directory if available
 
 // Logins can't be signed or checked without a secret, so refuse to start rather than fail on every request
