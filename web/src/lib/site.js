@@ -7,7 +7,7 @@ export const site = {
   // Public address of the website, e.g. https://www.example.com (used for canonical links)
   url: (env.VITE_SITE_URL || '').replace(/\/$/, ''),
   // Address of the Brick Manager app (the frontend/ folder), where Login and Register live
-  appUrl: (env.VITE_APP_URL || 'http://localhost:5175').replace(/\/$/, ''),
+  appUrl: (env.VITE_APP_URL || 'https://app.brickmanager.in').replace(/\/$/, ''),
   phone: env.VITE_CONTACT_PHONE || '+91 XXXXX XXXXX',
   email: env.VITE_CONTACT_EMAIL || 'contact@yourdomain.com',
   address: env.VITE_CONTACT_ADDRESS || 'Your business address, City, State - PIN',
