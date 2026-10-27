@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Boxes, ChevronRight, Hammer, LogIn, Mail, MapPin, Menu, Phone, ShoppingCart, X } from 'lucide-react';
+import { ChevronRight, LogIn, Mail, MapPin, Menu, Phone, X } from 'lucide-react';
 import Logo from './Logo';
 import Modal from './Modal';
 import { WhatsAppIcon } from './WhatsAppButton';
@@ -142,13 +142,6 @@ export function SectionHeading({ eyebrow, title, text }) {
   );
 }
 
-const SERVICES = [
-  { icon: Hammer, label: 'Brick Production', to: PRODUCTION_PAGE },
-  { icon: Boxes, label: 'Inventory Management', to: INVENTORY_PAGE },
-  { icon: ShoppingCart, label: 'Sales & Orders', to: BILLING_PAGE },
-  { icon: BarChart3, label: 'Reports', to: REPORTS_PAGE },
-];
-
 // Shown in a popup from the footer. Review and replace with your own policy text before going live.
 const POLICIES = {
   privacy: {
@@ -248,7 +241,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:col-span-1 md:grid-cols-2 lg:col-span-5 lg:flex lg:justify-between lg:gap-6 lg:whitespace-nowrap">
+        <div className="grid grid-cols-2 gap-8 md:col-span-1 lg:col-span-5 lg:flex lg:justify-between lg:gap-6 lg:whitespace-nowrap">
           <div>
             <FooterHeading>Quick Links</FooterHeading>
             <ul className="mt-5 space-y-3">
@@ -259,7 +252,7 @@ export function Footer() {
             </ul>
           </div>
           {/* Page names can be long, so this column wraps instead of pushing the others aside */}
-          <div className="lg:w-40 lg:whitespace-normal">
+          <div className="lg:w-60 lg:whitespace-normal">
             <FooterHeading>Brick Kiln Software</FooterHeading>
             <ul className="mt-5 space-y-3">
               {[
@@ -280,18 +273,6 @@ export function Footer() {
                 <li key={to}>
                   <Link to={to} className={footerLinkCls.replace('items-center', 'items-start')}>
                     <span className="mt-[3px]">{arrow}</span>{label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <FooterHeading>Services</FooterHeading>
-            <ul className="mt-5 space-y-3">
-              {SERVICES.map(({ icon: Icon, label, to }) => (
-                <li key={label}>
-                  <Link to={to} className={footerLinkCls}>
-                    <Icon size={15} className="shrink-0 text-orange-600" />{label}
                   </Link>
                 </li>
               ))}
