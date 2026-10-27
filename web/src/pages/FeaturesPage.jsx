@@ -231,22 +231,22 @@ export default function FeaturesPage() {
 
         {/* Smart features */}
         <section id="smart" aria-labelledby="smart-heading" className="scroll-mt-20 px-4 pb-14 sm:px-6 sm:pb-20">
-          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-slate-900 px-5 py-10 text-white shadow-2xl sm:px-10 sm:py-14">
-            <BrickPattern className="fill-white/[0.03]" />
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/70 to-white px-5 py-10 shadow-xl shadow-orange-100/60 ring-1 ring-orange-200/70 sm:px-10 sm:py-14">
+            <BrickPattern className="fill-orange-900/[0.06]" />
             <div className="relative">
               <div className="mx-auto max-w-2xl text-center">
-                <p className="text-sm font-semibold uppercase tracking-wider text-orange-300">Smart features</p>
-                <h2 id="smart-heading" className="mt-2 text-3xl font-bold sm:text-4xl">Automation That Saves Hours Every Day</h2>
-                <p className="mt-3 text-slate-300">Less typing, fewer follow-up calls and early warnings before small problems get expensive.</p>
+                <p className="text-sm font-semibold uppercase tracking-wider text-orange-700">Smart features</p>
+                <h2 id="smart-heading" className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">Automation That Saves Hours Every Day</h2>
+                <p className="mt-3 text-slate-600">Less typing, fewer follow-up calls and early warnings before small problems get expensive.</p>
               </div>
               <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {SMART.map(({ icon: Icon, title, text, tone }) => (
-                  <article key={title} className="rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/10 transition hover:bg-white/[0.09]">
+                  <article key={title} className="rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-orange-100 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-orange-100">
                     <span className={`flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-lg ${tone}`}>
                       <Icon size={20} />
                     </span>
-                    <h3 className="mt-4 font-bold">{title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-300">{text}</p>
+                    <h3 className="mt-4 font-bold text-slate-900">{title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text}</p>
                   </article>
                 ))}
               </div>
