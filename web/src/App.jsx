@@ -1,13 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import {
-  BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, EXPENSE_PAGE, FEATURES_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
   PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
 } from './lib/publicNav';
 
 import HomePage from './pages/HomePage';
 import FeaturesPage from './pages/FeaturesPage';
 import ContactPage from './pages/ContactPage';
+import HindiBhattaPage from './pages/HindiBhattaPage';
+import CostPerBrickGuidePage from './pages/CostPerBrickGuidePage';
 import BrickKilnPricePage from './pages/BrickKilnPricePage';
 import BhattaSoftwarePage from './pages/BhattaSoftwarePage';
 import BricksManufacturingPage from './pages/BricksManufacturingPage';
@@ -28,6 +30,8 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path={FEATURES_PAGE} element={<FeaturesPage />} />
         <Route path={CONTACT_PAGE} element={<ContactPage />} />
+        <Route path={HINDI_PAGE} element={<HindiBhattaPage />} />
+        <Route path={COST_GUIDE_PAGE} element={<CostPerBrickGuidePage />} />
         <Route path={PRICE_PAGE} element={<BrickKilnPricePage />} />
         <Route path={BHATTA_PAGE} element={<BhattaSoftwarePage />} />
         <Route path={MANUFACTURING_PAGE} element={<BricksManufacturingPage />} />

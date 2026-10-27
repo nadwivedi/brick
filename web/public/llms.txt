@@ -1,0 +1,55 @@
+# BrickManager
+
+> BrickManager is brick kiln management software for brick kilns (bhattas) and brick plants in India. It records daily brick production, raw material and brick stock, GST sales invoices, purchases, payments, party ledgers, expenses, cash and bank accounts, and builds reports including profit & loss with cost per brick. It works on a mobile app, desktop software and in the web browser, and can manage several kilns or plants from one login.
+
+- Website: https://brickmanager.in/
+- App login: https://app.brickmanager.in/login
+- Based in: Shankar Nagar, Raipur, Chhattisgarh, India
+- Serves: brick kilns and brick plants across India
+- Phone and WhatsApp: +91 77470 52331
+- Email: brickmanager.in@gmail.com
+
+## Pricing
+
+- Brick Kiln Management Software (one kiln or plant): ₹7,999 per year
+- Multi Brick Kiln Management Software (two or more kilns or plants): ₹9,999 per year
+- Every feature is included in both plans, along with the mobile app and desktop software.
+
+## Features
+
+- Daily brick production by plant, brick type and shift, with damaged bricks recorded
+- Raw material stock (cement, fly ash, sand, coal and more) that moves with purchases and production
+- Ready brick stock for every brick type, with stock ledgers
+- Low stock alerts for raw materials
+- Production quality: damaged bricks as a percentage of production
+- Production efficiency: bricks made per bag of cement
+- Sales invoices with GST, discounts, transport and trip charges
+- Purchases from vendors, with paid, part paid and due status
+- Money received and money paid, in cash or bank
+- Customer and vendor (party) ledgers with running balances
+- Send a party their balance due on WhatsApp in one tap
+- Expenses by category, and cash and bank account balances
+- Dashboard, activity center, production and sales reports, profit & loss with cost per brick, outstanding dues
+- Multiple plants from one login, with records kept plant-wise
+- Labour and vehicle records, with vehicle ledgers
+
+Coming soon: AI purchase entry from a supplier bill PDF, and automatic scheduled WhatsApp payment reminders.
+
+## Pages
+
+- [Home](https://brickmanager.in/): overview of BrickManager brick kiln management software
+- [Features](https://brickmanager.in/features): every feature, grouped by area
+- [Price in India](https://brickmanager.in/products/brick-kiln-software-price-in-india): plans and prices
+- [Bhatta Software](https://brickmanager.in/products/bhatta-software): software for brick bhattas
+- [ईंट भट्ठा सॉफ्टवेयर (Hindi)](https://brickmanager.in/hi/eent-bhatta-software): the software explained in Hindi
+- [Brick Plant Management Software](https://brickmanager.in/products/brick-plant-management-software): running one or many brick plants, compared with paper registers and spreadsheets
+- [Bricks Manufacturing Software](https://brickmanager.in/products/bricks-manufacturing-software)
+- [Online Brick Kiln Management Software](https://brickmanager.in/products/online-brick-kiln-management-software)
+- [Production Management](https://brickmanager.in/products/brick-kiln-production-management-software)
+- [Inventory Management](https://brickmanager.in/products/brick-kiln-inventory-management-software)
+- [Billing Software with GST](https://brickmanager.in/products/brick-kiln-billing-software)
+- [Payment Tracking](https://brickmanager.in/products/brick-kiln-payment-tracking-software)
+- [Expense Management](https://brickmanager.in/products/brick-kiln-expense-management-software)
+- [Report Management](https://brickmanager.in/products/brick-kiln-report-management-software)
+- [Guide: How to Calculate Cost per Brick](https://brickmanager.in/guides/how-to-calculate-cost-per-brick): formula, costs to include and a worked example
+- [Contact](https://brickmanager.in/contact): demo, pricing and support

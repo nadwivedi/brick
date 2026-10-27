@@ -91,11 +91,11 @@ const EASE = [
   { icon: CalendarRange, title: 'Pick a period in one click', text: 'Switch the dashboard between Today, Yesterday, Last 7 Days, Last 30 Days, This Year or any custom dates.' },
   { icon: Filter, title: 'Simple until you need more', text: 'Plant fields and plant filters only appear once you run more than one plant, so single-plant screens stay uncluttered.' },
   { icon: Search, title: 'Find anything fast', text: 'Search production entries, expenses, payments and parties instead of flipping through pages.' },
-  { icon: Smartphone, title: 'Manage from your phone', text: 'Open it in any browser on a phone, tablet or computer. There is nothing to install or maintain.' },
+  { icon: Smartphone, title: 'Manage from your phone', text: 'Use the mobile app at the plant, the desktop software in the office, or any browser.' },
   { icon: LayoutDashboard, title: 'Everything on one screen', text: 'Production, sales, collections, purchases, expenses and outstanding dues sit together on the dashboard.' },
 ];
 
-// yes / no / partly, for paper registers, spreadsheets and Brick Manager.
+// yes / no / partly, for paper registers, spreadsheets and BrickManager.
 const COMPARISON = [
   { label: 'Stock updates by itself after each entry', values: ['no', 'no', 'yes'] },
   { label: 'Customer dues always up to date', values: ['no', 'partly', 'yes'] },
@@ -140,8 +140,8 @@ const FAQS = [
     a: 'Yes. With the multi-plant plan you can record work against each plant, keep brick stock separate for each, and view the dashboard for one plant or all plants together.',
   },
   {
-    q: 'Do I need to install anything?',
-    a: `No. ${site.name} runs in the web browser on mobile phones, tablets and computers.`,
+    q: 'Is there a mobile app and desktop software?',
+    a: `Yes. After you buy a plan you get the ${site.name} mobile app and desktop software to install, and you can also use it in the web browser on any device.`,
   },
   {
     q: 'How much does brick plant management software cost?',
@@ -169,7 +169,7 @@ function PlantDashboard() {
   return (
     <figure
       role="img"
-      aria-label="Sample Brick Manager dashboard showing production, sales, collections, purchases, expenses and outstanding dues for the last 7 days"
+      aria-label="Sample BrickManager dashboard showing production, sales, collections, purchases, expenses and outstanding dues for the last 7 days"
       className="relative mx-auto w-full max-w-md lg:max-w-none"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-primary-200/60 via-sky-100/50 to-orange-200/60 blur-2xl" />
@@ -355,7 +355,7 @@ export default function BrickPlantManagementPage() {
             <SectionHeading
               eyebrow="Track your business"
               title="Everything You Can Track with Brick Management Software"
-              text="Choose an area to see what Brick Manager keeps track of, and the everyday questions it helps you answer."
+              text="Choose an area to see what BrickManager keeps track of, and the everyday questions it helps you answer."
             />
             <TrackTabs />
           </div>
@@ -403,10 +403,10 @@ export default function BrickPlantManagementPage() {
           <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <SectionHeading
               eyebrow="Best option"
-              title="Why Brick Manager Is the Best Option for Your Business"
+              title="Why BrickManager Is the Best Option for Your Business"
               text="Most brick plants today run on paper registers or spreadsheets. Here is how they compare for everyday plant management."
             />
-            {/* Phones: one card per row, so the Brick Manager answer is never scrolled out of view */}
+            {/* Phones: one card per row, so the BrickManager answer is never scrolled out of view */}
             <ul className="mt-12 space-y-3 sm:hidden">
               {COMPARISON.map(({ label, values }) => (
                 <li key={label} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
@@ -424,7 +424,7 @@ export default function BrickPlantManagementPage() {
             </ul>
             <div className="mt-12 hidden overflow-x-auto rounded-3xl bg-white shadow-lg shadow-slate-200/60 ring-1 ring-slate-200 sm:block">
               <table className="w-full min-w-[560px] text-sm">
-                <caption className="sr-only">Comparison of paper registers, spreadsheets and Brick Manager</caption>
+                <caption className="sr-only">Comparison of paper registers, spreadsheets and BrickManager</caption>
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th scope="col" className="px-5 py-4 text-left font-semibold text-slate-500">What you need</th>

@@ -27,7 +27,7 @@ const INSTALLED_VS_ONLINE = [
 
 const BENEFITS = [
   { icon: Globe, title: 'Access from anywhere', text: 'Log in from the kiln, the office or home. All you need is an internet connection.' },
-  { icon: Download, title: 'Nothing to install', text: 'No setup CDs, no downloads, no installation. Open the website and log in.' },
+  { icon: Download, title: 'Browser, app or desktop', text: 'Open the website and log in, or install the mobile app and desktop software that come with every plan.' },
   { icon: RefreshCw, title: 'Same data on every device', text: 'An entry saved on a phone at the kiln shows up on the office computer straight away.' },
   { icon: Sparkles, title: 'Always up to date', text: 'Improvements reach you the next time you open the software, with nothing to update yourself.' },
   { icon: Server, title: 'No server to buy', text: 'Your records live in your online account, so there is no special computer to buy or maintain at the kiln.' },
@@ -66,7 +66,7 @@ const FAQS = [
   },
   {
     q: 'Do I need to install anything?',
-    a: `No. ${site.name} opens in the web browser, so there is nothing to download or install on your phone or computer.`,
+    a: `No, ${site.name} opens in the web browser. If you prefer an app, every plan also includes a dedicated mobile app and desktop software.`,
   },
   {
     q: 'Can I manage my brick kiln from my mobile phone?',
@@ -106,7 +106,7 @@ function DevicesVisual() {
   return (
     <figure
       role="img"
-      aria-label="A laptop and a mobile phone showing the same brick kiln records in Brick Manager, synced online"
+      aria-label="A laptop and a mobile phone showing the same brick kiln records in BrickManager, synced online"
       className="relative mx-auto w-full max-w-lg pb-10"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-sky-200/60 via-primary-100/50 to-orange-200/50 blur-2xl" />
@@ -116,7 +116,7 @@ function DevicesVisual() {
         <div className="rounded-t-2xl border-[10px] border-slate-800 bg-white shadow-2xl shadow-slate-400/40">
           <div className="flex items-center gap-1.5 border-b border-slate-100 px-3 py-2">
             <span className="h-2 w-2 rounded-full bg-rose-300" /><span className="h-2 w-2 rounded-full bg-amber-300" /><span className="h-2 w-2 rounded-full bg-emerald-300" />
-            <span className="ml-2 flex-1 truncate rounded bg-slate-100 px-2 py-0.5 text-[9px] text-slate-400">Brick Manager · Dashboard</span>
+            <span className="ml-2 flex-1 truncate rounded bg-slate-100 px-2 py-0.5 text-[9px] text-slate-400">BrickManager · Dashboard</span>
           </div>
           <div className="p-4">
             <p className="text-[11px] font-semibold text-slate-500">Today at your kiln</p>
@@ -207,8 +207,8 @@ export default function OnlineBrickKilnPage() {
                 </h1>
                 <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-slate-600 lg:mx-0">
                   {site.name} puts your whole brick kiln online. Record production at the kiln on your phone, make
-                  invoices from the office, and check stock, sales and dues from home. There is nothing to install,
-                  and every device shows the same up-to-date records.
+                  invoices from the office, and check stock, sales and dues from home. Use it in the browser or
+                  in our mobile and desktop apps, and every device shows the same up-to-date records.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
                   <a href="#online" onClick={jumpTo('online')} className="btn-primary px-7 py-3.5 text-base">
@@ -219,7 +219,7 @@ export default function OnlineBrickKilnPage() {
                   </Link>
                 </div>
                 <ul className="mt-8 flex flex-col items-center gap-x-6 gap-y-2 text-sm font-medium text-slate-600 sm:flex-row sm:justify-center lg:justify-start">
-                  {['No installation', 'Phone, tablet & computer', 'Secure login'].map(t => (
+                  {['Browser, mobile & desktop apps', 'Every device in sync', 'Secure login'].map(t => (
                     <li key={t} className="flex items-center gap-1.5"><CheckCircle2 size={16} className="text-emerald-600" /> {t}</li>
                   ))}
                 </ul>
@@ -361,7 +361,7 @@ export default function OnlineBrickKilnPage() {
         {/* Pricing + related */}
         <section className="py-20 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading eyebrow="Pricing" title="Online Brick Kiln Software Plans" text="Yearly plans with every feature included and nothing to install." />
+            <SectionHeading eyebrow="Pricing" title="Online Brick Kiln Software Plans" text="Yearly plans with every feature, the mobile app and desktop software included." />
             <div className="mx-auto mt-12 grid max-w-3xl gap-5 sm:grid-cols-2">
               {PLANS.map(p => (
                 <div key={p.name} className={`rounded-2xl p-6 shadow-lg shadow-slate-200/50 ${p.featured ? 'bg-gradient-to-b from-white to-sky-50 ring-2 ring-sky-500' : 'bg-white ring-1 ring-slate-200'}`}>

@@ -7,7 +7,7 @@ import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { appLink, site, telLink, whatsappLink } from '../lib/site';
 import {
-  BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, EXPENSE_PAGE, FEATURES_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
   PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, useGoToSection,
 } from '../lib/publicNav';
 
@@ -247,6 +247,8 @@ export function Footer() {
                 { to: REPORTS_PAGE, label: 'Brick Kiln Report Management Software' },
                 { to: PAYMENT_PAGE, label: 'Brick Kiln Payment Tracking Software' },
                 { to: PRICE_PAGE, label: 'Brick Kiln Software Price in India' },
+                { to: HINDI_PAGE, label: 'ईंट भट्ठा सॉफ्टवेयर (हिंदी)' },
+                { to: COST_GUIDE_PAGE, label: 'Guide: How to Calculate Cost per Brick' },
               ].map(({ to, label }) => (
                 <li key={to}>
                   <Link to={to} className={footerLinkCls.replace('items-center', 'items-start')}>

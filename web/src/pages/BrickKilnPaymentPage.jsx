@@ -120,7 +120,7 @@ function PaymentVisual() {
   return (
     <figure
       role="img"
-      aria-label="Sample payment of ₹30,000 received by UPI from a customer in Brick Manager, bringing their balance from ₹30,000 due to zero"
+      aria-label="Sample payment of ₹30,000 received by UPI from a customer in BrickManager, bringing their balance from ₹30,000 due to zero"
       className="relative mx-auto w-full max-w-md"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-emerald-200/60 via-teal-100/50 to-primary-100/60 blur-2xl" />

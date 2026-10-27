@@ -121,7 +121,7 @@ function StockBoard() {
   return (
     <figure
       role="img"
-      aria-label="Sample inventory in Brick Manager showing available stock of three brick types and raw material levels, with coal flagged as low stock"
+      aria-label="Sample inventory in BrickManager showing available stock of three brick types and raw material levels, with coal flagged as low stock"
       className="relative mx-auto w-full max-w-md lg:max-w-none"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-sky-100/70 via-white to-orange-200/60 blur-2xl" />
@@ -232,7 +232,7 @@ export default function BrickKilnInventoryPage() {
             <SectionHeading
               eyebrow="Two kinds of stock"
               title="Brick and Raw Material Inventory in One Place"
-              text="A brick kiln manages two very different inventories. Brick Manager keeps both side by side."
+              text="A brick kiln manages two very different inventories. BrickManager keeps both side by side."
             />
             <div className="mt-14 grid gap-6 md:grid-cols-2">
               {STOCK_KINDS.map(({ icon: Icon, title, tone, iconTone, points }) => (

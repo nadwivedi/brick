@@ -9,7 +9,7 @@ import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/Publ
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
 import {
-  BILLING_PAGE, CONTACT_PAGE, EXPENSE_PAGE, PAYMENT_PAGE, PRICE_PAGE, REPORTS_PAGE, scrollToSection,
+  BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, PAYMENT_PAGE, PRICE_PAGE, REPORTS_PAGE, scrollToSection,
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
@@ -87,7 +87,7 @@ function ReportViewer() {
   return (
     <figure
       role="img"
-      aria-label="Sample Brick Manager reports screen for this month showing production, sales, collections and expenses, a daily production chart and net profit"
+      aria-label="Sample BrickManager reports screen for this month showing production, sales, collections and expenses, a daily production chart and net profit"
       className="relative mx-auto w-full max-w-md lg:max-w-none"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-violet-200/60 via-primary-100/50 to-emerald-100/60 blur-2xl" />
@@ -320,6 +320,7 @@ export default function BrickKilnReportsPage() {
                 { to: BILLING_PAGE, label: 'Brick kiln billing software' },
                 { to: PAYMENT_PAGE, label: 'Brick kiln payment tracking' },
                 { to: EXPENSE_PAGE, label: 'Brick kiln expense management' },
+                { to: COST_GUIDE_PAGE, label: 'How to calculate cost per brick' },
               ].map(l => (
                 <Link key={l.to} to={l.to} className="inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-primary-700 ring-1 ring-slate-200 transition hover:bg-primary-50">
                   {l.label} <ChevronRight size={14} />

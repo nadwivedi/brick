@@ -2,6 +2,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 export const FEATURES_PAGE = '/features';
 export const CONTACT_PAGE = '/contact';
+export const HINDI_PAGE = '/hi/eent-bhatta-software';
+export const COST_GUIDE_PAGE = '/guides/how-to-calculate-cost-per-brick';
 export const PRICE_PAGE = '/products/brick-kiln-software-price-in-india';
 export const BHATTA_PAGE = '/products/bhatta-software';
 export const MANUFACTURING_PAGE = '/products/bricks-manufacturing-software';

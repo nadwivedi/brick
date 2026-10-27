@@ -1,5 +1,5 @@
-// The Brick Manager logo image (web/public), which already includes the name.
-export default function Logo({ name = 'Brick Manager', subtitle, size = 'md' }) {
+// The BrickManager logo image (web/public), which already includes the name.
+export default function Logo({ name = 'BrickManager', subtitle, size = 'md' }) {
   const large = size === 'lg';
   return (
     <span className="flex flex-col items-start">

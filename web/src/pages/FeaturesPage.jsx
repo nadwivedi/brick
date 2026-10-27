@@ -15,12 +15,12 @@ import {
 import { appLink, site, whatsappLink } from '../lib/site';
 
 const TITLE = `Brick Kiln Management Software Features | ${site.name}`;
-const DESCRIPTION = `Run your brick plant digitally with no paperwork. ${site.name} features: WhatsApp due reminders, AI purchase entry from bill PDF, low stock, quality and efficiency alerts, GST billing and reports.`;
+const DESCRIPTION = `Run your brick plant digitally with no paperwork. ${site.name} features: WhatsApp due reminders, low stock, quality and efficiency alerts, GST billing and reports.`;
 
 // Headline features, shown first and named in the FAQs
 const SMART = [
-  { icon: WhatsAppIcon, title: 'Automatic WhatsApp payment reminders', text: 'Parties get a WhatsApp reminder of their balance due, with the amount and latest entries, so payments come in on time.', tone: 'bg-[#25D366]' },
-  { icon: FileUp, title: 'AI purchase entry from bill PDF', text: 'Upload a supplier bill as a PDF and AI fills in the purchase for you: vendor, items, quantities and amounts. Just check and save.', tone: 'bg-gradient-to-br from-violet-600 to-fuchsia-500' },
+  { icon: WhatsAppIcon, title: 'WhatsApp payment reminders', text: 'Send any party their balance due with the latest entries on WhatsApp in one tap, so payments come in on time. Automatic scheduled reminders are coming soon.', tone: 'bg-[#25D366]' },
+  { icon: FileUp, title: 'AI purchase entry from bill PDF', text: 'Upload a supplier bill as a PDF and AI fills in the purchase for you: vendor, items, quantities and amounts. Just check and save.', tone: 'bg-gradient-to-br from-violet-600 to-fuchsia-500', soon: true },
   { icon: AlertTriangle, title: 'Low stock alerts', text: 'Get warned when cement, fly ash, sand or any raw material falls below its minimum, before production has to stop.', tone: 'bg-gradient-to-br from-amber-500 to-orange-500' },
   { icon: ShieldAlert, title: 'Production quality alerts', text: 'Damaged bricks are tracked as a percentage of every production entry, so a bad batch or shift stands out straight away.', tone: 'bg-gradient-to-br from-rose-600 to-rose-500' },
   { icon: Gauge, title: 'Production efficiency tracking', text: 'See how many bricks you get from each bag of cement, so you know when material is being wasted.', tone: 'bg-gradient-to-br from-emerald-600 to-teal-500' },
@@ -130,11 +130,11 @@ const FAQS = [
   },
   {
     q: `Can ${site.name} send WhatsApp reminders for due payments?`,
-    a: 'Yes. Parties get a WhatsApp reminder with their balance due and latest entries, so you spend less time chasing payments.',
+    a: 'Yes. From any party ledger you can send the party their balance due and latest entries on WhatsApp in one tap. Automatic scheduled reminders are coming soon.',
   },
   {
     q: 'Can I add a purchase by uploading the bill?',
-    a: 'Yes. Upload the supplier bill as a PDF and AI reads it and fills in the purchase entry. You check the details and save.',
+    a: 'This is coming soon. You will upload the supplier bill as a PDF, AI will read it and fill in the purchase entry, and you check the details and save.',
   },
   {
     q: 'How does the software track production quality and efficiency?',
@@ -258,11 +258,12 @@ export default function FeaturesPage() {
                 <p className="mt-3 text-slate-600">Less typing, fewer follow-up calls and early warnings before small problems get expensive.</p>
               </div>
               <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {SMART.map(({ icon: Icon, title, text, tone }) => (
-                  <article key={title} className="rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-orange-100 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-orange-100">
+                {SMART.map(({ icon: Icon, title, text, tone, soon }) => (
+                  <article key={title} className="relative rounded-2xl bg-white/90 p-5 shadow-sm ring-1 ring-orange-100 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-orange-100">
                     <span className={`flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-lg ${tone}`}>
                       <Icon size={20} />
                     </span>
+                    {soon && <span className="absolute right-4 top-4 rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-700">Coming soon</span>}
                     <h3 className="mt-4 font-bold text-slate-900">{title}</h3>
                     <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text}</p>
                   </article>

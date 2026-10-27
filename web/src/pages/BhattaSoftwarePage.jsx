@@ -46,7 +46,7 @@ const FEATURES = [
 const REASONS = [
   { icon: Layers, title: 'Made only for bhattas', text: 'Not a general accounting tool. Brick types, raw materials, trips and parties work the way a bhatta does.' },
   { icon: Clock, title: 'Saves hours every week', text: 'No more adding up registers. Stock, dues and profit are worked out for you.' },
-  { icon: Smartphone, title: 'Runs on your mobile', text: 'Open it in the browser on any phone, tablet or computer. Nothing to install.' },
+  { icon: Smartphone, title: 'Runs on your mobile', text: 'Use the mobile app at the bhatta, the desktop software in the office, or any browser.' },
   { icon: Calculator, title: 'Fewer mistakes', text: 'Totals, balances and stock are calculated automatically, so there are no adding errors.' },
   { icon: ShieldCheck, title: 'Your data stays safe', text: 'Password-protected login, and each business sees only its own records.' },
   { icon: Building2, title: 'Grows with you', text: 'Start with one bhatta and manage more from the same login when you expand.' },
@@ -90,7 +90,7 @@ const FAQS = [
   },
   {
     q: 'Can I use bhatta software on my mobile phone?',
-    a: `Yes. ${site.name} works in the browser on mobile phones, tablets and computers, so there is nothing to install.`,
+    a: `Yes. ${site.name} comes with a dedicated mobile app and desktop software, and also works in the browser on any phone, tablet or computer.`,
   },
   {
     q: 'What is the price of bhatta software?',

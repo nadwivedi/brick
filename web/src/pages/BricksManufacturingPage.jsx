@@ -121,11 +121,11 @@ const AUDIENCE = [
 
 const REASONS = [
   { title: 'Focused on brick businesses', text: 'Plants, brick types, raw materials, cement use, vehicles and trip charges are part of the software, not add-ons you have to set up yourself.' },
-  { title: 'The core of an ERP, without the complexity', text: 'Owners searching for brick manufacturing ERP software usually need production, inventory, sales, purchases and accounts working together. Brick Manager covers those areas in one place.' },
+  { title: 'The core of an ERP, without the complexity', text: 'Owners searching for brick manufacturing ERP software usually need production, inventory, sales, purchases and accounts working together. BrickManager covers those areas in one place.' },
   { title: 'Made for brick manufacturing in India', text: 'Amounts in rupees, GST on invoices, mobile-number login and reports that follow the financial year.' },
   { title: 'Grows from one plant to several', text: 'Start with a single plant and add more later. Production, stock and sales can then be viewed plant by plant.' },
   { title: 'Clear yearly pricing', text: `${PLANS.map(p => `₹${p.price}/year`).join(' or ')}, depending on whether you run one plant or several.` },
-  { title: 'Works on the devices you already have', text: 'It runs in the browser on phones, tablets and computers, with nothing to install.' },
+  { title: 'Works on the devices you already have', text: 'A mobile app, desktop software and the browser, all working from one account.' },
 ];
 
 const FAQS = [
@@ -150,7 +150,7 @@ const FAQS = [
     a: `Yes. ${site.name} works for a single plant as well as for businesses with several plants. It runs in a web browser, so a small business does not need its own server or special hardware.`,
   },
   {
-    q: 'Does Brick Manager handle advance orders?',
+    q: 'Does BrickManager handle advance orders?',
     a: 'Sales are recorded as invoices when bricks are sold. There is no separate screen for booking advance orders.',
   },
   {
@@ -179,7 +179,7 @@ function FlowDiagram() {
   return (
     <figure
       role="img"
-      aria-label="Diagram showing how Brick Manager connects raw material purchases, brick production, sales, payments and reports"
+      aria-label="Diagram showing how BrickManager connects raw material purchases, brick production, sales, payments and reports"
       className="relative mx-auto w-full max-w-md"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-amber-100/70 via-orange-100/50 to-primary-100/70 blur-2xl" />

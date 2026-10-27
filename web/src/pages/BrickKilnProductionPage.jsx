@@ -111,7 +111,7 @@ function EntryCard() {
   return (
     <figure
       role="img"
-      aria-label="Sample production entry in Brick Manager: 120 plates of 105 bricks, 150 damaged, 60 bags of cement, adding 12,450 good bricks to stock"
+      aria-label="Sample production entry in BrickManager: 120 plates of 105 bricks, 150 damaged, 60 bags of cement, adding 12,450 good bricks to stock"
       className="relative mx-auto w-full max-w-md"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-orange-200/70 via-amber-100/60 to-rose-100/60 blur-2xl" />

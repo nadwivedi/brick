@@ -114,7 +114,7 @@ function SpendingCard() {
   return (
     <figure
       role="img"
-      aria-label="Sample Brick Manager expense summary showing a month's spending on labour, diesel, maintenance and electricity, and a diesel expense paid by UPI"
+      aria-label="Sample BrickManager expense summary showing a month's spending on labour, diesel, maintenance and electricity, and a diesel expense paid by UPI"
       className="relative mx-auto w-full max-w-md"
     >
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-rose-100/70 via-amber-100/60 to-emerald-100/60 blur-2xl" />

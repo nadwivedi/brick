@@ -37,7 +37,7 @@ const REASONS = [
   { icon: Layers, title: 'Built for brick kilns', text: 'Plants, brick types, raw materials, trips and parties work the way a brick business already does.' },
   { icon: BadgeIndianRupee, title: 'Simple yearly pricing', text: 'Two clear plans with a flat yearly price. The only difference is how many kilns you run.' },
   { icon: CheckCircle2, title: 'Complete feature set', text: 'Production, stock, sales, purchases, ledgers, expenses and reports are included in both plans.' },
-  { icon: Smartphone, title: 'Works on any device', text: 'No installation needed. Use it on a phone at the kiln or on a computer in the office.' },
+  { icon: Smartphone, title: 'Works on any device', text: 'Mobile app and desktop software included. Use it on a phone at the kiln or a computer in the office.' },
   { icon: ShieldCheck, title: 'Safe & private', text: 'Password-protected logins, with each business seeing only its own records.' },
   { icon: MessageCircle, title: 'Easy to reach', text: 'Call us or message us on WhatsApp whenever you have a question.' },
 ];
@@ -65,7 +65,7 @@ const FAQS = [
   },
   {
     q: 'Can I use the brick kiln software on my mobile phone?',
-    a: `Yes. ${site.name} runs in the web browser and works on mobile phones, tablets and computers, so there is nothing to install.`,
+    a: `Yes. Every plan includes the ${site.name} mobile app and desktop software, and it also works in the web browser on phones, tablets and computers.`,
   },
   {
     q: 'Is my brick kiln data safe?',

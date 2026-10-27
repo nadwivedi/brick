@@ -3,19 +3,19 @@
 const env = import.meta.env;
 
 export const site = {
-  name: 'Brick Manager',
+  name: 'BrickManager',
   // Public address of the website, e.g. https://www.example.com (used for canonical links)
   url: (env.VITE_SITE_URL || 'https://brickmanager.in').replace(/\/$/, ''),
-  // Address of the Brick Manager app (the frontend/ folder), where Login and Register live
+  // Address of the BrickManager app (the frontend/ folder), where Login and Register live
   appUrl: (env.VITE_APP_URL || 'https://app.brickmanager.in').replace(/\/$/, ''),
   phone: env.VITE_CONTACT_PHONE || '+91 77470 52331',
   email: env.VITE_CONTACT_EMAIL || 'brickmanager.in@gmail.com',
   address: env.VITE_CONTACT_ADDRESS || 'Shankar Nagar, Raipur, Chhattisgarh',
   // Country code + number, digits only, e.g. 919876543210
-  whatsapp: env.VITE_WHATSAPP_NUMBER || '91XXXXXXXXXX',
+  whatsapp: env.VITE_WHATSAPP_NUMBER || '917747052331',
 };
 
-// Link to a page of the Brick Manager app, e.g. appLink('/login')
+// Link to a page of the BrickManager app, e.g. appLink('/login')
 export const appLink = (path) => site.appUrl + path;
 
 export const telLink = `tel:${site.phone.replace(/[^\d+]/g, '')}`;
