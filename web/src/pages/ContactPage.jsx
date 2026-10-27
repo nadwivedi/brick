@@ -50,6 +50,7 @@ const STRUCTURED_DATA = {
         '@type': 'Organization',
         name: site.name,
         url: `${site.url}/`,
+        sameAs: [site.instagram],
         email: site.email,
         telephone: site.phone,
         address: {

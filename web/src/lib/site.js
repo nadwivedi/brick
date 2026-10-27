@@ -13,6 +13,8 @@ export const site = {
   address: env.VITE_CONTACT_ADDRESS || 'Shankar Nagar, Raipur, Chhattisgarh',
   // Country code + number, digits only, e.g. 919876543210
   whatsapp: env.VITE_WHATSAPP_NUMBER || '917747052331',
+  // Social profiles, shown in the footer and given to Google as the business's own accounts
+  instagram: 'https://www.instagram.com/brickmanager.in/',
 };
 
 // Link to a page of the BrickManager app, e.g. appLink('/login')

@@ -181,6 +181,17 @@ function PolicyModal({ policy, onClose }) {
   );
 }
 
+// Instagram's glyph, drawn here because the icon library has no brand logos
+function InstagramIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 const footerLinkCls = 'group inline-flex items-center gap-1.5 text-sm text-slate-600 transition hover:text-orange-700';
 
 function FooterHeading({ children }) {
@@ -216,6 +227,18 @@ export function Footer() {
           >
             <WhatsAppIcon size={18} /> Chat on WhatsApp
           </a>
+          <div className="mt-5 flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Follow us</span>
+            <a
+              href={site.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${site.name} on Instagram`}
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] text-white shadow-md transition hover:-translate-y-0.5"
+            >
+              <InstagramIcon size={18} />
+            </a>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:col-span-1 md:grid-cols-2 lg:col-span-5 lg:flex lg:justify-between lg:gap-6 lg:whitespace-nowrap">
