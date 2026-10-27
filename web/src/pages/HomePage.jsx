@@ -67,13 +67,13 @@ function HeroPreview() {
             { icon: Layers, label: 'Ready stock', value: '48,200', note: 'Across 3 brick types', card: 'from-amber-50 ring-amber-100', chip: 'from-amber-500 to-amber-400 shadow-amber-200', noteCls: 'text-slate-500' },
             { icon: HandCoins, label: 'Dues to collect', value: '₹1.8L', note: '₹42K received today', card: 'from-emerald-50 ring-emerald-100', chip: 'from-emerald-600 to-emerald-500 shadow-emerald-200', noteCls: 'text-emerald-600' },
           ].map(({ icon: Icon, label, value, note, card, chip, noteCls }) => (
-            <div key={label} className={`rounded-xl bg-gradient-to-br to-white p-[0.675rem] ring-1 lg:p-[0.5625rem] ${card}`}>
+            <div key={label} className={`rounded-xl bg-gradient-to-br to-white px-[0.675rem] py-[0.5rem] ring-1 lg:px-[0.5625rem] lg:py-[0.4rem] ${card}`}>
               <div className="flex items-center gap-2">
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-md lg:h-7 lg:w-7 ${chip}`}><Icon size={15} /></span>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-md lg:h-6 lg:w-6 ${chip}`}><Icon size={14} /></span>
                 <p className="text-[11px] font-semibold leading-tight text-slate-600">{label}</p>
               </div>
-              <p className="mt-[0.45rem] text-xl font-extrabold tracking-tight text-slate-900 lg:mt-[0.3375rem] lg:text-lg">{value}</p>
-              <p className={`text-[10.5px] font-medium ${noteCls}`}>{note}</p>
+              <p className="mt-[0.3rem] text-xl font-extrabold leading-tight tracking-tight text-slate-900 lg:mt-[0.2rem] lg:text-lg">{value}</p>
+              <p className={`text-[10.5px] font-medium leading-tight ${noteCls}`}>{note}</p>
             </div>
           ))}
         </div>
@@ -98,14 +98,6 @@ function HeroPreview() {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="absolute -bottom-5 -left-3 flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-lg ring-1 ring-slate-200 sm:-left-8 lg:-bottom-7">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><AlertTriangle size={16} /></span>
-        <span className="text-xs">
-          <span className="block font-semibold text-slate-900">Low stock: Cement</span>
-          <span className="block text-slate-500">12 bags left</span>
-        </span>
       </div>
     </div>
   );
