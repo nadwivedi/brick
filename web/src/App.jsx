@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import {
   BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
@@ -22,7 +22,13 @@ import BrickKilnBillingPage from './pages/BrickKilnBillingPage';
 import BrickKilnReportsPage from './pages/BrickKilnReportsPage';
 import BrickKilnPaymentPage from './pages/BrickKilnPaymentPage';
 
-// The public website: homepage and product pages. Login, register and the dashboard live in the frontend/ app.
+// Pages used to live under /products/; old links land on the same page at its new address
+function OldProductLink() {
+  const { slug } = useParams();
+  return <Navigate to={`/${slug}`} replace />;
+}
+
+// The public website: homepage and keyword pages. Login, register and the dashboard live in the frontend/ app.
 export default function App() {
   return (
     <BrowserRouter>
@@ -43,6 +49,7 @@ export default function App() {
         <Route path={BILLING_PAGE} element={<BrickKilnBillingPage />} />
         <Route path={REPORTS_PAGE} element={<BrickKilnReportsPage />} />
         <Route path={PAYMENT_PAGE} element={<BrickKilnPaymentPage />} />
+        <Route path="/products/:slug" element={<OldProductLink />} />
         {/* Short address for the price page */}
         <Route path="/pricing" element={<Navigate to={PRICE_PAGE} replace />} />
         {/* Unknown links go to the homepage */}

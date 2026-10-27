@@ -255,9 +255,9 @@ export function Footer() {
               <li><a href={appLink('/login')} className={footerLinkCls}>{arrow}Login</a></li>
             </ul>
           </div>
-          {/* Product names can be long, so this column wraps instead of pushing the others aside */}
+          {/* Page names can be long, so this column wraps instead of pushing the others aside */}
           <div className="lg:w-40 lg:whitespace-normal">
-            <FooterHeading>Products</FooterHeading>
+            <FooterHeading>Brick Kiln Software</FooterHeading>
             <ul className="mt-5 space-y-3">
               {[
                 { to: BHATTA_PAGE, label: 'Bhatta Software' },

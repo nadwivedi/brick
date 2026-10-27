@@ -191,8 +191,6 @@ export default function OnlineBrickKilnPage() {
             <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500">
               <Link to="/" className="transition hover:text-orange-700">Home</Link>
               <ChevronRight size={14} />
-              <span>Products</span>
-              <ChevronRight size={14} />
               <span className="text-slate-700" aria-current="page">Online Brick Kiln Management Software</span>
             </nav>
 
