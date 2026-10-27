@@ -1,16 +1,16 @@
-import { BrickWall } from 'lucide-react';
-
-export default function Logo({ name = 'BrickSoft', subtitle, size = 'md' }) {
+// The Brick Manager logo image (web/public), which already includes the name.
+export default function Logo({ name = 'Brick Manager', subtitle, size = 'md' }) {
   const large = size === 'lg';
   return (
-    <span className="flex items-center gap-2.5">
-      <span className={`flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-700 to-primary-500 text-white shadow-lg shadow-primary-700/20 ${large ? 'h-12 w-12' : 'h-10 w-10'}`}>
-        <BrickWall size={large ? 26 : 22} />
-      </span>
-      <span className="min-w-0 text-left">
-        <span className={`block font-bold leading-tight text-slate-900 ${large ? 'text-2xl' : 'text-lg'}`}>{name}</span>
-        {subtitle && <span className="block truncate text-[11px] font-medium text-slate-500">{subtitle}</span>}
-      </span>
+    <span className="flex flex-col items-start">
+      <img
+        src="/brickmanager%20logo.png"
+        alt={name}
+        width="740"
+        height="114"
+        className={`w-auto ${large ? 'h-10' : 'h-7 sm:h-8'}`}
+      />
+      {subtitle && <span className="mt-1.5 block text-[11px] font-medium text-slate-500">{subtitle}</span>}
     </span>
   );
 }

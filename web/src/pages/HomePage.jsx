@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, BarChart3, Boxes, Building2, CheckCircle2, ClipboardList, FileText, Hammer,
-  HandCoins, HardHat, Landmark, Layers, LogIn, ShieldCheck, Smartphone, Sparkles, TrendingUp, Users,
+  HandCoins, HardHat, Landmark, Layers, LogIn, ShieldCheck, Smartphone, Sparkles, TrendingUp, Truck, Users,
 } from 'lucide-react';
 import ContactSection from '../components/ContactSection';
 import WhatsAppButton from '../components/WhatsAppButton';
@@ -62,16 +62,20 @@ function HeroPreview() {
           <span className="badge-gray">Sample view</span>
         </div>
 
-        <div className="mt-[1.125rem] grid grid-cols-3 gap-[0.675rem] lg:mt-[0.675rem]">
+        <div className="mt-[1.125rem] grid grid-cols-2 gap-[0.675rem] lg:mt-[0.675rem] lg:gap-[0.5625rem]">
           {[
-            { icon: Hammer, label: 'Made today', value: '12,500', tone: 'bg-orange-50 text-orange-700' },
-            { icon: Layers, label: 'Ready stock', value: '48,200', tone: 'bg-primary-50 text-primary-700' },
-            { icon: HandCoins, label: 'Dues', value: '₹1.8L', tone: 'bg-emerald-50 text-emerald-700' },
-          ].map(({ icon: Icon, label, value, tone }) => (
-            <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/70 p-[0.675rem] lg:p-[0.5625rem]">
-              <span className={`flex h-8 w-8 items-center justify-center rounded-lg lg:h-7 lg:w-7 ${tone}`}><Icon size={16} /></span>
-              <p className="mt-[0.45rem] text-[11px] font-medium text-slate-500 lg:mt-[0.225rem]">{label}</p>
-              <p className="text-sm font-bold text-slate-900 sm:text-base">{value}</p>
+            { icon: Hammer, label: 'Bricks made today', value: '12,500', note: '+8% vs yesterday', card: 'from-orange-50 ring-orange-100', chip: 'from-orange-600 to-orange-500 shadow-orange-200', noteCls: 'text-emerald-600' },
+            { icon: Truck, label: 'Bricks sold today', value: '9,800', note: '6 trips delivered', card: 'from-primary-50 ring-primary-100', chip: 'from-primary-600 to-primary-500 shadow-primary-200', noteCls: 'text-slate-500' },
+            { icon: Layers, label: 'Ready stock', value: '48,200', note: 'Across 3 brick types', card: 'from-amber-50 ring-amber-100', chip: 'from-amber-500 to-amber-400 shadow-amber-200', noteCls: 'text-slate-500' },
+            { icon: HandCoins, label: 'Dues to collect', value: '₹1.8L', note: '₹42K received today', card: 'from-emerald-50 ring-emerald-100', chip: 'from-emerald-600 to-emerald-500 shadow-emerald-200', noteCls: 'text-emerald-600' },
+          ].map(({ icon: Icon, label, value, note, card, chip, noteCls }) => (
+            <div key={label} className={`rounded-xl bg-gradient-to-br to-white p-[0.675rem] ring-1 lg:p-[0.5625rem] ${card}`}>
+              <div className="flex items-center gap-2">
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-md lg:h-7 lg:w-7 ${chip}`}><Icon size={15} /></span>
+                <p className="text-[11px] font-semibold leading-tight text-slate-600">{label}</p>
+              </div>
+              <p className="mt-[0.45rem] text-xl font-extrabold tracking-tight text-slate-900 lg:mt-[0.3375rem] lg:text-lg">{value}</p>
+              <p className={`text-[10.5px] font-medium ${noteCls}`}>{note}</p>
             </div>
           ))}
         </div>
