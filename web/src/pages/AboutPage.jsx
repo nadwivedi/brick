@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, Building2, ChevronRight, Factory, Layers, MapPin, ShieldCheck, Smartphone, Target, Users,
+  ArrowRight, Building2, ChevronRight, Code2, ExternalLink, Factory, Layers, MapPin, ShieldCheck, Smartphone, Target, Users,
 } from 'lucide-react';
 import JsonLd from '../components/JsonLd';
 import WhatsAppButton from '../components/WhatsAppButton';
@@ -11,7 +11,7 @@ import { ABOUT_PAGE, CONTACT_PAGE, FEATURES_PAGE } from '../lib/publicNav';
 import { appLink, site } from '../lib/site';
 
 export const TITLE = `About Us | Brick Kiln Management Software - ${site.name}`;
-export const DESCRIPTION = `${site.name} is brick kiln management software from ${site.address}, built for brick kilns, bhattas and brick plants across India, from a single kiln to several plants.`;
+export const DESCRIPTION = `${site.name} is brick kiln management software made by ${site.maker.name}, for brick kilns, bhattas and plants across India. Based in Raipur, Chhattisgarh.`;
 
 const VALUES = [
   { icon: Layers, title: 'Made for brick plants', text: 'Built around how brick businesses actually work: plants, brick types, trips and parties.' },
@@ -48,6 +48,7 @@ const STRUCTURED_DATA = {
           addressCountry: 'IN',
         },
         areaServed: 'IN',
+        parentOrganization: { '@type': 'Organization', name: site.maker.name, url: site.maker.url },
       },
     },
     {
@@ -153,6 +154,34 @@ export default function AboutPage() {
                   <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Maker */}
+        <section aria-labelledby="maker" className="py-14 sm:py-20">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <div className="flex flex-col items-center gap-6 rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200 sm:flex-row sm:p-10 sm:text-left">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-700 to-primary-500 text-white shadow-lg">
+                <Code2 size={30} />
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold uppercase tracking-wider text-orange-700">Made by</p>
+                <h2 id="maker" className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">{site.maker.name}</h2>
+                <p className="mt-3 leading-relaxed text-slate-600">
+                  {site.name} is designed, built and supported by{' '}
+                  <a href={site.maker.url} target="_blank" rel="noopener" className="font-semibold text-primary-700 hover:underline">{site.maker.name}</a>.
+                  Visit their website to see their other software and services.
+                </p>
+              </div>
+              <a
+                href={site.maker.url}
+                target="_blank"
+                rel="noopener"
+                className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:border-primary-300 hover:text-primary-700"
+              >
+                softwarebytes.in <ExternalLink size={16} />
+              </a>
             </div>
           </div>
         </section>

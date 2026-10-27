@@ -4,6 +4,7 @@
 
 - Website: https://brickmanager.in/
 - App login: https://app.brickmanager.in/login
+- Made by: SoftwareBytes India (https://softwarebytes.in)
 - Based in: Shankar Nagar, Raipur, Chhattisgarh, India
 - Serves: brick kilns and brick plants across India
 - Phone and WhatsApp: +91 77470 52331

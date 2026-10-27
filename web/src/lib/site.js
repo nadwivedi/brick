@@ -13,6 +13,8 @@ export const site = {
   address: env.VITE_CONTACT_ADDRESS || 'Shankar Nagar, Raipur, Chhattisgarh',
   // Country code + number, digits only, e.g. 919876543210
   whatsapp: env.VITE_WHATSAPP_NUMBER || '917747052331',
+  // The company that makes BrickManager
+  maker: { name: 'SoftwareBytes India', url: 'https://softwarebytes.in' },
   // Social profiles, shown in the footer and given to Google as the business's own accounts
   instagram: 'https://www.instagram.com/brickmanager.in/',
 };
