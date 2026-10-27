@@ -32,6 +32,7 @@ const GROUPS = [
   {
     id: 'production',
     title: 'Brick Production & Stock Management',
+    short: 'Production',
     text: 'Know what was made, what was used and what is left, at every plant.',
     tone: 'from-orange-600 to-orange-500',
     soft: 'bg-orange-50 text-orange-700',
@@ -48,6 +49,7 @@ const GROUPS = [
   {
     id: 'sales',
     title: 'Brick Sales, GST Billing & Purchases',
+    short: 'Sales & GST',
     text: 'Bill customers and record what you buy, with transport worked in.',
     tone: 'from-primary-600 to-primary-500',
     soft: 'bg-primary-50 text-primary-700',
@@ -62,6 +64,7 @@ const GROUPS = [
   {
     id: 'money',
     title: 'Payment Tracking, Dues & Party Ledgers',
+    short: 'Payments',
     text: 'See exactly who owes you, whom you owe, and since when.',
     tone: 'from-emerald-600 to-emerald-500',
     soft: 'bg-emerald-50 text-emerald-700',
@@ -76,6 +79,7 @@ const GROUPS = [
   {
     id: 'expenses',
     title: 'Brick Kiln Expense Management',
+    short: 'Expenses',
     text: 'Log every rupee spent and see where the money goes.',
     tone: 'from-rose-600 to-rose-500',
     soft: 'bg-rose-50 text-rose-700',
@@ -88,6 +92,7 @@ const GROUPS = [
   {
     id: 'reports',
     title: 'Dashboard & Brick Kiln Reports',
+    short: 'Reports',
     text: 'Your numbers worked out for you, for any period you pick.',
     tone: 'from-violet-600 to-violet-500',
     soft: 'bg-violet-50 text-violet-700',
@@ -103,6 +108,7 @@ const GROUPS = [
   {
     id: 'setup',
     title: 'Multi-Plant, Labour & Vehicle Management',
+    short: 'Plants & Setup',
     text: 'Set up your business once and every entry fits into place.',
     tone: 'from-amber-500 to-amber-400',
     soft: 'bg-amber-50 text-amber-700',
@@ -226,15 +232,17 @@ export default function FeaturesPage() {
             </div>
 
             {/* Jump links to each group */}
-            <nav aria-label="Feature groups" className="mx-auto mt-10 flex max-w-4xl flex-wrap justify-center gap-2">
+            <nav aria-label="Feature groups" className="mx-auto mt-8 flex max-w-4xl flex-wrap justify-center gap-1.5 sm:mt-10 sm:gap-2">
               {GROUPS.map(g => (
                 <a
                   key={g.id}
                   href={`#${g.id}`}
                   onClick={jumpTo(g.id)}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:text-orange-700 hover:ring-orange-200"
+                  className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:text-orange-700 hover:ring-orange-200 sm:px-4 sm:py-2 sm:text-sm"
                 >
-                  {g.title}
+                  {/* Short name on phones, full keyword name from tablet up */}
+                  <span className="sm:hidden">{g.short}</span>
+                  <span className="hidden sm:inline">{g.title}</span>
                 </a>
               ))}
             </nav>
