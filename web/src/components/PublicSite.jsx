@@ -106,7 +106,7 @@ export function Navbar() {
       </nav>
 
       {menuOpen && (
-        <div id="mobile-menu" className="border-t border-slate-200 bg-white px-4 pb-4 pt-2 md:hidden">
+        <div id="mobile-menu" className="absolute inset-x-0 top-full border-t border-slate-200 bg-white px-4 pb-4 pt-2 shadow-lg md:hidden">
           {NAV.map(n => (
             <a key={n.id} href={`/#${n.id}`} onClick={goTo(n.id)} className="block rounded-lg px-3 py-3 font-semibold text-slate-700 hover:bg-slate-100">
               {n.label}
