@@ -1,12 +1,11 @@
-import { useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, BarChart3, Boxes, Building2, CheckCircle2, ClipboardList, FileText, Hammer,
-  HandCoins, HardHat, Landmark, Layers, LogIn, ShieldCheck, Smartphone, Sparkles, TrendingUp, Truck, Users,
+  HandCoins, HardHat, Landmark, Layers, LogIn, Sparkles, TrendingUp, Truck, Users,
 } from 'lucide-react';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
-import { CONTACT_PAGE, FEATURES_PAGE, scrollToSection } from '../lib/publicNav';
+import { CONTACT_PAGE, FEATURES_PAGE } from '../lib/publicNav';
 import { appLink, site } from '../lib/site';
 import usePageMeta from '../hooks/usePageMeta';
 
@@ -38,13 +37,6 @@ const STEPS = [
   { icon: ClipboardList, title: 'Record the day', text: 'Enter production, sales, purchases and expenses as they happen.' },
   { icon: TrendingUp, title: 'See the full picture', text: 'Stock, dues and profit are worked out for you, always up to date.' },
 ];
-
-const VALUES = [
-  { icon: Layers, title: 'Made for brick plants', text: 'Built around how brick businesses actually work: plants, brick types, trips and parties.' },
-  { icon: Smartphone, title: 'Simple to use', text: 'Clear screens your manager and staff can learn in a day, on any device.' },
-  { icon: ShieldCheck, title: 'Safe & secure', text: 'Password-protected logins, with each business seeing only its own data.' },
-];
-
 
 // Illustrative preview of the dashboard, so visitors can picture the product.
 function HeroPreview() {
@@ -107,15 +99,6 @@ function HeroPreview() {
 
 export default function HomePage() {
   usePageMeta(TITLE, DESCRIPTION, '/');
-
-  // Arriving from another page via /#about, /#features etc.
-  const { hash } = useLocation();
-  const navigate = useNavigate();
-  useEffect(() => {
-    // Contact used to be a homepage section; old /#contact links now open its own page
-    if (hash === '#contact') navigate(CONTACT_PAGE, { replace: true });
-    else if (hash) scrollToSection(hash.slice(1));
-  }, [hash, navigate]);
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
@@ -214,28 +197,6 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-          </div>
-        </section>
-
-        {/* About */}
-        <section id="about" className="scroll-mt-20 pb-20 pt-10 sm:pb-24 sm:pt-12">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading
-              eyebrow="About Us"
-              title={`About ${site.name}`}
-              text={`${site.name} is management software built for brick manufacturing businesses, from a single kiln to several plants. It brings production, stock, sales, purchases, labour and accounts together, so owners and managers can make decisions on up-to-date numbers instead of guesswork.`}
-            />
-            <div className="mt-14 grid gap-5 md:grid-cols-3">
-              {VALUES.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="rounded-2xl bg-white p-7 text-center shadow-sm ring-1 ring-slate-200">
-                  <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-700">
-                    <Icon size={26} />
-                  </span>
-                  <h3 className="mt-5 text-lg font-bold text-slate-900">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 

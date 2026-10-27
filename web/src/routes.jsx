@@ -1,11 +1,12 @@
 import {
-  BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE,
+  ABOUT_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE,
   MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
 } from './lib/publicNav';
 
 import * as Home from './pages/HomePage';
 import * as Features from './pages/FeaturesPage';
 import * as Contact from './pages/ContactPage';
+import * as About from './pages/AboutPage';
 import * as HindiBhatta from './pages/HindiBhattaPage';
 import * as CostPerBrickGuide from './pages/CostPerBrickGuidePage';
 import * as BrickKilnPrice from './pages/BrickKilnPricePage';
@@ -27,6 +28,7 @@ const page = (path, mod, extra) => ({ path, Component: mod.default, title: mod.T
 export const PAGES = [
   page('/', Home),
   page(FEATURES_PAGE, Features),
+  page(ABOUT_PAGE, About),
   page(CONTACT_PAGE, Contact),
   page(HINDI_PAGE, HindiBhatta, { lang: 'hi' }),
   page(COST_GUIDE_PAGE, CostPerBrickGuide),

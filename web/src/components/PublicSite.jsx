@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BarChart3, Boxes, ChevronRight, Hammer, LogIn, Mail, MapPin, Menu, Phone, ShoppingCart, X } from 'lucide-react';
 import Logo from './Logo';
 import Modal from './Modal';
@@ -7,19 +7,28 @@ import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { appLink, site, telLink, whatsappLink } from '../lib/site';
 import {
-  BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
-  PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, useGoToSection,
+  ABOUT_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
 } from '../lib/publicNav';
 
 // Navbar, footer and artwork shared by the public pages (homepage and product pages).
 
+// Every menu item is its own page, so addresses never carry a #section
 const NAV = [
-  { id: 'home', label: 'Home' },
-  { id: 'features', label: 'Features', to: FEATURES_PAGE },
-  { id: 'pricing', label: 'Pricing', to: PRICE_PAGE },
-  { id: 'about', label: 'About Us' },
-  { id: 'contact', label: 'Contact Us', to: CONTACT_PAGE },
+  { to: '/', label: 'Home' },
+  { to: FEATURES_PAGE, label: 'Features' },
+  { to: PRICE_PAGE, label: 'Pricing' },
+  { to: ABOUT_PAGE, label: 'About Us' },
+  { to: CONTACT_PAGE, label: 'Contact Us' },
 ];
+
+// Opening the page you are already on scrolls back to its top
+function useBackToTop() {
+  const { pathname } = useLocation();
+  return (to) => () => {
+    if (to === pathname) window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+}
 
 // Faint brick-wall texture used behind the hero and the closing banner.
 export function BrickPattern({ className = '' }) {
@@ -63,7 +72,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   useEscapeKey(menuOpen, () => setMenuOpen(false));
-  const goToSection = useGoToSection();
+  const backToTop = useBackToTop();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -72,25 +81,24 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const goTo = (id) => (e) => {
+  const open = (to) => () => {
     setMenuOpen(false);
-    goToSection(id)(e);
+    backToTop(to)();
   };
 
   return (
     <header className={`sticky top-0 z-30 border-b transition ${scrolled || menuOpen ? 'border-slate-200 bg-white/90 shadow-sm backdrop-blur' : 'border-transparent bg-transparent'}`}>
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:h-[72px] sm:px-6" aria-label="Main">
-        <a href="/#home" onClick={goTo('home')} aria-label={`${site.name} home`}>
+        <Link to="/" onClick={open('/')} aria-label={`${site.name} home`}>
           <Logo name={site.name} />
-        </a>
+        </Link>
 
         <div className="hidden items-center gap-1 md:flex">
-          {NAV.map(n => {
-            const cls = 'rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 lg:px-4 transition hover:bg-slate-100 hover:text-slate-900';
-            return n.to
-              ? <Link key={n.id} to={n.to} className={cls}>{n.label}</Link>
-              : <a key={n.id} href={`/#${n.id}`} onClick={goTo(n.id)} className={cls}>{n.label}</a>;
-          })}
+          {NAV.map(n => (
+            <Link key={n.to} to={n.to} onClick={open(n.to)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 lg:px-4">
+              {n.label}
+            </Link>
+          ))}
           <a href={appLink('/login')} className="btn-primary ml-3 px-5 py-2.5">
             <LogIn size={16} /> Login
           </a>
@@ -110,12 +118,11 @@ export function Navbar() {
 
       {menuOpen && (
         <div id="mobile-menu" className="absolute inset-x-0 top-full border-t border-slate-200 bg-white px-4 pb-4 pt-2 shadow-lg md:hidden">
-          {NAV.map(n => {
-            const cls = 'block rounded-lg px-3 py-3 font-semibold text-slate-700 hover:bg-slate-100';
-            return n.to
-              ? <Link key={n.id} to={n.to} onClick={() => setMenuOpen(false)} className={cls}>{n.label}</Link>
-              : <a key={n.id} href={`/#${n.id}`} onClick={goTo(n.id)} className={cls}>{n.label}</a>;
-          })}
+          {NAV.map(n => (
+            <Link key={n.to} to={n.to} onClick={open(n.to)} className="block rounded-lg px-3 py-3 font-semibold text-slate-700 hover:bg-slate-100">
+              {n.label}
+            </Link>
+          ))}
           <a href={appLink('/login')} className="btn-primary mt-2 w-full py-3">
             <LogIn size={16} /> Login
           </a>
@@ -136,10 +143,10 @@ export function SectionHeading({ eyebrow, title, text }) {
 }
 
 const SERVICES = [
-  { icon: Hammer, label: 'Brick Production' },
-  { icon: Boxes, label: 'Inventory Management' },
-  { icon: ShoppingCart, label: 'Sales & Orders' },
-  { icon: BarChart3, label: 'Reports' },
+  { icon: Hammer, label: 'Brick Production', to: PRODUCTION_PAGE },
+  { icon: Boxes, label: 'Inventory Management', to: INVENTORY_PAGE },
+  { icon: ShoppingCart, label: 'Sales & Orders', to: BILLING_PAGE },
+  { icon: BarChart3, label: 'Reports', to: REPORTS_PAGE },
 ];
 
 // Shown in a popup from the footer. Review and replace with your own policy text before going live.
@@ -200,7 +207,7 @@ function FooterHeading({ children }) {
 
 export function Footer() {
   const [policy, setPolicy] = useState(null);
-  const jump = useGoToSection();
+  const backToTop = useBackToTop();
   const arrow = <ChevronRight size={14} className="shrink-0 text-orange-500 transition group-hover:translate-x-0.5" />;
 
   const contacts = [
@@ -246,11 +253,7 @@ export function Footer() {
             <FooterHeading>Quick Links</FooterHeading>
             <ul className="mt-5 space-y-3">
               {NAV.map(n => (
-                <li key={n.id}>
-                  {n.to
-                    ? <Link to={n.to} className={footerLinkCls}>{arrow}{n.label}</Link>
-                    : <a href={`/#${n.id}`} onClick={jump(n.id)} className={footerLinkCls}>{arrow}{n.label}</a>}
-                </li>
+                <li key={n.to}><Link to={n.to} onClick={backToTop(n.to)} className={footerLinkCls}>{arrow}{n.label}</Link></li>
               ))}
               <li><a href={appLink('/login')} className={footerLinkCls}>{arrow}Login</a></li>
             </ul>
@@ -285,11 +288,11 @@ export function Footer() {
           <div>
             <FooterHeading>Services</FooterHeading>
             <ul className="mt-5 space-y-3">
-              {SERVICES.map(({ icon: Icon, label }) => (
+              {SERVICES.map(({ icon: Icon, label, to }) => (
                 <li key={label}>
-                  <a href="/#features" onClick={jump('features')} className={footerLinkCls}>
+                  <Link to={to} className={footerLinkCls}>
                     <Icon size={15} className="shrink-0 text-orange-600" />{label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

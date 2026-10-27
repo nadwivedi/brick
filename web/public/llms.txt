@@ -52,4 +52,5 @@
 - [Expense Management](https://brickmanager.in/brick-kiln-expense-management-software)
 - [Report Management](https://brickmanager.in/brick-kiln-report-management-software)
 - [Guide: How to Calculate Cost per Brick](https://brickmanager.in/guides/how-to-calculate-cost-per-brick): formula, costs to include and a worked example
+- [About](https://brickmanager.in/about): who BrickManager is for and where it is based
 - [Contact](https://brickmanager.in/contact): demo, pricing and support

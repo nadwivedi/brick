@@ -1,6 +1,5 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-
 export const FEATURES_PAGE = '/features';
+export const ABOUT_PAGE = '/about';
 export const CONTACT_PAGE = '/contact';
 export const HINDI_PAGE = '/hi/eent-bhatta-software';
 export const COST_GUIDE_PAGE = '/guides/how-to-calculate-cost-per-brick';
@@ -20,15 +19,3 @@ export const scrollToSection = (id) => {
   const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.getElementById(id)?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
 };
-
-// Links to homepage sections: scroll when already on the homepage, otherwise open it at that section
-// (HomePage scrolls to the #hash once it renders).
-export function useGoToSection() {
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  return (id) => (e) => {
-    e.preventDefault();
-    if (pathname === '/') scrollToSection(id);
-    else navigate(`/#${id}`);
-  };
-}
