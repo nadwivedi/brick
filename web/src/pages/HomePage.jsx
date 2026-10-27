@@ -144,9 +144,9 @@ export default function HomePage() {
                   Request a Demo
                 </a>
               </div>
-              <ul className="mt-[1.8rem] flex flex-col items-center gap-x-[1.35rem] gap-y-[0.45rem] text-sm font-medium text-slate-600 sm:flex-row sm:justify-center lg:mt-[0.9rem] lg:justify-start">
+              <ul className="mt-[1.8rem] flex flex-wrap items-center justify-center gap-x-3 gap-y-[0.45rem] text-[11px] font-medium text-slate-600 sm:gap-x-[1.35rem] sm:text-sm lg:mt-[0.9rem] lg:justify-start">
                 {['Works on any device', 'Multiple plants', 'Secure login'].map(t => (
-                  <li key={t} className="flex items-center gap-1.5"><CheckCircle2 size={16} className="text-emerald-600" /> {t}</li>
+                  <li key={t} className="flex items-center gap-1 whitespace-nowrap sm:gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 sm:h-4 sm:w-4" /> {t}</li>
                 ))}
               </ul>
             </div>
