@@ -7,7 +7,7 @@ import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { appLink, site, telLink, whatsappLink } from '../lib/site';
 import {
-  BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, FEATURES_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, EXPENSE_PAGE, FEATURES_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
   PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, useGoToSection,
 } from '../lib/publicNav';
 
@@ -17,7 +17,7 @@ const NAV = [
   { id: 'home', label: 'Home' },
   { id: 'features', label: 'Features', to: FEATURES_PAGE },
   { id: 'about', label: 'About Us' },
-  { id: 'contact', label: 'Contact Us' },
+  { id: 'contact', label: 'Contact Us', to: CONTACT_PAGE },
 ];
 
 // Faint brick-wall texture used behind the hero and the closing banner.

@@ -8,7 +8,7 @@ import {
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
-import { scrollToSection, useGoToSection } from '../lib/publicNav';
+import { CONTACT_PAGE, scrollToSection } from '../lib/publicNav';
 import { PLANS } from '../lib/plans';
 import { site, whatsappLink } from '../lib/site';
 
@@ -184,7 +184,6 @@ function PriceVisual() {
 
 export default function BrickKilnPricePage() {
   usePageMeta(TITLE, DESCRIPTION);
-  const goToSection = useGoToSection();
 
   // Footer links open this page from the bottom of the homepage, so start at the top
   useEffect(() => {
@@ -245,9 +244,9 @@ export default function BrickKilnPricePage() {
                   <a href="#pricing" onClick={viewPricing} className="btn-primary px-7 py-3.5 text-base">
                     View Pricing <ArrowRight size={18} />
                   </a>
-                  <a href="/#contact" onClick={goToSection('contact')} className="btn-secondary px-7 py-3.5 text-base">
+                  <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                     Contact Us
-                  </a>
+                  </Link>
                 </div>
               </div>
               <PriceVisual />
@@ -369,9 +368,9 @@ export default function BrickKilnPricePage() {
                 Talk to us about your kilns and we will help you choose between the ₹7,999 and ₹9,999 plans.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href="/#contact" onClick={goToSection('contact')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Contact Us <ArrowRight size={18} />
-                </a>
+                </Link>
                 <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   <WhatsAppIcon size={18} /> Chat on WhatsApp
                 </a>

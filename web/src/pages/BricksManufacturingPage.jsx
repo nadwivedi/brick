@@ -9,7 +9,7 @@ import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
-import { BHATTA_PAGE, MANUFACTURING_PAGE, PRICE_PAGE, scrollToSection, useGoToSection } from '../lib/publicNav';
+import { BHATTA_PAGE, CONTACT_PAGE, MANUFACTURING_PAGE, PRICE_PAGE, scrollToSection } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
 const TITLE = `Bricks Manufacturing Software for Brick Businesses | ${site.name}`;
@@ -244,7 +244,6 @@ function AreaRow({ area, index }) {
 
 export default function BricksManufacturingPage() {
   usePageMeta(TITLE, DESCRIPTION, MANUFACTURING_PAGE);
-  const goToSection = useGoToSection();
 
   // Footer links open this page from the bottom of another page, so start at the top
   useEffect(() => {
@@ -292,9 +291,9 @@ export default function BricksManufacturingPage() {
                   <a href="#features" onClick={exploreFeatures} className="btn-primary px-7 py-3.5 text-base">
                     Explore Features <ArrowRight size={18} />
                   </a>
-                  <a href="/#contact" onClick={goToSection('contact')} className="btn-secondary px-7 py-3.5 text-base">
+                  <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                     Contact Us
-                  </a>
+                  </Link>
                 </div>
               </div>
               <FlowDiagram />
@@ -454,9 +453,9 @@ export default function BricksManufacturingPage() {
                     {l.label} <ChevronRight size={16} className="transition group-hover:translate-x-0.5" />
                   </Link>
                 ))}
-                <a href="/#contact" onClick={goToSection('contact')} className="group flex items-center justify-between rounded-lg px-2 py-2 font-semibold text-primary-700 transition hover:bg-primary-50">
+                <Link to={CONTACT_PAGE} className="group flex items-center justify-between rounded-lg px-2 py-2 font-semibold text-primary-700 transition hover:bg-primary-50">
                   Contact Us <ChevronRight size={16} className="transition group-hover:translate-x-0.5" />
-                </a>
+                </Link>
               </nav>
             </aside>
           </div>
@@ -491,9 +490,9 @@ export default function BricksManufacturingPage() {
                 Tell us how your manufacturing runs today, and we will show you how {site.name} can organise it.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href="/#contact" onClick={goToSection('contact')} className="btn-primary px-7 py-3.5 text-base">
+                <Link to={CONTACT_PAGE} className="btn-primary px-7 py-3.5 text-base">
                   Contact Us <ArrowRight size={18} />
-                </a>
+                </Link>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} bricks manufacturing software.`)} target="_blank" rel="noopener noreferrer" className="btn-secondary px-7 py-3.5 text-base">
                   <WhatsAppIcon size={18} /> Chat on WhatsApp
                 </a>

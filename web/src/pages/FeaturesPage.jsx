@@ -10,8 +10,7 @@ import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/Publ
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
 import {
-  BILLING_PAGE, EXPENSE_PAGE, FEATURES_PAGE, PAYMENT_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE,
-  REPORTS_PAGE, scrollToSection, useGoToSection,
+  BILLING_PAGE, CONTACT_PAGE, EXPENSE_PAGE, FEATURES_PAGE, PAYMENT_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, scrollToSection,
 } from '../lib/publicNav';
 import { appLink, site, whatsappLink } from '../lib/site';
 
@@ -189,7 +188,6 @@ const INSTALL_STEPS = [
 
 export default function FeaturesPage() {
   usePageMeta(TITLE, DESCRIPTION, FEATURES_PAGE);
-  const goToSection = useGoToSection();
 
   // Navbar and footer links open this page from further down another page, so start at the top
   useEffect(() => {
@@ -392,9 +390,9 @@ export default function FeaturesPage() {
                 <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Get Started <ArrowRight size={18} />
                 </a>
-                <a href="/#contact" onClick={goToSection('contact')} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
+                <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   Request a Demo
-                </a>
+                </Link>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} features.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   <WhatsAppIcon size={18} /> WhatsApp
                 </a>

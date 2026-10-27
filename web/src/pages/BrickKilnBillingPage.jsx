@@ -9,7 +9,7 @@ import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/Publ
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
 import {
-  BILLING_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, PRICE_PAGE, scrollToSection, useGoToSection,
+  BILLING_PAGE, CONTACT_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, PRICE_PAGE, scrollToSection,
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
@@ -158,7 +158,6 @@ function InvoiceMock() {
 
 export default function BrickKilnBillingPage() {
   usePageMeta(TITLE, DESCRIPTION, BILLING_PAGE);
-  const goToSection = useGoToSection();
 
   // Footer links open this page from the bottom of another page, so start at the top
   useEffect(() => {
@@ -205,9 +204,9 @@ export default function BrickKilnBillingPage() {
                   <a href="#invoice" onClick={jumpTo('invoice')} className="btn-primary px-7 py-3.5 text-base">
                     See What a Bill Includes <ArrowRight size={18} />
                   </a>
-                  <a href="/#contact" onClick={goToSection('contact')} className="btn-secondary px-7 py-3.5 text-base">
+                  <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                     Contact Us
-                  </a>
+                  </Link>
                 </div>
               </div>
               <InvoiceMock />
@@ -375,9 +374,9 @@ export default function BrickKilnBillingPage() {
               <h2 className="mt-4 text-3xl font-bold sm:text-4xl">Bill your next truckload in seconds</h2>
               <p className="mx-auto mt-4 max-w-xl text-slate-300">See how {site.name} handles GST, transport and credit on every brick invoice.</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href="/#contact" onClick={goToSection('contact')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-amber-50">
+                <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-amber-50">
                   Contact Us <ArrowRight size={18} />
-                </a>
+                </Link>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} brick kiln billing software.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   <WhatsAppIcon size={18} /> Chat on WhatsApp
                 </a>

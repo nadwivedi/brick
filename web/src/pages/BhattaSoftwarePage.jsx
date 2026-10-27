@@ -9,7 +9,7 @@ import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
-import { PRICE_PAGE, scrollToSection, useGoToSection } from '../lib/publicNav';
+import { CONTACT_PAGE, PRICE_PAGE, scrollToSection } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
 const TITLE = `Bhatta Software - Best Brick Bhatta Management Software | ${site.name}`;
@@ -186,7 +186,6 @@ function IconCard({ icon: Icon, title, text, tone = 'orange' }) {
 
 export default function BhattaSoftwarePage() {
   usePageMeta(TITLE, DESCRIPTION);
-  const goToSection = useGoToSection();
 
   // Footer links open this page from the bottom of another page, so start at the top
   useEffect(() => {
@@ -233,9 +232,9 @@ export default function BhattaSoftwarePage() {
                   <a href="#how-it-works" onClick={jumpTo('how-it-works')} className="btn-primary px-7 py-3.5 text-base">
                     See How It Works <ArrowRight size={18} />
                   </a>
-                  <a href="/#contact" onClick={goToSection('contact')} className="btn-secondary px-7 py-3.5 text-base">
+                  <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                     Contact Us
-                  </a>
+                  </Link>
                 </div>
                 <ul className="mt-8 flex flex-col items-center gap-x-6 gap-y-2 text-sm font-medium text-slate-600 sm:flex-row sm:justify-center lg:justify-start">
                   {['Made for bhattas', 'Works on mobile', 'From ₹7,999/year'].map(t => (
@@ -457,9 +456,9 @@ export default function BhattaSoftwarePage() {
                 Talk to us and see how {site.name} can manage your brick bhatta for you.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href="/#contact" onClick={goToSection('contact')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   <MessageCircle size={18} /> Contact Us
-                </a>
+                </Link>
                 <a href={whatsappLink(`Hi, I want to know more about ${site.name} bhatta software.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   <WhatsAppIcon size={18} /> Chat on WhatsApp
                 </a>

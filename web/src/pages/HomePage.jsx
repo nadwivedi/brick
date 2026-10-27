@@ -1,13 +1,12 @@
 import { useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, BarChart3, Boxes, Building2, CheckCircle2, ClipboardList, FileText, Hammer,
   HandCoins, HardHat, Landmark, Layers, LogIn, ShieldCheck, Smartphone, Sparkles, TrendingUp, Truck, Users,
 } from 'lucide-react';
-import ContactSection from '../components/ContactSection';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
-import { FEATURES_PAGE, scrollToSection } from '../lib/publicNav';
+import { CONTACT_PAGE, FEATURES_PAGE, scrollToSection } from '../lib/publicNav';
 import { appLink, site } from '../lib/site';
 
 
@@ -104,11 +103,14 @@ function HeroPreview() {
 }
 
 export default function HomePage() {
-  // Arriving from another page via /#about, /#contact etc.
+  // Arriving from another page via /#about, /#features etc.
   const { hash } = useLocation();
+  const navigate = useNavigate();
   useEffect(() => {
-    if (hash) scrollToSection(hash.slice(1));
-  }, [hash]);
+    // Contact used to be a homepage section; old /#contact links now open its own page
+    if (hash === '#contact') navigate(CONTACT_PAGE, { replace: true });
+    else if (hash) scrollToSection(hash.slice(1));
+  }, [hash, navigate]);
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
@@ -136,13 +138,9 @@ export default function HomePage() {
                 <a href={appLink('/register')} className="btn-primary px-7 py-3.5 text-base">
                   Get Started <ArrowRight size={18} />
                 </a>
-                <a
-                  href="#contact"
-                  onClick={(e) => { e.preventDefault(); scrollToSection('contact'); }}
-                  className="btn-secondary px-7 py-3.5 text-base"
-                >
+                <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                   Request a Demo
-                </a>
+                </Link>
               </div>
               <ul className="mt-[1.8rem] flex flex-wrap items-center justify-center gap-x-3 gap-y-[0.45rem] text-[11px] font-medium text-slate-600 sm:gap-x-[1.35rem] sm:text-sm lg:mt-[0.9rem] lg:justify-start">
                 {['Works on any device', 'Multiple plants', 'Secure login'].map(t => (
@@ -259,7 +257,6 @@ export default function HomePage() {
         </section>
 
         <div className="pt-20 sm:pt-24" />
-        <ContactSection />
       </main>
 
       <Footer />

@@ -9,7 +9,9 @@ import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
-import { BHATTA_PAGE, MANUFACTURING_PAGE, PLANT_PAGE, PRICE_PAGE, scrollToSection, useGoToSection } from '../lib/publicNav';
+import {
+  BHATTA_PAGE, CONTACT_PAGE, MANUFACTURING_PAGE, PLANT_PAGE, PRICE_PAGE, scrollToSection,
+} from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
 const TITLE = `Best Brick Plant Management Software | ${site.name}`;
@@ -265,7 +267,6 @@ function Mark({ value }) {
 
 export default function BrickPlantManagementPage() {
   usePageMeta(TITLE, DESCRIPTION, PLANT_PAGE);
-  const goToSection = useGoToSection();
 
   // Footer links open this page from the bottom of another page, so start at the top
   useEffect(() => {
@@ -312,9 +313,9 @@ export default function BrickPlantManagementPage() {
                   <a href="#track" onClick={jumpTo('track')} className="btn-primary px-7 py-3.5 text-base">
                     See What You Can Track <ArrowRight size={18} />
                   </a>
-                  <a href="/#contact" onClick={goToSection('contact')} className="btn-secondary px-7 py-3.5 text-base">
+                  <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                     Contact Us
-                  </a>
+                  </Link>
                 </div>
               </div>
               <PlantDashboard />
@@ -547,9 +548,9 @@ export default function BrickPlantManagementPage() {
                 See how {site.name} can track your production, stock, sales and money from day one.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href="/#contact" onClick={goToSection('contact')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-primary-800 shadow-lg transition hover:bg-sky-50">
+                <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-primary-800 shadow-lg transition hover:bg-sky-50">
                   Contact Us <ArrowRight size={18} />
-                </a>
+                </Link>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} brick plant management software.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   <WhatsAppIcon size={18} /> Chat on WhatsApp
                 </a>

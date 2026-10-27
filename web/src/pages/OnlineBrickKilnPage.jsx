@@ -9,7 +9,9 @@ import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
-import { BHATTA_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PLANT_PAGE, PRICE_PAGE, scrollToSection, useGoToSection } from '../lib/publicNav';
+import {
+  BHATTA_PAGE, CONTACT_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PLANT_PAGE, PRICE_PAGE, scrollToSection,
+} from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
 const TITLE = `Online Brick Kiln Management Software | ${site.name}`;
@@ -165,7 +167,6 @@ function DevicesVisual() {
 
 export default function OnlineBrickKilnPage() {
   usePageMeta(TITLE, DESCRIPTION, ONLINE_PAGE);
-  const goToSection = useGoToSection();
 
   // Footer links open this page from the bottom of another page, so start at the top
   useEffect(() => {
@@ -213,9 +214,9 @@ export default function OnlineBrickKilnPage() {
                   <a href="#online" onClick={jumpTo('online')} className="btn-primary px-7 py-3.5 text-base">
                     Why Go Online <ArrowRight size={18} />
                   </a>
-                  <a href="/#contact" onClick={goToSection('contact')} className="btn-secondary px-7 py-3.5 text-base">
+                  <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                     Contact Us
-                  </a>
+                  </Link>
                 </div>
                 <ul className="mt-8 flex flex-col items-center gap-x-6 gap-y-2 text-sm font-medium text-slate-600 sm:flex-row sm:justify-center lg:justify-start">
                   {['No installation', 'Phone, tablet & computer', 'Secure login'].map(t => (
@@ -417,9 +418,9 @@ export default function OnlineBrickKilnPage() {
                 Talk to us and see {site.name} running on your own phone.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href="/#contact" onClick={goToSection('contact')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-sky-50">
+                <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-sky-50">
                   Contact Us <ArrowRight size={18} />
-                </a>
+                </Link>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} online brick kiln management software.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">
                   <WhatsAppIcon size={18} /> Chat on WhatsApp
                 </a>

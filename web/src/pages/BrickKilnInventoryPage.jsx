@@ -10,7 +10,7 @@ import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/Publ
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
 import {
-  INVENTORY_PAGE, ONLINE_PAGE, PRICE_PAGE, PRODUCTION_PAGE, scrollToSection, useGoToSection,
+  CONTACT_PAGE, INVENTORY_PAGE, ONLINE_PAGE, PRICE_PAGE, PRODUCTION_PAGE, scrollToSection,
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
@@ -170,7 +170,6 @@ function Direction({ dir }) {
 
 export default function BrickKilnInventoryPage() {
   usePageMeta(TITLE, DESCRIPTION, INVENTORY_PAGE);
-  const goToSection = useGoToSection();
 
   // Footer links open this page from the bottom of another page, so start at the top
   useEffect(() => {
@@ -217,9 +216,9 @@ export default function BrickKilnInventoryPage() {
                   <a href="#stock-movement" onClick={jumpTo('stock-movement')} className="btn-primary px-7 py-3.5 text-base">
                     See How Stock Moves <ArrowRight size={18} />
                   </a>
-                  <a href="/#contact" onClick={goToSection('contact')} className="btn-secondary px-7 py-3.5 text-base">
+                  <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
                     Contact Us
-                  </a>
+                  </Link>
                 </div>
               </div>
               <StockBoard />
@@ -450,9 +449,9 @@ export default function BrickKilnInventoryPage() {
               <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">Know your stock without counting it</h2>
               <p className="mx-auto mt-4 max-w-xl text-slate-600">See how {site.name} tracks your brick and raw material inventory.</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href="/#contact" onClick={goToSection('contact')} className="btn-primary px-7 py-3.5 text-base">
+                <Link to={CONTACT_PAGE} className="btn-primary px-7 py-3.5 text-base">
                   Contact Us <ArrowRight size={18} />
-                </a>
+                </Link>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} brick kiln inventory management software.`)} target="_blank" rel="noopener noreferrer" className="btn-secondary px-7 py-3.5 text-base">
                   <WhatsAppIcon size={18} /> Chat on WhatsApp
                 </a>
