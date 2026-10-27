@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, BarChart3, Boxes, Building2, CheckCircle2, ClipboardList, FileText, Hammer,
   HandCoins, HardHat, Landmark, Layers, LogIn, ShieldCheck, Smartphone, Sparkles, TrendingUp, Truck, Users,
@@ -7,7 +7,7 @@ import {
 import ContactSection from '../components/ContactSection';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
-import { scrollToSection } from '../lib/publicNav';
+import { FEATURES_PAGE, scrollToSection } from '../lib/publicNav';
 import { appLink, site } from '../lib/site';
 
 
@@ -172,6 +172,11 @@ export default function HomePage() {
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-10 text-center">
+              <Link to={FEATURES_PAGE} className="btn-secondary px-6 py-3">
+                See all features <ArrowRight size={18} />
+              </Link>
             </div>
           </div>
         </section>

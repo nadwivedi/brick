@@ -7,7 +7,7 @@ import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { appLink, site, telLink, whatsappLink } from '../lib/site';
 import {
-  BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  BHATTA_PAGE, BILLING_PAGE, EXPENSE_PAGE, FEATURES_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
   PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, useGoToSection,
 } from '../lib/publicNav';
 
@@ -15,6 +15,7 @@ import {
 
 const NAV = [
   { id: 'home', label: 'Home' },
+  { id: 'features', label: 'Features', to: FEATURES_PAGE },
   { id: 'about', label: 'About Us' },
   { id: 'contact', label: 'Contact Us' },
 ];
@@ -83,11 +84,12 @@ export function Navbar() {
         </a>
 
         <div className="hidden items-center gap-1 md:flex">
-          {NAV.map(n => (
-            <a key={n.id} href={`/#${n.id}`} onClick={goTo(n.id)} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">
-              {n.label}
-            </a>
-          ))}
+          {NAV.map(n => {
+            const cls = 'rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900';
+            return n.to
+              ? <Link key={n.id} to={n.to} className={cls}>{n.label}</Link>
+              : <a key={n.id} href={`/#${n.id}`} onClick={goTo(n.id)} className={cls}>{n.label}</a>;
+          })}
           <a href={appLink('/login')} className="btn-primary ml-3 px-5 py-2.5">
             <LogIn size={16} /> Login
           </a>
@@ -107,11 +109,12 @@ export function Navbar() {
 
       {menuOpen && (
         <div id="mobile-menu" className="absolute inset-x-0 top-full border-t border-slate-200 bg-white px-4 pb-4 pt-2 shadow-lg md:hidden">
-          {NAV.map(n => (
-            <a key={n.id} href={`/#${n.id}`} onClick={goTo(n.id)} className="block rounded-lg px-3 py-3 font-semibold text-slate-700 hover:bg-slate-100">
-              {n.label}
-            </a>
-          ))}
+          {NAV.map(n => {
+            const cls = 'block rounded-lg px-3 py-3 font-semibold text-slate-700 hover:bg-slate-100';
+            return n.to
+              ? <Link key={n.id} to={n.to} onClick={() => setMenuOpen(false)} className={cls}>{n.label}</Link>
+              : <a key={n.id} href={`/#${n.id}`} onClick={goTo(n.id)} className={cls}>{n.label}</a>;
+          })}
           <a href={appLink('/login')} className="btn-primary mt-2 w-full py-3">
             <LogIn size={16} /> Login
           </a>
@@ -219,7 +222,11 @@ export function Footer() {
             <FooterHeading>Quick Links</FooterHeading>
             <ul className="mt-5 space-y-3">
               {NAV.map(n => (
-                <li key={n.id}><a href={`/#${n.id}`} onClick={jump(n.id)} className={footerLinkCls}>{arrow}{n.label}</a></li>
+                <li key={n.id}>
+                  {n.to
+                    ? <Link to={n.to} className={footerLinkCls}>{arrow}{n.label}</Link>
+                    : <a href={`/#${n.id}`} onClick={jump(n.id)} className={footerLinkCls}>{arrow}{n.label}</a>}
+                </li>
               ))}
               <li><a href={appLink('/login')} className={footerLinkCls}>{arrow}Login</a></li>
             </ul>
