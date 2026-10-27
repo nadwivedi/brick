@@ -43,6 +43,8 @@ export default function App() {
         <Route path={BILLING_PAGE} element={<BrickKilnBillingPage />} />
         <Route path={REPORTS_PAGE} element={<BrickKilnReportsPage />} />
         <Route path={PAYMENT_PAGE} element={<BrickKilnPaymentPage />} />
+        {/* Short address for the price page */}
+        <Route path="/pricing" element={<Navigate to={PRICE_PAGE} replace />} />
         {/* Unknown links go to the homepage */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
