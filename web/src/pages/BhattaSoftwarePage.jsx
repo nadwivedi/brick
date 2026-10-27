@@ -5,6 +5,7 @@ import {
   ChevronRight, Clock, FileText, Hammer, HandCoins, HardHat, Landmark, Layers, MessageCircle,
   ShieldCheck, Smartphone, Sparkles, Truck, UserCog, Users, X,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -12,8 +13,8 @@ import { PLANS } from '../lib/plans';
 import { CONTACT_PAGE, PRICE_PAGE, scrollToSection } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Bhatta Software - Best Brick Bhatta Management Software | ${site.name}`;
-const DESCRIPTION = `${site.name} is the bhatta software that makes brick kiln work easy. Manage production, stock, labour, sales, dues and accounts of your bhatta from one app. Plans from ₹7,999/year.`;
+export const TITLE = `Bhatta Software - Best Brick Bhatta Management Software | ${site.name}`;
+export const DESCRIPTION = `${site.name} is the bhatta software that makes brick kiln work easy. Manage production, stock, labour, sales, dues and accounts of your bhatta from one app. Plans from ₹7,999/year.`;
 
 const PROBLEMS = [
   { before: 'Production written in registers that get lost or torn', after: 'Every day\'s production saved by brick type, safe and searchable' },
@@ -199,7 +200,7 @@ export default function BhattaSoftwarePage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

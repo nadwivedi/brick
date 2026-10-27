@@ -324,7 +324,8 @@ export function Footer() {
       {/* Extra bottom space on phones keeps the floating WhatsApp button off these links */}
       <div className="border-t border-slate-200">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 pb-24 pt-6 text-sm text-slate-500 sm:flex-row sm:px-6 sm:pb-6">
-          <p className="text-center sm:text-left">Copyright © {new Date().getFullYear()} {site.name}. All rights reserved.</p>
+          {/* The year is written at build time, so a page built last year may differ from the visitor's clock */}
+          <p className="text-center sm:text-left" suppressHydrationWarning>Copyright © {new Date().getFullYear()} {site.name}. All rights reserved.</p>
           <div className="flex items-center gap-5">
             <button type="button" onClick={() => setPolicy(POLICIES.privacy)} className="transition hover:text-orange-700 hover:underline">Privacy Policy</button>
             <span className="h-4 w-px bg-slate-300" aria-hidden="true" />

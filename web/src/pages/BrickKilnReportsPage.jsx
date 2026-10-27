@@ -4,6 +4,7 @@ import {
   Activity, AlertTriangle, ArrowRight, BarChart3, BookOpen, CalendarRange, ChevronDown, ChevronRight, Coins,
   FileBarChart, Hammer, HandCoins, LayoutDashboard, LineChart, PieChart, Scale, TrendingUp, Users, Wallet,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -13,8 +14,8 @@ import {
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Report Management Software | ${site.name}`;
-const DESCRIPTION = `Brick kiln report management software by ${site.name}. See production, sales, collections, expenses, profit & loss and party ledgers for any period.`;
+export const TITLE = `Brick Kiln Report Management Software | ${site.name}`;
+export const DESCRIPTION = `Brick kiln report management software by ${site.name}. See production, sales, collections, expenses, profit & loss and party ledgers for any period.`;
 
 // The reports in the Reports section, with the question each one answers.
 const REPORTS = [
@@ -142,7 +143,7 @@ export default function BrickKilnReportsPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-violet-50/50 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

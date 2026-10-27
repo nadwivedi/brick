@@ -5,6 +5,7 @@ import {
   ClipboardCheck, Cloud, FileText, HandCoins, Headphones, Layers, MessageCircle, Settings2, ShieldCheck, Smartphone,
   Sparkles, Users, Wallet,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -12,8 +13,8 @@ import { CONTACT_PAGE, scrollToSection } from '../lib/publicNav';
 import { PLANS } from '../lib/plans';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Software Price in India - From ₹7,999/Year | ${site.name}`;
-const DESCRIPTION = `Brick kiln software price in India starts at ₹7,999/year with ${site.name}. Compare single and multi brick kiln management software plans, features and FAQs.`;
+export const TITLE = `Brick Kiln Software Price in India - From ₹7,999/Year | ${site.name}`;
+export const DESCRIPTION = `Brick kiln software price in India starts at ₹7,999/year with ${site.name}. Compare single and multi brick kiln management software plans, features and FAQs.`;
 
 const BENEFITS = [
   { icon: Boxes, title: 'Accurate stock, always', text: 'Brick and raw material stock update with every production, sale and purchase entry, so you never guess what is in the yard.' },
@@ -197,7 +198,7 @@ export default function BrickKilnPricePage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

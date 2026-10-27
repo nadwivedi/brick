@@ -5,6 +5,7 @@ import {
   CircleDollarSign, FileText, Hash, HandCoins, Landmark, NotebookPen, Repeat, Scale, Search, Send, Smartphone,
   UserRound, Wallet,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -12,8 +13,8 @@ import { PLANS } from '../lib/plans';
 import { BILLING_PAGE, CONTACT_PAGE, PAYMENT_PAGE, PRICE_PAGE, REPORTS_PAGE, scrollToSection } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Payment Tracking Software | ${site.name}`;
-const DESCRIPTION = `Brick kiln payment tracking software by ${site.name}. Record money received and paid, track customer and vendor dues, and keep cash and bank balances right.`;
+export const TITLE = `Brick Kiln Payment Tracking Software | ${site.name}`;
+export const DESCRIPTION = `Brick kiln payment tracking software by ${site.name}. Record money received and paid, track customer and vendor dues, and keep cash and bank balances right.`;
 
 const SIDES = [
   {
@@ -171,7 +172,7 @@ export default function BrickKilnPaymentPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-emerald-50/50 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

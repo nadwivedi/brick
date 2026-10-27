@@ -5,6 +5,7 @@ import {
   Hammer, HandCoins, Landmark, Laptop, Lock, Monitor, RefreshCw, Server, ShoppingCart, Smartphone, Sparkles,
   Sun, Sunrise, Sunset, Moon, Truck, Users, Wifi, X,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -14,8 +15,8 @@ import {
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Online Brick Kiln Management Software | ${site.name}`;
-const DESCRIPTION = `Online brick kiln management software by ${site.name}. Manage production, stock, sales, dues and expenses of your kiln from any phone or computer, anywhere.`;
+export const TITLE = `Online Brick Kiln Management Software | ${site.name}`;
+export const DESCRIPTION = `Online brick kiln management software by ${site.name}. Manage production, stock, sales, dues and expenses of your kiln from any phone or computer, anywhere.`;
 
 // Installed (desktop) software compared with online software, in general terms.
 const INSTALLED_VS_ONLINE = [
@@ -180,7 +181,7 @@ export default function OnlineBrickKilnPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-sky-50/70 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

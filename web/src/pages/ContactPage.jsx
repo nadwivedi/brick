@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, IndianRupee, LifeBuoy, Mail, MapPin, MonitorPlay, Phone, Sparkles } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
 import { CONTACT_PAGE, FEATURES_PAGE, PRICE_PAGE } from '../lib/publicNav';
 import { appLink, site, telLink, whatsappLink } from '../lib/site';
 
-const TITLE = `Contact Us | Brick Kiln Management Software - ${site.name}`;
-const DESCRIPTION = `Contact ${site.name} for a demo, pricing or support with brick kiln management software. Call or WhatsApp ${site.phone}, email ${site.email}. ${site.address}.`;
+export const TITLE = `Contact Us | Brick Kiln Management Software - ${site.name}`;
+export const DESCRIPTION = `Contact ${site.name} for a demo, pricing or support with brick kiln management software. Call or WhatsApp ${site.phone}, email ${site.email}. ${site.address}.`;
 
 const CONTACTS = [
   { icon: Phone, label: 'Mobile', value: site.phone, href: telLink },
@@ -94,7 +95,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

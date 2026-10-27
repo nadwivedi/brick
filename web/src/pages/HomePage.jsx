@@ -8,7 +8,10 @@ import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import { CONTACT_PAGE, FEATURES_PAGE, scrollToSection } from '../lib/publicNav';
 import { appLink, site } from '../lib/site';
+import usePageMeta from '../hooks/usePageMeta';
 
+export const TITLE = `Brick Kiln Management Software - ${site.name}`;
+export const DESCRIPTION = `${site.name} is brick kiln management software for Indian brick bhattas and plants. Track production, brick stock, sales, GST billing, party dues and expenses online.`;
 
 const FEATURES = [
   { icon: Hammer, title: 'Production tracking', text: 'Record daily output by plant, brick type and shift, along with the raw material used and any damaged bricks.' },
@@ -103,6 +106,8 @@ function HeroPreview() {
 }
 
 export default function HomePage() {
+  usePageMeta(TITLE, DESCRIPTION, '/');
+
   // Arriving from another page via /#about, /#features etc.
   const { hash } = useLocation();
   const navigate = useNavigate();

@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, Calculator, ChevronDown, ChevronRight, Lightbulb } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
 import { COST_GUIDE_PAGE, EXPENSE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE } from '../lib/publicNav';
 import { appLink, site } from '../lib/site';
 
-const TITLE = `How to Calculate Cost per Brick (Formula & Example) | ${site.name}`;
-const DESCRIPTION = 'Learn how to calculate the cost per brick for a brick kiln: the formula, every cost to include, a worked example in rupees and ways to bring the cost down.';
+export const TITLE = `How to Calculate Cost per Brick (Formula & Example) | ${site.name}`;
+export const DESCRIPTION = 'Learn how to calculate the cost per brick for a brick kiln: the formula, every cost to include, a worked example in rupees and ways to bring the cost down.';
 const PUBLISHED = '2026-10-27';
 
 // The costs that go into one month's bricks, with the worked example's amounts
@@ -94,7 +95,7 @@ export default function CostPerBrickGuidePage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

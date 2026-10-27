@@ -5,6 +5,7 @@ import {
   CheckCircle2, ChevronDown, ChevronRight, ClipboardCheck, Eye, FileText, Hammer, Layers, Minus, PackageCheck,
   PackageSearch, Plus, Ruler, ShoppingCart, SlidersHorizontal, TriangleAlert, Warehouse,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -14,8 +15,8 @@ import {
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Inventory Management Software | ${site.name}`;
-const DESCRIPTION = `Brick kiln inventory management software by ${site.name}. Track brick and raw material stock, get low stock alerts, adjust stock and see every movement.`;
+export const TITLE = `Brick Kiln Inventory Management Software | ${site.name}`;
+export const DESCRIPTION = `Brick kiln inventory management software by ${site.name}. Track brick and raw material stock, get low stock alerts, adjust stock and see every movement.`;
 
 const STOCK_KINDS = [
   {
@@ -183,7 +184,7 @@ export default function BrickKilnInventoryPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-sky-50/50 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

@@ -5,6 +5,7 @@ import {
   ChevronRight, CircleCheck, Clock, Factory, Gauge, Hammer, HardHat, Layers, LineChart, NotebookPen, Package,
   Search, ShieldAlert, Sparkles, TriangleAlert, Wallet,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -14,8 +15,8 @@ import {
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Production Management Software | ${site.name}`;
-const DESCRIPTION = `Brick kiln production management software by ${site.name}. Record daily production by shift, track damaged bricks, check cement use and see output trends.`;
+export const TITLE = `Brick Kiln Production Management Software | ${site.name}`;
+export const DESCRIPTION = `Brick kiln production management software by ${site.name}. Record daily production by shift, track damaged bricks, check cement use and see output trends.`;
 
 // The parts of a production entry, as they appear in the software.
 const ENTRY_FIELDS = [
@@ -158,7 +159,7 @@ export default function BrickKilnProductionPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

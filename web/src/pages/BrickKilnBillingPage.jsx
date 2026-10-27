@@ -4,6 +4,7 @@ import {
   ArrowRight, BadgePercent, Banknote, BookOpen, Boxes, Building2, Car, ChevronDown, ChevronRight, Clock,
   CreditCard, FileText, Hash, Landmark, MapPin, Receipt, Route, Scale, Search, Truck, UserRound, Wallet,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -13,8 +14,8 @@ import {
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Billing Software with GST | ${site.name}`;
-const DESCRIPTION = `Brick kiln billing software by ${site.name}. Make GST invoices with transport and trip charges, take cash or credit sales and track what customers owe.`;
+export const TITLE = `Brick Kiln Billing Software with GST | ${site.name}`;
+export const DESCRIPTION = `Brick kiln billing software by ${site.name}. Make GST invoices with transport and trip charges, take cash or credit sales and track what customers owe.`;
 
 // Numbered call-outs that match the sample invoice in the hero.
 const INVOICE_PARTS = [
@@ -171,7 +172,7 @@ export default function BrickKilnBillingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-amber-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

@@ -5,6 +5,7 @@ import {
   CircleDollarSign, Coins, CreditCard, Filter, Fuel, HardHat, Info, Landmark, LayoutDashboard, PiggyBank,
   Plus, ReceiptIndianRupee, Scale, Search, ShoppingCart, Smartphone, Tags, TrendingDown, Wallet, Wrench,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -14,8 +15,8 @@ import {
 } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Expense Management Software | ${site.name}`;
-const DESCRIPTION = `Brick kiln expense management software by ${site.name}. Record expenses by category, pay from cash or bank, track spending per kiln and see true profit.`;
+export const TITLE = `Brick Kiln Expense Management Software | ${site.name}`;
+export const DESCRIPTION = `Brick kiln expense management software by ${site.name}. Record expenses by category, pay from cash or bank, track spending per kiln and see true profit.`;
 
 const LEAKS = [
   { icon: Coins, title: 'Small spends go unrecorded', text: 'A little diesel here, a repair there. Each one seems too small to write down, but together they make a big hole.' },
@@ -165,7 +166,7 @@ export default function BrickKilnExpensePage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-rose-50/40 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

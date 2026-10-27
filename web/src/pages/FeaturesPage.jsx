@@ -5,6 +5,7 @@ import {
   Coins, FileText, FileUp, Gauge, Hammer, ShieldAlert, HandCoins, HardHat, Landmark, LayoutDashboard, Layers, Lock, Package, Receipt, Scale,
   Monitor, RefreshCw, Send, ShoppingCart, Smartphone, Sparkles, Tags, Truck, Users, Wallet,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -14,8 +15,8 @@ import {
 } from '../lib/publicNav';
 import { appLink, site, whatsappLink } from '../lib/site';
 
-const TITLE = `Brick Kiln Management Software Features | ${site.name}`;
-const DESCRIPTION = `Run your brick plant digitally with no paperwork. ${site.name} features: automatic WhatsApp due reminders, AI purchase entry from bill PDF, low stock, quality and efficiency alerts, GST billing and reports.`;
+export const TITLE = `Brick Kiln Management Software Features | ${site.name}`;
+export const DESCRIPTION = `Run your brick plant digitally with no paperwork. ${site.name} features: automatic WhatsApp due reminders, AI purchase entry from bill PDF, low stock, quality and efficiency alerts, GST billing and reports.`;
 
 // Headline features, shown first and named in the FAQs
 const SMART = [
@@ -201,7 +202,7 @@ export default function FeaturesPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

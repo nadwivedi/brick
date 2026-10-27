@@ -4,6 +4,7 @@ import {
   AlertTriangle, ArrowRight, BarChart3, Boxes, Building2, CheckCircle2, ChevronDown, ChevronRight, FileText, Hammer,
   HandCoins, Landmark, Smartphone, Users,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -12,8 +13,8 @@ import { BHATTA_PAGE, CONTACT_PAGE, FEATURES_PAGE, HINDI_PAGE } from '../lib/pub
 import { appLink, site, whatsappLink } from '../lib/site';
 
 // Hindi landing page for buyers who search in Hindi (ईंट भट्ठा सॉफ्टवेयर, भट्ठा हिसाब ऐप).
-const TITLE = `ईंट भट्ठा सॉफ्टवेयर - भट्ठा हिसाब ऐप | ${site.name}`;
-const DESCRIPTION = `${site.name} ईंट भट्ठा मैनेजमेंट सॉफ्टवेयर है। ईंट उत्पादन, कच्चा माल स्टॉक, GST बिल, पार्टी का बकाया, खर्च और रिपोर्ट का पूरा हिसाब मोबाइल और कंप्यूटर पर। ₹7,999/साल से।`;
+export const TITLE = `ईंट भट्ठा सॉफ्टवेयर - भट्ठा हिसाब ऐप | ${site.name}`;
+export const DESCRIPTION = `${site.name} ईंट भट्ठा मैनेजमेंट सॉफ्टवेयर है। ईंट उत्पादन, कच्चा माल स्टॉक, GST बिल, पार्टी का बकाया, खर्च और रिपोर्ट का पूरा हिसाब मोबाइल और कंप्यूटर पर। ₹7,999/साल से।`;
 
 const FEATURES = [
   { icon: Hammer, title: 'रोज़ का ईंट उत्पादन', text: 'प्लांट, ईंट के प्रकार और शिफ्ट के हिसाब से रोज़ कितनी ईंट बनी, कितनी टूटी, सब दर्ज करें।' },
@@ -92,7 +93,7 @@ export default function HindiBhattaPage() {
 
   return (
     <div lang="hi" className="min-h-[100dvh] bg-gradient-to-b from-orange-50/60 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>

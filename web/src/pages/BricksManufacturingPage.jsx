@@ -5,6 +5,7 @@ import {
   Eye, Factory, FileSpreadsheet, FileText, Hammer, Info, Lightbulb, Package, ReceiptIndianRupee,
   Settings, ShoppingCart, Sparkles, Store, Timer, TrendingUp, Truck, Users, Wallet,
 } from 'lucide-react';
+import JsonLd from '../components/JsonLd';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
@@ -12,8 +13,8 @@ import { PLANS } from '../lib/plans';
 import { BHATTA_PAGE, CONTACT_PAGE, MANUFACTURING_PAGE, PRICE_PAGE, scrollToSection } from '../lib/publicNav';
 import { site, whatsappLink } from '../lib/site';
 
-const TITLE = `Bricks Manufacturing Software for Brick Businesses | ${site.name}`;
-const DESCRIPTION = `Bricks manufacturing software by ${site.name}: record production, track raw material and brick stock, make GST invoices and review reports in one place.`;
+export const TITLE = `Bricks Manufacturing Software for Brick Businesses | ${site.name}`;
+export const DESCRIPTION = `Bricks manufacturing software by ${site.name}: record production, track raw material and brick stock, make GST invoices and review reports in one place.`;
 
 const CHALLENGES = [
   { title: 'Records scattered everywhere', text: 'Production in one notebook, purchases in another, sales on loose bills and payments in someone\'s memory. Finding one number means searching through all of them.' },
@@ -257,7 +258,7 @@ export default function BricksManufacturingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-amber-50/50 via-white to-slate-50 text-slate-900">
-      <script type="application/ld+json">{JSON.stringify(STRUCTURED_DATA)}</script>
+      <JsonLd data={STRUCTURED_DATA} />
       <Navbar />
 
       <main>
