@@ -123,16 +123,15 @@ export default function HomePage() {
           <div className="relative mx-auto grid max-w-6xl items-center gap-[3.15rem] px-4 pb-[1.35rem] pt-[1.35rem] sm:px-6 sm:pt-[1.8rem] lg:grid-cols-[1.1fr_1fr] lg:gap-[2.25rem] lg:pb-[1.575rem] lg:pt-[3.6rem]">
             <div className="text-center lg:text-left">
               <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/80 px-3.5 py-1.5 text-xs font-semibold text-orange-800 shadow-sm">
-                <Sparkles size={14} /> Software for brick manufacturers
+                <Sparkles size={14} /> Run your brick plant digitally, no paperwork
               </span>
               <h1 className="mt-[1.35rem] text-4xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-5xl lg:mt-[0.9rem] lg:text-[2.6rem]">
-                Run your brick plant{' '}
-                <span className="bg-gradient-to-r from-orange-700 to-amber-600 bg-clip-text text-transparent">smarter</span>,
-                from one dashboard
+                <span className="bg-gradient-to-r from-orange-700 to-amber-600 bg-clip-text text-transparent">Brick Kiln Management Software</span>{' '}
+                to run your plant smarter
               </h1>
               <p className="mx-auto mt-[1.35rem] max-w-xl text-lg leading-relaxed text-slate-600 lg:mx-0 lg:mt-[0.9rem] lg:text-base">
-                {site.name} tracks production, raw material stock, sales, dues and expenses for your brick business,
-                so you always know what was made, what was sold and who still has to pay.
+                {site.name} tracks production, raw material stock, GST billing, dues and expenses for your brick kiln
+                or bhatta, so you always know what was made, what was sold and who still has to pay.
               </p>
               <div className="mt-[1.8rem] flex flex-col justify-center gap-[0.675rem] sm:flex-row lg:mt-[1.125rem] lg:justify-start">
                 <a href={appLink('/register')} className="btn-primary px-7 py-3.5 text-base">
