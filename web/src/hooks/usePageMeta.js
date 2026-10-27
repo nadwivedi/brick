@@ -4,7 +4,7 @@ import { site } from '../lib/site';
 /**
  * Sets the tab title and search description while a page is open,
  * then puts the site-wide ones from index.html back when it closes.
- * Pass the page's path to also add a canonical link (only once VITE_SITE_URL is set).
+ * The canonical link points at `path`, or at the current address when no path is given.
  */
 export default function usePageMeta(title, description, path) {
   useEffect(() => {
@@ -16,16 +16,13 @@ export default function usePageMeta(title, description, path) {
     desc?.setAttribute('content', description);
     ogTitle?.setAttribute('content', title);
 
-    let canonical = null;
-    if (path && site.url) {
-      canonical = document.createElement('link');
-      canonical.rel = 'canonical';
-      canonical.href = site.url + path;
-      document.head.appendChild(canonical);
-    }
+    // index.html carries the homepage canonical; point it at this page while it is open
+    const canonical = document.querySelector('link[rel="canonical"]');
+    const prevCanonical = canonical?.href;
+    canonical?.setAttribute('href', site.url + (path || window.location.pathname));
 
     return () => {
-      canonical?.remove();
+      if (canonical) canonical.href = prevCanonical;
       document.title = prev.title;
       if (desc) desc.content = prev.desc;
       if (ogTitle) ogTitle.content = prev.ogTitle;

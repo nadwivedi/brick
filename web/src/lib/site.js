@@ -5,7 +5,7 @@ const env = import.meta.env;
 export const site = {
   name: 'Brick Manager',
   // Public address of the website, e.g. https://www.example.com (used for canonical links)
-  url: (env.VITE_SITE_URL || '').replace(/\/$/, ''),
+  url: (env.VITE_SITE_URL || 'https://brickmanager.in').replace(/\/$/, ''),
   // Address of the Brick Manager app (the frontend/ folder), where Login and Register live
   appUrl: (env.VITE_APP_URL || 'https://app.brickmanager.in').replace(/\/$/, ''),
   phone: env.VITE_CONTACT_PHONE || '+91 XXXXX XXXXX',
