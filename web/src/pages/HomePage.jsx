@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import ContactSection from '../components/ContactSection';
 import WhatsAppButton from '../components/WhatsAppButton';
-import { BrickPattern, BrickStack, Footer, Navbar, SectionHeading } from '../components/PublicSite';
+import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import { scrollToSection } from '../lib/publicNav';
 import { appLink, site } from '../lib/site';
 
@@ -50,8 +50,6 @@ function HeroPreview() {
   return (
     <div className="relative mx-auto w-full max-w-md lg:max-w-none">
       <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-orange-200/70 via-amber-100/50 to-primary-200/60 blur-2xl" />
-      {/* Drawn before the card, so the bricks peek out from behind its top edge */}
-      <BrickStack className="absolute -top-[46px] right-6 w-24 drop-shadow-lg sm:-top-[58px] sm:right-10 sm:w-[7.5rem]" />
 
       <div className="relative rounded-2xl bg-white p-[1.125rem] shadow-2xl shadow-slate-300/70 ring-1 ring-slate-200 sm:p-[1.35rem] lg:p-[0.9rem]">
         <div className="flex items-center justify-between">
