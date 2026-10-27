@@ -28,13 +28,12 @@
 - Purchases from vendors, with paid, part paid and due status
 - Money received and money paid, in cash or bank
 - Customer and vendor (party) ledgers with running balances
-- Send a party their balance due on WhatsApp in one tap
+- Automatic WhatsApp payment reminders to parties with their balance due, or send one in a tap from the party ledger
+- AI purchase entry: upload a supplier bill PDF and AI fills in the purchase
 - Expenses by category, and cash and bank account balances
 - Dashboard, activity center, production and sales reports, profit & loss with cost per brick, outstanding dues
 - Multiple plants from one login, with records kept plant-wise
 - Labour and vehicle records, with vehicle ledgers
-
-Coming soon: AI purchase entry from a supplier bill PDF, and automatic scheduled WhatsApp payment reminders.
 
 ## Pages
 
