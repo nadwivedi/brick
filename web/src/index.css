@@ -4,6 +4,10 @@
 
 @layer base {
   * { @apply box-border; }
+  /* Phones: scale all rem-based text and spacing down 20% so pages take less room */
+  @media (max-width: 639px) {
+    html { font-size: 80%; }
+  }
   body { @apply font-sans bg-slate-50 text-slate-900 antialiased; }
   button { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
