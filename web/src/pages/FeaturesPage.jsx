@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, BookOpen, Boxes, Building2, CheckCircle2, ChevronDown, ChevronRight,
   Coins, FileText, FileUp, Gauge, Hammer, ShieldAlert, HandCoins, HardHat, Landmark, LayoutDashboard, Layers, Lock, Package, Receipt, Scale,
-  Send, ShoppingCart, Smartphone, Sparkles, Tags, Truck, Users, Wallet,
+  Monitor, RefreshCw, Send, ShoppingCart, Smartphone, Sparkles, Tags, Truck, Users, Wallet,
 } from 'lucide-react';
 import WhatsAppButton, { WhatsAppIcon } from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
@@ -140,6 +140,10 @@ const FAQS = [
     a: `Yes. Production, stock, sales, purchases, payments and expenses are all recorded in ${site.name} on your phone or computer, and ledgers and reports are built automatically.`,
   },
   {
+    q: `Is there a mobile app and desktop software for ${site.name}?`,
+    a: 'Yes. After you buy a plan you get a dedicated mobile app for your phone or tablet and desktop software for your computer to install. You can use them together with the same account, and every entry shows up on all your devices.',
+  },
+  {
     q: 'Are all features included in every plan?',
     a: `Yes. Both plans include every feature: ${PLANS.map(p => `₹${p.price} per year for ${p.featured ? 'multiple kilns' : 'one kiln'}`).join(' and ')}.`,
   },
@@ -164,9 +168,17 @@ const STRUCTURED_DATA = {
 };
 
 const EVERYWHERE = [
-  { icon: Smartphone, title: 'Phone, tablet & computer', text: 'Works in the browser. Nothing to install.' },
+  { icon: Smartphone, title: 'Dedicated mobile app', text: 'Install the mobile app on your phone or tablet and make entries right at the kiln.' },
+  { icon: Monitor, title: 'Desktop software', text: 'Install the desktop software on your office computer for billing, ledgers and reports.' },
+  { icon: RefreshCw, title: 'Multi-device support', text: 'Use phone, tablet, desktop and browser together. Every entry shows up on all of them.' },
   { icon: Lock, title: 'Secure login', text: 'Password-protected, and each business sees only its own data.' },
-  { icon: Building2, title: 'One login, many plants', text: 'Switch between plants or see them all together.' },
+];
+
+// The install steps after buying a plan
+const INSTALL_STEPS = [
+  { title: 'Buy your plan', text: 'Choose the plan for one kiln or for multiple kilns.' },
+  { title: 'Get the apps', text: 'We share the mobile app and desktop software with you to install.' },
+  { title: 'Log in everywhere', text: 'Sign in with the same account on every device and start working.' },
 ];
 
 export default function FeaturesPage() {
@@ -291,8 +303,12 @@ export default function FeaturesPage() {
         {/* Works everywhere */}
         <section className="py-14 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SectionHeading eyebrow="Everywhere you work" title="Built for How Brick Businesses Run" />
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <SectionHeading
+              eyebrow="Mobile app & desktop software"
+              title="Brick Kiln Software on Every Device"
+              text="After you buy a plan, you get a dedicated mobile app and desktop software to install, all working from one account."
+            />
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {EVERYWHERE.map(({ icon: Icon, title, text }) => (
                 <div key={title} className="rounded-2xl bg-gradient-to-b from-orange-50/70 to-white p-6 text-center ring-1 ring-orange-100">
                   <Icon size={26} className="mx-auto text-orange-700" />
@@ -301,6 +317,17 @@ export default function FeaturesPage() {
                 </div>
               ))}
             </div>
+            <ol className="mx-auto mt-8 grid max-w-4xl gap-3 sm:grid-cols-3">
+              {INSTALL_STEPS.map(({ title, text }, i) => (
+                <li key={title} className="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-600 text-sm font-bold text-white">{i + 1}</span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
@@ -318,7 +345,7 @@ export default function FeaturesPage() {
               ))}
             </div>
             <ul className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-medium text-slate-600">
-              {['All features included', 'Mobile, tablet & desktop', 'Billed yearly'].map(t => (
+              {['All features included', 'Mobile app & desktop software', 'Billed yearly'].map(t => (
                 <li key={t} className="flex items-center gap-1.5"><CheckCircle2 size={16} className="text-emerald-600" /> {t}</li>
               ))}
             </ul>
