@@ -45,6 +45,8 @@
 - [ईंट भट्ठा सॉफ्टवेयर (Hindi)](https://brickmanager.in/hi/eent-bhatta-software): the software explained in Hindi
 - [Brick Plant Management Software](https://brickmanager.in/brick-plant-management-software): running one or many brick plants, compared with paper registers and spreadsheets
 - [Bricks Manufacturing Software](https://brickmanager.in/bricks-manufacturing-software)
+- [Bricks Factory Management Software](https://brickmanager.in/bricks-factory-management-software): running a fly ash or clay brick factory day to day
+- [Fly Ash Brick Management Software](https://brickmanager.in/fly-ash-brick-management-software): fly ash, cement and sand per batch, and bricks per bag of cement
 - [Online Brick Kiln Management Software](https://brickmanager.in/online-brick-kiln-management-software)
 - [Production Management](https://brickmanager.in/brick-kiln-production-management-software)
 - [Inventory Management](https://brickmanager.in/brick-kiln-inventory-management-software)

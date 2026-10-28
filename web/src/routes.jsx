@@ -1,5 +1,5 @@
 import {
-  ABOUT_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE,
+  ABOUT_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FACTORY_PAGE, FEATURES_PAGE, FLY_ASH_PAGE, HINDI_PAGE, INVENTORY_PAGE,
   MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
 } from './lib/publicNav';
 
@@ -12,6 +12,8 @@ import * as CostPerBrickGuide from './pages/CostPerBrickGuidePage';
 import * as BrickKilnPrice from './pages/BrickKilnPricePage';
 import * as BhattaSoftware from './pages/BhattaSoftwarePage';
 import * as BricksManufacturing from './pages/BricksManufacturingPage';
+import * as BricksFactory from './pages/BricksFactoryPage';
+import * as FlyAshBrick from './pages/FlyAshBrickPage';
 import * as BrickPlantManagement from './pages/BrickPlantManagementPage';
 import * as OnlineBrickKiln from './pages/OnlineBrickKilnPage';
 import * as BrickKilnProduction from './pages/BrickKilnProductionPage';
@@ -35,6 +37,8 @@ export const PAGES = [
   page(PRICE_PAGE, BrickKilnPrice),
   page(BHATTA_PAGE, BhattaSoftware),
   page(MANUFACTURING_PAGE, BricksManufacturing),
+  page(FACTORY_PAGE, BricksFactory),
+  page(FLY_ASH_PAGE, FlyAshBrick),
   page(PLANT_PAGE, BrickPlantManagement),
   page(ONLINE_PAGE, OnlineBrickKiln),
   page(PRODUCTION_PAGE, BrickKilnProduction),

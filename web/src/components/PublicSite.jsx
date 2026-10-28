@@ -7,7 +7,7 @@ import { WhatsAppIcon } from './WhatsAppButton';
 import useEscapeKey from '../hooks/useEscapeKey';
 import { appLink, site, telLink, whatsappLink } from '../lib/site';
 import {
-  ABOUT_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FEATURES_PAGE, HINDI_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
+  ABOUT_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FACTORY_PAGE, FEATURES_PAGE, FLY_ASH_PAGE, HINDI_PAGE, INVENTORY_PAGE, MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE,
   PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
 } from '../lib/publicNav';
 
@@ -258,6 +258,8 @@ export function Footer() {
               {[
                 { to: BHATTA_PAGE, label: 'Bhatta Software' },
                 { to: MANUFACTURING_PAGE, label: 'Bricks Manufacturing Software' },
+                { to: FACTORY_PAGE, label: 'Bricks Factory Management Software' },
+                { to: FLY_ASH_PAGE, label: 'Fly Ash Brick Management Software' },
                 { to: PLANT_PAGE, label: 'Brick Plant Management Software' },
                 { to: ONLINE_PAGE, label: 'Online Brick Kiln Management Software' },
                 { to: PRODUCTION_PAGE, label: 'Brick Kiln Production Management Software' },
