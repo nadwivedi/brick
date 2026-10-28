@@ -79,8 +79,7 @@ const STRUCTURED_DATA = {
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: `${site.url}/` },
-        { '@type': 'ListItem', position: 2, name: 'Guides' },
-        { '@type': 'ListItem', position: 3, name: 'How to Calculate Cost per Brick', item: site.url + COST_GUIDE_PAGE },
+        { '@type': 'ListItem', position: 2, name: 'How to Calculate Cost per Brick', item: site.url + COST_GUIDE_PAGE },
       ],
     },
   ],
@@ -106,8 +105,6 @@ export default function CostPerBrickGuidePage() {
             <div className="relative mx-auto max-w-3xl px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
               <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500">
                 <Link to="/" className="transition hover:text-orange-700">Home</Link>
-                <ChevronRight size={14} />
-                <span>Guides</span>
                 <ChevronRight size={14} />
                 <span className="text-slate-700" aria-current="page">Cost per Brick</span>
               </nav>
