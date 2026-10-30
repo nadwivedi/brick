@@ -3,9 +3,9 @@ const path = require('path');
 const { spawn, execFile } = require('child_process');
 const { recordAdminActivity } = require('../utils/adminActivityLog');
 
-// The repo on the server, the pm2 name of this backend and the branch to pull; set in backend/.env when they differ
+// The repo on the server (/var/www/brickmanager), the pm2 name of this backend and the branch to pull; set in backend/.env when they differ
 const REPO_DIR = process.env.DEPLOY_REPO_DIR || path.resolve(__dirname, '..', '..');
-const PM2_NAME = process.env.DEPLOY_PM2_NAME || 'bricksoft';
+const PM2_NAME = process.env.DEPLOY_PM2_NAME || 'brickmanager';
 const BRANCH = process.env.DEPLOY_BRANCH || 'main';
 const SCRIPT = path.join(REPO_DIR, 'deploy', 'deploy.sh');
 const STATE_DIR = path.join(REPO_DIR, '.deploy');
