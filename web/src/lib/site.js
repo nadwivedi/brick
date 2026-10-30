@@ -16,7 +16,7 @@ export const site = {
   // The company that makes BrickManager
   maker: { name: 'SoftwareBytes India', url: 'https://softwarebytes.in' },
   // Social profiles, shown in the footer and given to Google as the business's own accounts
-  instagram: 'https://www.instagram.com/brickmanager.in/',
+  instagram: 'https://www.instagram.com/brickmanager_/',
 };
 
 // Link to a page of the BrickManager app, e.g. appLink('/login')
