@@ -48,6 +48,7 @@
 - [Bricks Factory Management Software](https://brickmanager.in/bricks-factory-management-software): running a fly ash or clay brick factory day to day
 - [Fly Ash Brick Management Software](https://brickmanager.in/fly-ash-brick-management-software): fly ash, cement and sand per batch, and bricks per bag of cement
 - [Online Brick Kiln Management Software](https://brickmanager.in/online-brick-kiln-management-software)
+- [Brick Kiln Management App](https://brickmanager.in/brick-kiln-management-app): the Android and iOS app, what it does and how to get it
 - [Production Management](https://brickmanager.in/brick-kiln-production-management-software)
 - [Inventory Management](https://brickmanager.in/brick-kiln-inventory-management-software)
 - [Billing Software with GST](https://brickmanager.in/brick-kiln-billing-software)

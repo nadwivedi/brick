@@ -16,6 +16,7 @@ export const EXPENSE_PAGE = '/brick-kiln-expense-management-software';
 export const BILLING_PAGE = '/brick-kiln-billing-software';
 export const REPORTS_PAGE = '/brick-kiln-report-management-software';
 export const PAYMENT_PAGE = '/brick-kiln-payment-tracking-software';
+export const APP_PAGE = '/brick-kiln-management-app';
 
 export const scrollToSection = (id) => {
   const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;

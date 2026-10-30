@@ -1,5 +1,5 @@
 import {
-  ABOUT_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FACTORY_PAGE, FEATURES_PAGE, FLY_ASH_PAGE, HINDI_PAGE, INVENTORY_PAGE,
+  ABOUT_PAGE, APP_PAGE, BHATTA_PAGE, BILLING_PAGE, CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, FACTORY_PAGE, FEATURES_PAGE, FLY_ASH_PAGE, HINDI_PAGE, INVENTORY_PAGE,
   MANUFACTURING_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE,
 } from './lib/publicNav';
 
@@ -22,6 +22,7 @@ import * as BrickKilnExpense from './pages/BrickKilnExpensePage';
 import * as BrickKilnBilling from './pages/BrickKilnBillingPage';
 import * as BrickKilnReports from './pages/BrickKilnReportsPage';
 import * as BrickKilnPayment from './pages/BrickKilnPaymentPage';
+import * as BrickKilnApp from './pages/BrickKilnAppPage';
 
 // Every page of the website, with the title and description each page exports.
 // App.jsx routes from this list and src/prerender.jsx builds one HTML file per entry.
@@ -47,4 +48,5 @@ export const PAGES = [
   page(BILLING_PAGE, BrickKilnBilling),
   page(REPORTS_PAGE, BrickKilnReports),
   page(PAYMENT_PAGE, BrickKilnPayment),
+  page(APP_PAGE, BrickKilnApp),
 ];
