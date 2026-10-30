@@ -1,5 +1,5 @@
 # Brick Manager public website (brickmanager.in)
-# Login, register, the dashboard and the API are served from other subdomains
+# Login, the dashboard and the API are served from other subdomains
 # (app.brickmanager.in and the backend), so nothing on this site needs blocking.
 User-agent: *
 Allow: /

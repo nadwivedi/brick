@@ -12,7 +12,7 @@ import { PLANS } from '../lib/plans';
 import {
   CONTACT_PAGE, COST_GUIDE_PAGE, FACTORY_PAGE, FLY_ASH_PAGE, INVENTORY_PAGE, PRICE_PAGE, PRODUCTION_PAGE, scrollToSection,
 } from '../lib/publicNav';
-import { appLink, site, whatsappLink } from '../lib/site';
+import { site, whatsappLink } from '../lib/site';
 
 export const TITLE = `Fly Ash Brick Management Software | ${site.name}`;
 export const DESCRIPTION = 'Fly ash brick management software: track fly ash, cement and sand per batch, check bricks per bag of cement, damaged bricks, stock, sales and dues.';
@@ -304,7 +304,7 @@ export default function FlyAshBrickPage() {
               <h2 className="text-3xl font-bold sm:text-4xl">Stop guessing your cement use</h2>
               <p className="mx-auto mt-4 max-w-xl text-slate-200">See {site.name} on your own fly ash batches.</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Get Started <ArrowRight size={18} />
                 </a>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} fly ash brick management software.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">

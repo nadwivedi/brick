@@ -17,6 +17,7 @@ const productionRoutes = require('./routes/productionRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const apiRoutes = require('./routes/apiRoutes');
 const accountRoutes = require('./routes/accountRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const migrateParties = require('./utils/migrateParties');
 const migrateAccounts = require('./utils/migrateAccounts');
 const Invoice = require('./models/Invoice');
@@ -39,19 +40,22 @@ const liveOrigins = [
   'https://adm.brickmanager.in',
 ];
 // Other frontend addresses allowed to call the API, comma separated in FRONTEND_URL
-const extraOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:5174,http://localhost:5175')
+const extraOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5177')
   .split(',').map(o => o.trim().replace(/\/+$/, '')).filter(Boolean);
 const allowedOrigins = [...new Set([...liveOrigins, ...extraOrigins])];
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
+// Behind nginx: the real visitor address for the admin activity log
+app.set('trust proxy', 1);
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/production', productionRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', apiRoutes);
 
 app.get('/', (req, res) => res.json({ message: '🧱 BrickSoft API is running' }));

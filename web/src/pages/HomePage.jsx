@@ -122,7 +122,7 @@ export default function HomePage() {
                 or bhatta, so you always know what was made, what was sold and who still has to pay.
               </p>
               <div className="mt-[1.8rem] flex flex-col justify-center gap-[0.675rem] sm:flex-row lg:mt-[1.125rem] lg:justify-start">
-                <a href={appLink('/register')} className="btn-primary px-7 py-3.5 text-base">
+                <a href={CONTACT_PAGE} className="btn-primary px-7 py-3.5 text-base">
                   Get Started <ArrowRight size={18} />
                 </a>
                 <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">
@@ -210,7 +210,7 @@ export default function HomePage() {
                 Create your account and record your first production entry in minutes.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Create Your Account <ArrowRight size={18} />
                 </a>
                 <a href={appLink('/login')} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">

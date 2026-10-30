@@ -6,7 +6,7 @@ export const site = {
   name: 'BrickManager',
   // Public address of the website, e.g. https://www.example.com (used for canonical links)
   url: (env.VITE_SITE_URL || 'https://brickmanager.in').replace(/\/$/, ''),
-  // Address of the BrickManager app (the frontend/ folder), where Login and Register live
+  // Address of the BrickManager app (the frontend/ folder), where customers log in
   appUrl: (env.VITE_APP_URL || 'https://app.brickmanager.in').replace(/\/$/, ''),
   phone: env.VITE_CONTACT_PHONE || '+91 77470 52331',
   email: env.VITE_CONTACT_EMAIL || 'brickmanager.in@gmail.com',

@@ -18,7 +18,7 @@ export function AuthField({ icon: Icon, className = '', children, ...props }) {
   );
 }
 
-// Split card shared by the login and register pages: promo panel on the left, form on the right.
+// Split card of the login page: promo panel on the left, form on the right.
 export default function AuthLayout({ title, subtitle, error, children }) {
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-slate-100 p-4 sm:p-6">

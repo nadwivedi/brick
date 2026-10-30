@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout, { AuthField, authButtonCls, authLinkCls } from '../components/AuthLayout';
 import { Eye, EyeOff, Loader2, Lock, LogIn, Smartphone } from 'lucide-react';
+
+// Accounts are created from the admin panel, so new customers are sent to the website's contact page
+const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://brickmanager.in').replace(/\/+$/, '');
 
 export default function LoginPage() {
   const { login, loading } = useAuth();
@@ -24,7 +27,7 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      title="Login to BrickSoft"
+      title="Login to BrickManager"
       subtitle="Welcome back 👋 Sign in to manage your plant."
       error={error}
     >
@@ -67,7 +70,7 @@ export default function LoginPage() {
 
         <p className="mt-10 text-center text-sm text-slate-500">
           Don't have an account?{' '}
-          <Link to="/register" className={authLinkCls}>Register Now</Link>
+          <a href={`${SITE_URL}/contact`} className={authLinkCls}>Contact us</a> to get started.
         </p>
       </form>
     </AuthLayout>

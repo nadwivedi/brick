@@ -1,0 +1,1153 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import axios from 'axios'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import {
+  BrickWall,
+  Building2,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  LogOut,
+  User,
+  Phone,
+  MapPin,
+  Loader2,
+  AlertTriangle,
+  Users2,
+  UserCheck,
+  UserPlus,
+  UserX,
+  LogIn,
+} from 'lucide-react'
+import Sidebar from '../components/Sidebar'
+import StatCard from '../components/StatCard'
+import RowMenu from '../components/RowMenu'
+import SearchSelect from '../components/SearchSelect'
+import { INDIAN_STATES } from '../utils/indianStates'
+import DashboardView from './DashboardView'
+import ActivityCenter from './ActivityCenter'
+import DeployView from './DeployView'
+
+// Backend address from admin/.env (VITE_BACKEND_URL), without /api, like the app's frontend/.env
+const API_BASE_URL = `${(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000').replace(/\/+$/, '')}/api`
+const ADMIN_AUTH_ENDPOINT = `${API_BASE_URL}/admin/auth`
+const USERS_ENDPOINT = `${API_BASE_URL}/admin/users`
+const ACTIVITY_ENDPOINT = `${API_BASE_URL}/admin/audit/activity`
+const DEPLOY_ENDPOINT = `${API_BASE_URL}/admin/deploy`
+
+// New accounts start on the lifetime plan, which is what most customers buy
+const emptyForm = {
+  name: '',
+  businessName: '',
+  mobile: '',
+  password: '',
+  state: '',
+  district: '',
+  planType: 'lifetime',
+  planPrice: '',
+  planStartAt: '',
+  planEndAt: '',
+}
+
+// Plan dates are whole days in India time, kept as 'YYYY-MM-DD' in the form
+const toDateInput = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+}
+const todayInput = () => toDateInput(Date.now())
+
+// A yearly plan ends one year after it starts
+const addOneYear = (iso) => {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y + 1, m - 1, d)).toISOString().slice(0, 10)
+}
+
+const newUserForm = () => {
+  const start = todayInput()
+  return { ...emptyForm, planStartAt: start, planEndAt: addOneYear(start) }
+}
+
+const formatDay = (value) => {
+  if (!value) return ''
+  return new Date(value).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Where the plan stands today: { label, tone }, shown as a coloured dot and text under the plan
+const PLAN_TEXT = { expired: 'text-rose-700', soon: 'text-amber-700', ok: 'text-stone-500', none: 'text-stone-400' }
+const PLAN_DOT = { expired: 'bg-rose-500', soon: 'bg-amber-400', ok: 'bg-emerald-500', none: 'bg-stone-300' }
+const planStatus = (user) => {
+  if (!user?.planType) return { label: 'No plan set', tone: 'none' }
+  if (user.planType === 'lifetime') return { label: 'Never expires', tone: 'ok' }
+  if (!user?.planEndAt) return { label: 'End date not set', tone: 'none' }
+  const days = Math.round((new Date(toDateInput(user.planEndAt)) - new Date(todayInput())) / DAY_MS)
+  if (days < 0) return { label: `Expired ${formatDay(user.planEndAt)}`, tone: 'expired' }
+  if (days === 0) return { label: 'Expires today', tone: 'soon' }
+  if (days <= 30) return { label: `Expires in ${days} day${days === 1 ? '' : 's'}`, tone: 'soon' }
+  return { label: `Till ${formatDay(user.planEndAt)}`, tone: 'ok' }
+}
+
+const PLAN_OPTIONS = [
+  { value: 'lifetime', label: 'Lifetime', hint: 'One-time payment' },
+  { value: 'yearly', label: 'Yearly', hint: 'Paid every year' },
+]
+
+const formatRupees = (value) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+
+const formatDateTime = (value) => {
+  if (!value) return 'Never'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Invalid date'
+
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
+
+// "16 Oct, 2:35 pm" in India time; the year is added when it is not this year
+const formatExactTime = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const sameYear = date.getFullYear() === new Date().getFullYear()
+  return date.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+// "5 min ago", "3 hours ago", "2 days ago"; older than a month shows the date
+const formatTimeAgo = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  const seconds = Math.round((Date.now() - date.getTime()) / 1000)
+  if (Number.isNaN(seconds)) return ''
+  if (seconds < 60) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`
+  return formatDateTime(value)
+}
+
+const getInitials = (name) => {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  const initials = parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || '')
+  return initials.join('') || '?'
+}
+
+const AVATAR_PALETTE = [
+  'bg-sky-100 text-sky-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-violet-100 text-violet-700',
+  'bg-amber-100 text-amber-700',
+  'bg-rose-100 text-rose-700',
+  'bg-teal-100 text-teal-700',
+]
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// Light inputs and buttons shared by the dashboard and its popups
+const INPUT_CLASS = 'w-full rounded-lg border border-stone-300 bg-white py-2 pl-9 pr-3 text-sm text-stone-900 placeholder:text-stone-400 outline-none transition focus:border-stone-500 focus:ring-4 focus:ring-stone-200'
+const PRIMARY_BUTTON = 'flex items-center justify-center gap-1.5 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:opacity-60'
+const SECONDARY_BUTTON = 'flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60'
+const ICON_BUTTON = 'flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-800'
+
+// Users are grouped by state without caring about case or spaces
+const NO_STATE = '__none__'
+const stateKey = (state) => (state?.trim() ? state.trim().toLowerCase() : NO_STATE)
+
+// Every Indian state for the form, plus a state already saved on the user that is spelled differently
+const formStateOptions = (current) => {
+  const list = INDIAN_STATES.map((name) => ({ value: name, label: name }))
+  const saved = current?.trim()
+  if (saved && !INDIAN_STATES.some((name) => name.toLowerCase() === saved.toLowerCase())) list.unshift({ value: saved, label: saved })
+  return list
+}
+
+const getAvatarClass = (seed) => {
+  const code = (seed || '').split('').reduce((total, char) => total + char.charCodeAt(0), 0)
+  return AVATAR_PALETTE[code % AVATAR_PALETTE.length]
+}
+
+function AdminPage() {
+  const [admin, setAdmin] = useState(null)
+  // 'dashboard' | 'users' | 'deploy' | 'activity'. The activity center has no link: only Ctrl+Alt+Space opens it,
+  // and it is kept in memory only, so a refresh or moving to another section closes it again.
+  const [view, setView] = useState('dashboard')
+  const [users, setUsers] = useState([])
+  const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [search, setSearch] = useState('')
+  // '' = all states, NO_STATE = users without a state, otherwise the state name in lower case
+  const [stateFilter, setStateFilter] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showLoginPassword, setShowLoginPassword] = useState(false)
+  const [userToDelete, setUserToDelete] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [userToDeactivate, setUserToDeactivate] = useState(null)
+  const [statusChangingId, setStatusChangingId] = useState(null)
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: '',
+  })
+
+  const filteredUsers = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return users.filter((user) =>
+      (!stateFilter || stateKey(user.state) === stateFilter)
+      && (!query || [user.name, user.businessName, user.mobile, user.state, user.district]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(query)))
+    )
+  }, [search, stateFilter, users])
+
+  // States the users are from, with how many users each: the state filter's list
+  const stateOptions = useMemo(() => {
+    const groups = new Map()
+    users.forEach((user) => {
+      const key = stateKey(user.state)
+      const group = groups.get(key) || { value: key, label: key === NO_STATE ? 'State not set' : user.state.trim(), count: 0 }
+      group.count += 1
+      groups.set(key, group)
+    })
+    const list = [...groups.values()].sort((a, b) => (a.value === NO_STATE) - (b.value === NO_STATE) || b.count - a.count || a.label.localeCompare(b.label))
+    return [{ value: '', label: 'All states', count: users.length }, ...list]
+  }, [users])
+
+  const loadUsers = async () => {
+    try {
+      setIsLoading(true)
+      const response = await axios.get(USERS_ENDPOINT, { withCredentials: true })
+      setUsers(Array.isArray(response.data?.data) ? response.data.data : [])
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.message || 'Failed to load users')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const checkAdminSession = async () => {
+      try {
+        const response = await axios.get(`${ADMIN_AUTH_ENDPOINT}/current`, { withCredentials: true })
+        setAdmin(response.data?.data || null)
+        await loadUsers()
+      } catch {
+        setAdmin(null)
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkAdminSession()
+  }, [])
+
+  // Ctrl+Alt+Space (only after admin login) opens the hidden activity center
+  useEffect(() => {
+    if (!admin) return undefined
+    const onKeyDown = (event) => {
+      if (!event.ctrlKey || !event.altKey || event.metaKey || event.shiftKey || event.code !== 'Space') return
+      event.preventDefault()
+      setView('activity')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [admin])
+
+  // The admin session ended while a page was open: back to the sign-in screen
+  const handleSessionEnd = useCallback(() => {
+    setAdmin(null)
+    setUsers([])
+    setView('dashboard')
+  }, [])
+
+  const handleChange = (event) => {
+    const { name, value } = event.target
+    setForm((current) => ({ ...current, [name]: value }))
+  }
+
+  // A new start date moves a yearly plan's end date to one year later
+  const handlePlanStartChange = (event) => {
+    const start = event.target.value
+    setForm((current) => ({ ...current, planStartAt: start, planEndAt: current.planType === 'yearly' ? addOneYear(start) : current.planEndAt }))
+  }
+
+  const choosePlanType = (planType) => {
+    setForm((current) => ({
+      ...current,
+      planType,
+      planEndAt: planType === 'yearly' && !current.planEndAt ? addOneYear(current.planStartAt) : current.planEndAt,
+    }))
+  }
+
+  const handleMobileChange = (event) => {
+    const digitsOnly = event.target.value.replace(/\D/g, '').slice(0, 10)
+    setForm((current) => ({ ...current, mobile: digitsOnly }))
+  }
+
+  const handleLoginChange = (event) => {
+    const { name, value } = event.target
+    setLoginForm((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetForm = () => {
+    setForm(emptyForm)
+    setEditingId(null)
+    setIsModalOpen(false)
+    setShowPassword(false)
+  }
+
+  const openCreateModal = () => {
+    setForm(newUserForm())
+    setEditingId(null)
+    setShowPassword(false)
+    setIsModalOpen(true)
+  }
+
+  // Opens the Brick Manager app signed in as this user, in a new tab. The tab opens first so pop-up blockers allow it.
+  const handleAccess = async (user) => {
+    const appTab = window.open('', '_blank')
+    try {
+      const response = await axios.post(`${USERS_ENDPOINT}/${user.id}/access`, {}, { withCredentials: true })
+      const url = response.data?.data?.url
+      if (!url) throw new Error('No access link')
+      if (appTab) {
+        appTab.opener = null
+        appTab.location.href = url
+      } else {
+        window.location.href = url
+      }
+    } catch (requestError) {
+      appTab?.close()
+      toast.error(requestError.response?.data?.message || 'Could not open this account')
+    }
+  }
+
+  const handleEdit = (user) => {
+    setEditingId(user.id)
+    setForm({
+      name: user.name || '',
+      businessName: user.businessName || '',
+      mobile: user.mobile || '',
+      password: '',
+      state: user.state || '',
+      district: user.district || '',
+      planType: user.planType === 'yearly' ? 'yearly' : 'lifetime',
+      planPrice: Number(user.planPrice || 0) > 0 ? String(user.planPrice) : '',
+      planStartAt: toDateInput(user.planStartAt) || todayInput(),
+      planEndAt: toDateInput(user.planEndAt) || addOneYear(toDateInput(user.planStartAt) || todayInput()),
+    })
+    setShowPassword(false)
+    setIsModalOpen(true)
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+
+    try {
+      setIsSubmitting(true)
+
+      const payload = {
+        name: form.name.trim(),
+        businessName: form.businessName.trim(),
+        mobile: form.mobile.trim(),
+        state: form.state.trim(),
+        district: form.district.trim(),
+        planType: form.planType,
+        planPrice: Number(form.planPrice || 0),
+        planStartAt: form.planStartAt || null,
+        planEndAt: form.planType === 'lifetime' ? null : form.planEndAt || null,
+      }
+
+      if (!payload.planStartAt) {
+        toast.error('Enter the plan start date')
+        setIsSubmitting(false)
+        return
+      }
+
+      if (form.planType === 'yearly' && !payload.planEndAt) {
+        toast.error('Enter the plan end date')
+        setIsSubmitting(false)
+        return
+      }
+
+      if (payload.planEndAt && payload.planEndAt < payload.planStartAt) {
+        toast.error('Plan end date must be after the start date')
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!(payload.planPrice > 0)) {
+        toast.error(`Enter the ${form.planType === 'lifetime' ? 'lifetime' : 'yearly'} price`)
+        setIsSubmitting(false)
+        return
+      }
+
+      if (form.password.trim()) {
+        payload.password = form.password.trim()
+      }
+
+      if (!editingId && !payload.password) {
+        toast.error('Password is required for new users')
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!/^\d{10}$/.test(payload.mobile)) {
+        toast.error('Mobile number must be exactly 10 digits')
+        setIsSubmitting(false)
+        return
+      }
+
+      if (editingId) {
+        await axios.put(`${USERS_ENDPOINT}/${editingId}`, payload, { withCredentials: true })
+        toast.success('User updated successfully')
+      } else {
+        await axios.post(USERS_ENDPOINT, payload, { withCredentials: true })
+        toast.success('User created successfully')
+      }
+
+      resetForm()
+      await loadUsers()
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.message || 'Failed to save user')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return
+
+    try {
+      setIsDeleting(true)
+      await axios.delete(`${USERS_ENDPOINT}/${userToDelete.id}`, { withCredentials: true })
+      if (editingId === userToDelete.id) {
+        resetForm()
+      }
+      toast.success('User deleted successfully')
+      setUserToDelete(null)
+      await loadUsers()
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.message || 'Failed to delete user')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // A deactivated owner is signed out of the app and can't sign in until activated again
+  const changeUserStatus = async (user, isActive) => {
+    try {
+      setStatusChangingId(user.id)
+      await axios.patch(`${USERS_ENDPOINT}/${user.id}/status`, { isActive }, { withCredentials: true })
+      toast.success(isActive ? `${user.name} can use the app again` : `${user.name} has been deactivated`)
+      setUserToDeactivate(null)
+      await loadUsers()
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.message || 'Could not change this account')
+    } finally {
+      setStatusChangingId(null)
+    }
+  }
+
+  const handleStatusClick = (user) => {
+    if (user.isActive === false) {
+      changeUserStatus(user, true)
+    } else {
+      setUserToDeactivate(user)
+    }
+  }
+
+  const handleAdminLogin = async (event) => {
+    event.preventDefault()
+
+    try {
+      setIsLoggingIn(true)
+
+      const response = await axios.post(
+        `${ADMIN_AUTH_ENDPOINT}/login`,
+        {
+          email: loginForm.email.trim(),
+          password: loginForm.password,
+        },
+        { withCredentials: true }
+      )
+
+      setAdmin(response.data?.data || null)
+      setLoginForm({ email: '', password: '' })
+      await loadUsers()
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.message || 'Failed to login admin')
+    } finally {
+      setIsLoggingIn(false)
+      setIsCheckingAuth(false)
+    }
+  }
+
+  const handleAdminLogout = async () => {
+    try {
+      await axios.post(`${ADMIN_AUTH_ENDPOINT}/logout`, {}, { withCredentials: true })
+    } catch {
+      // Ignore logout request failure and clear local state anyway.
+    } finally {
+      setAdmin(null)
+      setUsers([])
+      setForm(emptyForm)
+      setEditingId(null)
+      setIsModalOpen(false)
+      setSearch('')
+      setView('dashboard')
+    }
+  }
+
+  // Sign-in screens: plain off-white, light inputs, one dark button
+  const loginInputClass = 'w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-10 pr-3 text-sm text-stone-900 placeholder:text-stone-400 outline-none transition focus:border-stone-500 focus:ring-4 focus:ring-stone-200'
+
+  if (isCheckingAuth) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#f5f4f0] p-6" style={{ colorScheme: 'light' }}>
+        <div className="flex flex-col items-center gap-3 text-stone-500">
+          <Loader2 className="h-7 w-7 animate-spin text-stone-700" />
+          <p className="text-sm font-medium">Checking admin access…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!admin) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#f5f4f0] px-4 py-10" style={{ colorScheme: 'light' }}>
+        <div className="w-full max-w-sm">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-stone-900 shadow-sm">
+              <BrickWall className="h-6 w-6 text-white" strokeWidth={2.25} />
+            </div>
+            <h1 className="mt-4 text-xl font-semibold text-stone-900">BrickManager Admin</h1>
+            <p className="mt-1 text-sm text-stone-500">Sign in to manage users</p>
+          </div>
+
+          <form
+            className="grid gap-4 rounded-2xl border border-stone-200 bg-[#fbfaf7] p-6 shadow-sm"
+            onSubmit={handleAdminLogin}
+          >
+            <label className="grid gap-1.5">
+              <span className="text-sm font-medium text-stone-700">Email</span>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  name="email"
+                  type="email"
+                  value={loginForm.email}
+                  onChange={handleLoginChange}
+                  placeholder="admin@example.com"
+                  autoComplete="username"
+                  className={loginInputClass}
+                  autoFocus
+                  required
+                />
+              </div>
+            </label>
+
+            <label className="grid gap-1.5">
+              <span className="text-sm font-medium text-stone-700">Password</span>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  name="password"
+                  type={showLoginPassword ? 'text' : 'password'}
+                  value={loginForm.password}
+                  onChange={handleLoginChange}
+                  placeholder="Your password"
+                  autoComplete="current-password"
+                  className={`${loginInputClass} pr-10`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword((prev) => !prev)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-stone-400 hover:text-stone-700"
+                  aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </label>
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="mt-1 flex items-center justify-center gap-2 rounded-lg bg-stone-900 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:opacity-60"
+            >
+              {isLoggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isLoggingIn ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
+
+          <p className="mt-4 text-center text-xs text-stone-400">Admin access only</p>
+        </div>
+
+        <ToastContainer position="top-right" autoClose={3500} theme="light" />
+      </div>
+    )
+  }
+
+  // Summary for the stat cards: who has signed in lately, who is new, who never signed in
+  const now = Date.now()
+  const activeThisWeek = users.filter((user) => {
+    const lastSeen = user.lastActivityAt || user.lastLoginAt
+    return lastSeen && now - new Date(lastSeen).getTime() <= 7 * DAY_MS
+  }).length
+  const neverSignedIn = users.filter((user) => !user.lastLoginAt).length
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+  const newThisMonth = users.filter((user) => user.createdAt && new Date(user.createdAt).getTime() >= monthStart).length
+
+  // Row pieces of the users list
+  const renderAvatar = (user) => (
+    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${getAvatarClass(user.name || user.id)}`}>
+      {getInitials(user.name)}
+    </span>
+  )
+
+  const renderName = (user) => (
+    <p className="flex min-w-0 items-center gap-2">
+      <span className="truncate font-semibold text-stone-900">{user.name}</span>
+      {user.isActive === false && (
+        <span className="shrink-0 rounded bg-rose-100 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-rose-700" title={user.deactivatedAt ? `Since ${formatDateTime(user.deactivatedAt)}` : undefined}>
+          Deactivated
+        </span>
+      )}
+    </p>
+  )
+
+  // "Shree Bricks · 9876543210 · Raipur, Chhattisgarh"
+  const renderContactLine = (user) => [user.businessName, user.mobile, [user.district, user.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+
+  // "Yearly · ₹12,000/yr" over a coloured status: "Till 16 Oct 2027", "Expires in 12 days", "Lifetime · never expires"
+  // Amount, start and end in one place: "₹12,000 / year" over "16 Oct 2026 → 16 Oct 2027",
+  // and a warning line only when the plan is ending soon or has ended
+  const renderPlan = (user) => {
+    if (!user.planType) {
+      return (
+        <p className="flex items-center gap-1.5 text-sm text-stone-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-stone-300" />
+          No plan set
+        </p>
+      )
+    }
+    const status = planStatus(user)
+    const lifetime = user.planType === 'lifetime'
+    const price = Number(user.planPrice || 0)
+    const amount = price > 0 ? `${formatRupees(price)}${lifetime ? '' : ' / year'}` : 'No amount'
+    const end = lifetime ? 'Never expires' : user.planEndAt ? formatDay(user.planEndAt) : 'no end date'
+    return (
+      <div className="min-w-0">
+        <p className="text-sm text-stone-800">
+          <span className="font-semibold tabular-nums">{amount}</span>
+          <span className={`ml-1.5 text-[11px] font-semibold ${lifetime ? 'text-violet-700' : 'text-sky-700'}`}>{lifetime ? 'Lifetime' : 'Yearly'}</span>
+        </p>
+        <p className="flex items-center gap-1.5 whitespace-nowrap text-xs text-stone-500">
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${PLAN_DOT[status.tone]}`} />
+          {user.planStartAt ? <>{formatDay(user.planStartAt)} → {end}</> : 'Dates not set'}
+        </p>
+        {(status.tone === 'soon' || status.tone === 'expired') && (
+          <p className={`pl-3 text-xs font-semibold ${PLAN_TEXT[status.tone]}`}>{status.label}</p>
+        )}
+      </div>
+    )
+  }
+
+  // Last activity and last sign-in together: "Active 5 min ago" over "Signed in 2 days ago"
+  const renderLastSeen = (user) => {
+    const latest = user.lastActivityAt || user.lastLoginAt
+    if (!latest) {
+      return (
+        <p className="flex items-center gap-1.5 text-sm text-stone-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-stone-300" />
+          Never signed in
+        </p>
+      )
+    }
+    const age = Date.now() - new Date(latest).getTime()
+    const dot = age <= DAY_MS ? 'bg-emerald-500' : age <= 7 * DAY_MS ? 'bg-amber-400' : 'bg-stone-300'
+    // "5 min ago" with the exact time after it in brackets; older than a month already shows the date
+    const renderWhenExact = (value) => {
+      const ago = formatTimeAgo(value)
+      const exact = formatExactTime(value)
+      if (ago === formatDateTime(value)) return exact
+      return <>{ago} <span className="text-stone-400">({exact})</span></>
+    }
+    return (
+      <div className="min-w-0 whitespace-nowrap">
+        <p className="flex items-center gap-1.5 text-sm text-stone-800">
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+          <span>{user.lastActivityAt ? <>Active {renderWhenExact(user.lastActivityAt)}</> : 'No activity yet'}</span>
+        </p>
+        <p className="pl-3 text-xs text-stone-500">Signed in {user.lastLoginAt ? renderWhenExact(user.lastLoginAt) : 'never'}</p>
+      </div>
+    )
+  }
+
+  // The ⋯ menu; on phones it also holds "Open app"
+  const rowActions = (user, withOpen) => {
+    const inactive = user.isActive === false
+    const busy = statusChangingId === user.id
+    return [
+      ...(withOpen ? [{ label: 'Open app', icon: LogIn, onClick: () => handleAccess(user) }] : []),
+      { label: 'Edit', icon: Pencil, onClick: () => handleEdit(user) },
+      inactive
+        ? { label: 'Activate', icon: UserCheck, tone: 'success', onClick: () => handleStatusClick(user), disabled: busy }
+        : { label: 'Deactivate', icon: UserX, onClick: () => handleStatusClick(user), disabled: busy },
+      { label: 'Delete', icon: Trash2, tone: 'danger', onClick: () => setUserToDelete(user) },
+    ]
+  }
+
+  const renderFieldLabel = (text) => <span className="text-sm font-medium text-stone-700">{text}</span>
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[#f5f4f0] lg:flex-row" style={{ colorScheme: 'light' }}>
+      <Sidebar view={view} onNavigate={setView} userCount={users.length} adminEmail={admin.email} onLogout={handleAdminLogout} />
+
+      <main className="min-w-0 flex-1 space-y-4 p-3 sm:p-5 lg:p-6">
+        {view === 'dashboard' && (isLoading
+          ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-20 text-stone-500">
+              <Loader2 className="h-6 w-6 animate-spin text-stone-700" />
+              <p className="text-sm">Loading dashboard…</p>
+            </div>
+          )
+          : <DashboardView users={users} />)}
+
+        {view === 'deploy' && <DeployView endpoint={DEPLOY_ENDPOINT} onSessionEnd={handleSessionEnd} />}
+
+        {view === 'activity' && (
+          <ActivityCenter endpoint={ACTIVITY_ENDPOINT} onLock={() => setView('dashboard')} onSessionEnd={handleSessionEnd} />
+        )}
+
+        {view === 'users' && (<>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-stone-900">Users</h1>
+            <p className="mt-0.5 text-sm text-stone-500">Owner accounts of the Brick Manager app: add, edit and see when they last signed in</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={openCreateModal} className={PRIMARY_BUTTON}>
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              Add User
+            </button>
+            <button type="button" onClick={handleAdminLogout} className={`${SECONDARY_BUTTON} lg:hidden`}>
+              <LogOut className="h-4 w-4" />
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <section className="grid grid-cols-2 gap-2 md:gap-3 xl:grid-cols-4">
+          <StatCard compact icon={Users2} tone="indigo" label="Total Users" value={String(users.length)} hint={`${users.filter((user) => user.planType === 'lifetime').length} lifetime · ${users.filter((user) => user.planType === 'yearly').length} yearly`} />
+          <StatCard compact icon={UserCheck} tone="emerald" label="Active This Week" value={String(activeThisWeek)} hint="Used the app in the last 7 days" />
+          <StatCard compact icon={UserPlus} tone="blue" label="New This Month" value={String(newThisMonth)} hint="Accounts added this month" />
+          <StatCard compact icon={UserX} tone="amber" label="Never Signed In" value={String(neverSignedIn)} hint="Have not used the app yet" />
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-stone-200 bg-[#fbfaf7] shadow-xs">
+          <div className="flex flex-col gap-3 border-b border-stone-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-5">
+            <h2 className="text-sm font-bold text-stone-800">
+              All Users
+              <span className="ml-2 text-xs font-normal text-stone-500">{filteredUsers.length} shown</span>
+            </h2>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <SearchSelect
+                value={stateFilter}
+                onChange={setStateFilter}
+                options={stateOptions}
+                placeholder="All states"
+                searchPlaceholder="Search state…"
+                emptyText="No state found"
+                icon={MapPin}
+                clearable
+                ariaLabel="Filter by state"
+                className="sm:w-56"
+              />
+              <div className="relative sm:w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="search"
+                  placeholder="Search name, business, mobile, place"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className={INPUT_CLASS}
+                />
+              </div>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-stone-500">
+              <Loader2 className="h-6 w-6 animate-spin text-stone-700" />
+              <p className="text-sm">Loading users…</p>
+            </div>
+          ) : filteredUsers.length ? (
+            <>
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full min-w-[980px] text-left">
+                  <thead>
+                    <tr className="border-b border-stone-200 text-[11px] font-semibold uppercase tracking-wide text-stone-400">
+                      <th className="px-5 py-2.5">User</th>
+                      <th className="px-3 py-2.5">State</th>
+                      <th className="px-3 py-2.5">Plan</th>
+                      <th className="px-3 py-2.5">Last Seen</th>
+                      <th className="px-3 py-2.5">Joined</th>
+                      <th className="px-5 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-200/70">
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id} className={`text-sm transition hover:bg-white ${user.isActive === false ? 'opacity-60' : ''}`}>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            {renderAvatar(user)}
+                            <div className="min-w-0">
+                              {renderName(user)}
+                              <p className="truncate text-xs text-stone-500">{[user.businessName, user.mobile].filter(Boolean).join(' · ')}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <p className="text-sm text-stone-800">{user.state || <span className="text-stone-400">—</span>}</p>
+                          {user.district && <p className="text-xs text-stone-500">{user.district}</p>}
+                        </td>
+                        <td className="px-3 py-3">{renderPlan(user)}</td>
+                        <td className="px-3 py-3">{renderLastSeen(user)}</td>
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-stone-500" title={formatDateTime(user.createdAt)}>{user.createdAt ? formatDay(user.createdAt) : '—'}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleAccess(user)}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-stone-600 transition hover:bg-stone-100 hover:text-stone-900"
+                              title={`Open the app as ${user.name}`}
+                            >
+                              <LogIn className="h-3.5 w-3.5" />
+                              Open app
+                            </button>
+                            <RowMenu items={rowActions(user, false)} label={`More actions for ${user.name}`} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Phone and tablet: one short card per user */}
+              <ul className="divide-y divide-stone-200/70 lg:hidden">
+                {filteredUsers.map((user) => (
+                  <li key={user.id} className={`flex items-start gap-3 px-4 py-3 ${user.isActive === false ? 'opacity-60' : ''}`}>
+                    {renderAvatar(user)}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      {renderName(user)}
+                      <p className="truncate text-xs text-stone-500">{renderContactLine(user)}</p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {renderPlan(user)}
+                        {renderLastSeen(user)}
+                      </div>
+                    </div>
+                    <RowMenu items={rowActions(user, true)} label={`Actions for ${user.name}`} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100">
+                <Users2 className="h-5 w-5 text-stone-400" />
+              </span>
+              <p className="text-sm font-semibold text-stone-800">No users found</p>
+              <p className="text-xs text-stone-500">{search ? 'Try a different search.' : 'Add the first user to get started.'}</p>
+            </div>
+          )}
+        </section>
+        </>)}
+
+        {isModalOpen ? (
+          <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 p-4" onClick={resetForm}>
+            <div
+              className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-stone-200 bg-[#fbfaf7] shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-stone-200 px-5 py-4">
+                <div>
+                  <h2 className="text-base font-bold text-stone-900">{editingId ? 'Edit User' : 'Add User'}</h2>
+                  <p className="mt-0.5 text-sm text-stone-500">{editingId ? 'Update this account.' : 'Create a new owner account.'}</p>
+                </div>
+                <button type="button" onClick={resetForm} className={ICON_BUTTON} aria-label="Close">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form className="grid gap-4 p-5" onSubmit={handleSubmit}>
+                <label className="grid gap-1.5">
+                  {renderFieldLabel('Name')}
+                  <div className="relative">
+                    <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input name="name" value={form.name} onChange={handleChange} placeholder="Owner's name" className={INPUT_CLASS} autoFocus required />
+                  </div>
+                </label>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="grid gap-1.5">
+                    {renderFieldLabel('Mobile')}
+                    <div className="relative">
+                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <input
+                        name="mobile"
+                        value={form.mobile}
+                        onChange={handleMobileChange}
+                        placeholder="10-digit mobile"
+                        inputMode="numeric"
+                        pattern="\d{10}"
+                        maxLength={10}
+                        title="Mobile number must be exactly 10 digits"
+                        className={INPUT_CLASS}
+                        required
+                      />
+                    </div>
+                  </label>
+
+                  <label className="grid gap-1.5">
+                    {renderFieldLabel('Business Name')}
+                    <div className="relative">
+                      <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                      <input name="businessName" value={form.businessName} onChange={handleChange} placeholder={editingId ? 'Kiln or company name' : 'Same as name if blank'} className={INPUT_CLASS} />
+                    </div>
+                  </label>
+                </div>
+
+                <label className="grid gap-1.5">
+                  {renderFieldLabel('Password')}
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                    <input
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={handleChange}
+                      placeholder={editingId ? 'Leave blank to keep the current password' : 'At least 6 characters'}
+                      className={`${INPUT_CLASS} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-stone-400 hover:text-stone-700"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </label>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-1.5">
+                    {renderFieldLabel('State')}
+                    <SearchSelect
+                      value={form.state}
+                      onChange={(state) => setForm((current) => ({ ...current, state }))}
+                      options={formStateOptions(form.state)}
+                      placeholder="Select state"
+                      searchPlaceholder="Search state…"
+                      emptyText="No state found"
+                      icon={MapPin}
+                      allowCustom
+                      ariaLabel="State"
+                    />
+                  </div>
+                  <label className="grid gap-1.5">
+                    {renderFieldLabel('District')}
+                    <input name="district" value={form.district} onChange={handleChange} placeholder="District" className={`${INPUT_CLASS} pl-3`} />
+                  </label>
+                </div>
+
+                <div className="grid gap-1.5">
+                  {renderFieldLabel('Plan')}
+                  <div className="grid grid-cols-2 gap-2">
+                    {PLAN_OPTIONS.map((option) => {
+                      const active = form.planType === option.value
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => choosePlanType(option.value)}
+                          aria-pressed={active}
+                          className={`rounded-lg border px-3 py-2 text-left transition ${active ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-100'}`}
+                        >
+                          <span className="block text-sm font-semibold">{option.label}</span>
+                          <span className={`block text-[11px] ${active ? 'text-white/80' : 'text-stone-400'}`}>{option.hint}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <label className="grid gap-1.5">
+                  {renderFieldLabel(form.planType === 'lifetime' ? 'Lifetime Price (one-time)' : 'Yearly Price (per year)')}
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-stone-400">₹</span>
+                    <input
+                      name="planPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.planPrice}
+                      onChange={handleChange}
+                      placeholder={form.planType === 'lifetime' ? 'e.g. 25000' : 'e.g. 7999'}
+                      className={`${INPUT_CLASS} pl-7 ${form.planType === 'yearly' ? 'pr-16' : ''}`}
+                      required
+                    />
+                    {form.planType === 'yearly' && (
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-400">/ year</span>
+                    )}
+                  </div>
+                </label>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="grid gap-1.5">
+                    {renderFieldLabel('Plan Starts On')}
+                    <input
+                      name="planStartAt"
+                      type="date"
+                      value={form.planStartAt}
+                      onChange={handlePlanStartChange}
+                      className={`${INPUT_CLASS} pl-3`}
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1.5">
+                    {renderFieldLabel('Plan Ends On')}
+                    {form.planType === 'lifetime' ? (
+                      <span className="flex h-[38px] items-center rounded-lg border border-dashed border-stone-300 px-3 text-sm text-stone-500">Lifetime plan (never expires)</span>
+                    ) : (
+                      <input
+                        name="planEndAt"
+                        type="date"
+                        value={form.planEndAt}
+                        min={form.planStartAt || undefined}
+                        onChange={handleChange}
+                        className={`${INPUT_CLASS} pl-3`}
+                        required
+                      />
+                    )}
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-stone-200 pt-4">
+                  <button type="button" onClick={resetForm} className={SECONDARY_BUTTON}>Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className={`${PRIMARY_BUTTON} px-6`}>
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {isSubmitting ? 'Saving…' : editingId ? 'Update User' : 'Create User'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {userToDeactivate ? (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => !statusChangingId && setUserToDeactivate(null)}>
+            <div
+              className="w-full max-w-sm rounded-2xl border border-stone-200 bg-[#fbfaf7] p-6 text-center shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+              role="alertdialog"
+              aria-modal="true"
+            >
+              <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-amber-50">
+                <UserX className="h-5 w-5 text-amber-600" />
+              </span>
+              <h3 className="mt-3 text-base font-bold text-stone-900">Deactivate this account?</h3>
+              <p className="mt-1 text-sm text-stone-500">
+                <span className="font-semibold text-stone-800">{userToDeactivate.name}</span> will be signed out of the app and cannot sign in. Their data is kept, and you can activate the account again any time.
+              </p>
+              <div className="mt-5 flex gap-2">
+                <button type="button" onClick={() => setUserToDeactivate(null)} disabled={Boolean(statusChangingId)} className={`${SECONDARY_BUTTON} flex-1`}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeUserStatus(userToDeactivate, false)}
+                  disabled={Boolean(statusChangingId)}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-amber-600 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60"
+                >
+                  {statusChangingId ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {statusChangingId ? 'Deactivating…' : 'Deactivate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {userToDelete ? (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => !isDeleting && setUserToDelete(null)}>
+            <div
+              className="w-full max-w-sm rounded-2xl border border-stone-200 bg-[#fbfaf7] p-6 text-center shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+              role="alertdialog"
+              aria-modal="true"
+            >
+              <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-rose-50">
+                <AlertTriangle className="h-5 w-5 text-rose-600" />
+              </span>
+              <h3 className="mt-3 text-base font-bold text-stone-900">Delete this user?</h3>
+              <p className="mt-1 text-sm text-stone-500">
+                <span className="font-semibold text-stone-800">{userToDelete.name}</span>&apos;s login will be removed for good. Their business records stay in the database. This cannot be undone.
+              </p>
+              <div className="mt-5 flex gap-2">
+                <button type="button" onClick={() => setUserToDelete(null)} disabled={isDeleting} className={`${SECONDARY_BUTTON} flex-1`}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {isDeleting ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </main>
+
+      <ToastContainer position="top-right" autoClose={3500} theme="light" />
+    </div>
+  )
+}
+
+export default AdminPage

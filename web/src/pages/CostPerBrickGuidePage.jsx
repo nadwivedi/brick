@@ -5,8 +5,8 @@ import JsonLd from '../components/JsonLd';
 import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
-import { COST_GUIDE_PAGE, EXPENSE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE } from '../lib/publicNav';
-import { appLink, site } from '../lib/site';
+import { CONTACT_PAGE, COST_GUIDE_PAGE, EXPENSE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE } from '../lib/publicNav';
+import { site } from '../lib/site';
 
 export const TITLE = `How to Calculate Cost per Brick (Formula & Example) | ${site.name}`;
 export const DESCRIPTION = 'Learn how to calculate the cost per brick for a brick kiln: the formula, every cost to include, a worked example in rupees and ways to bring the cost down.';
@@ -225,7 +225,7 @@ export default function CostPerBrickGuidePage() {
                 your cost per brick for any period. The production screen also tracks damaged bricks and bricks made per
                 bag of cement, the two numbers that move your cost the most.
               </p>
-              <a href={appLink('/register')} className="btn-primary mt-6 px-6 py-3">
+              <a href={CONTACT_PAGE} className="btn-primary mt-6 px-6 py-3">
                 Try {site.name} <ArrowRight size={18} />
               </a>
             </section>

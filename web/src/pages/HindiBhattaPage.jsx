@@ -10,7 +10,7 @@ import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/Publ
 import usePageMeta from '../hooks/usePageMeta';
 import { PLANS } from '../lib/plans';
 import { BHATTA_PAGE, CONTACT_PAGE, FEATURES_PAGE, HINDI_PAGE } from '../lib/publicNav';
-import { appLink, site, whatsappLink } from '../lib/site';
+import { site, whatsappLink } from '../lib/site';
 
 // Hindi landing page for buyers who search in Hindi (ईंट भट्ठा सॉफ्टवेयर, भट्ठा हिसाब ऐप).
 export const TITLE = `ईंट भट्ठा सॉफ्टवेयर - भट्ठा हिसाब ऐप | ${site.name}`;
@@ -120,7 +120,7 @@ export default function HindiBhattaPage() {
                 हमेशा पता रहे कितनी ईंट बनी, कितनी बिकी और किसका पैसा बाकी है।
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="btn-primary px-7 py-3.5 text-base">
+                <a href={CONTACT_PAGE} className="btn-primary px-7 py-3.5 text-base">
                   शुरू करें <ArrowRight size={18} />
                 </a>
                 <Link to={CONTACT_PAGE} className="btn-secondary px-7 py-3.5 text-base">डेमो देखें</Link>
@@ -219,7 +219,7 @@ export default function HindiBhattaPage() {
               <h2 className="text-3xl font-bold sm:text-4xl">आज ही अपना भट्ठा डिजिटल बनाएं</h2>
               <p className="mx-auto mt-4 max-w-xl text-orange-50">कॉल या WhatsApp करें: {site.phone}</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   शुरू करें <ArrowRight size={18} />
                 </a>
                 <a href={whatsappLink(`नमस्ते, मुझे ${site.name} ईंट भट्ठा सॉफ्टवेयर के बारे में जानना है।`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">

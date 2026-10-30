@@ -12,7 +12,7 @@ import { PLANS } from '../lib/plans';
 import {
   APP_PAGE, BHATTA_PAGE, CONTACT_PAGE, FEATURES_PAGE, ONLINE_PAGE, PAYMENT_PAGE, PRICE_PAGE, PRODUCTION_PAGE, scrollToSection,
 } from '../lib/publicNav';
-import { appLink, site, whatsappLink } from '../lib/site';
+import { site, whatsappLink } from '../lib/site';
 
 export const TITLE = `Brick Kiln Management App for Android & iOS | ${site.name}`;
 export const DESCRIPTION = `${site.name} brick kiln management app for Android and iPhone: record production, stock, sales, payments and expenses from your phone at the kiln.`;
@@ -319,7 +319,7 @@ export default function BrickKilnAppPage() {
               <h2 className="text-3xl font-bold sm:text-4xl">Put your brick kiln in your pocket</h2>
               <p className="mx-auto mt-4 max-w-xl text-orange-50">Get the {site.name} app for Android and iOS with any plan.</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Get Started <ArrowRight size={18} />
                 </a>
                 <a href={whatsappLink(`Hi, I'd like to get the ${site.name} brick kiln app for my phone.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/50 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">

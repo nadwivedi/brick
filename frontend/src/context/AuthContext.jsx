@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
 import api from '../lib/api';
 
 const AuthContext = createContext(null);
@@ -23,18 +23,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (data) => {
-    setLoading(true);
-    try {
-      const res = await api.post('/auth/register', data);
-      localStorage.setItem('token', res.token);
-      localStorage.setItem('user', JSON.stringify(res.user));
-      setUser(res.user);
-      return res;
-    } finally {
-      setLoading(false);
-    }
-  };
+  // The admin panel's "Open app" link: signs in as that owner without a password
+  const adminAccessLogin = useCallback(async (token) => {
+    const res = await api.post('/auth/admin-access', { token });
+    localStorage.setItem('token', res.token);
+    localStorage.setItem('user', JSON.stringify(res.user));
+    setUser(res.user);
+    return res;
+  }, []);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -43,7 +39,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, adminAccessLogin }}>
       {children}
     </AuthContext.Provider>
   );

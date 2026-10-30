@@ -1,6 +1,6 @@
 import { BrickWall } from 'lucide-react';
 
-export default function Logo({ name = 'BrickSoft', subtitle, size = 'md' }) {
+export default function Logo({ name = 'BrickManager', subtitle, size = 'md' }) {
   const large = size === 'lg';
   return (
     <span className="flex items-center gap-2.5">

@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import AdminAccessPage from './pages/AdminAccessPage';
 import DashboardPage from './pages/DashboardPage';
 import ActivityPage from './pages/ActivityPage';
 import ProductionPage from './pages/ProductionPage';
@@ -48,7 +48,10 @@ function AppRoutes() {
     <Routes>
       {/* Public */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      {/* Accounts are created from the admin panel; old register links open the login */}
+      <Route path="/register" element={<Navigate to="/login" replace />} />
+      {/* Opened from the admin panel; replaces a session already open in this browser */}
+      <Route path="/admin-access" element={<AdminAccessPage />} />
 
       {/* Protected */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

@@ -13,7 +13,7 @@ import {
   BILLING_PAGE, CONTACT_PAGE, FACTORY_PAGE, FEATURES_PAGE, FLY_ASH_PAGE, INVENTORY_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE,
   scrollToSection,
 } from '../lib/publicNav';
-import { appLink, site, whatsappLink } from '../lib/site';
+import { site, whatsappLink } from '../lib/site';
 
 export const TITLE = `Bricks Factory Management Software | ${site.name}`;
 export const DESCRIPTION = `Bricks factory management software for fly ash and clay brick factories. Track daily production, raw material, brick stock, dispatch, dues and expenses.`;
@@ -333,7 +333,7 @@ export default function BricksFactoryPage() {
               <h2 className="text-3xl font-bold sm:text-4xl">Run your brick factory without paperwork</h2>
               <p className="mx-auto mt-4 max-w-xl text-orange-50">See how {site.name} fits your factory, shift by shift.</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Get Started <ArrowRight size={18} />
                 </a>
                 <a href={whatsappLink(`Hi, I'd like to know more about ${site.name} bricks factory management software.`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">

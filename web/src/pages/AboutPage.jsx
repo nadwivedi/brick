@@ -8,7 +8,7 @@ import WhatsAppButton from '../components/WhatsAppButton';
 import { BrickPattern, Footer, Navbar, SectionHeading } from '../components/PublicSite';
 import usePageMeta from '../hooks/usePageMeta';
 import { ABOUT_PAGE, CONTACT_PAGE, FEATURES_PAGE } from '../lib/publicNav';
-import { appLink, site } from '../lib/site';
+import { site } from '../lib/site';
 
 export const TITLE = `About Us | Brick Kiln Management Software - ${site.name}`;
 export const DESCRIPTION = `${site.name} is brick kiln management software made by ${site.maker.name}, for brick kilns, bhattas and plants across India. Based in Raipur, Chhattisgarh.`;
@@ -195,7 +195,7 @@ export default function AboutPage() {
               <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Based in Raipur, Serving Brick Kilns Across India</h2>
               <p className="mx-auto mt-4 max-w-xl text-orange-50">{site.address}</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Get Started <ArrowRight size={18} />
                 </a>
                 <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">

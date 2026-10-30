@@ -13,7 +13,7 @@ import { PLANS } from '../lib/plans';
 import {
   BILLING_PAGE, CONTACT_PAGE, EXPENSE_PAGE, FEATURES_PAGE, PAYMENT_PAGE, PLANT_PAGE, PRICE_PAGE, PRODUCTION_PAGE, REPORTS_PAGE, scrollToSection,
 } from '../lib/publicNav';
-import { appLink, site, whatsappLink } from '../lib/site';
+import { site, whatsappLink } from '../lib/site';
 
 export const TITLE = `Brick Kiln Management Software Features | ${site.name}`;
 export const DESCRIPTION = `Run your brick plant digitally with no paperwork. ${site.name} features: automatic WhatsApp due reminders, AI purchase entry from bill PDF, low stock, quality and efficiency alerts, GST billing and reports.`;
@@ -388,7 +388,7 @@ export default function FeaturesPage() {
               <h2 className="text-3xl font-bold sm:text-4xl">Ready to run your kiln on {site.name}?</h2>
               <p className="mx-auto mt-4 max-w-xl text-orange-50">Start today, or talk to us and we&apos;ll show you how it fits your plant.</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                <a href={appLink('/register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
+                <a href={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-7 py-3.5 font-semibold text-slate-900 shadow-lg transition hover:bg-orange-50">
                   Get Started <ArrowRight size={18} />
                 </a>
                 <Link to={CONTACT_PAGE} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">

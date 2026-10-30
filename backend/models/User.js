@@ -13,6 +13,17 @@ const userSchema = new mongoose.Schema({
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   plants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plant' }],
   isActive: { type: Boolean, default: true },
+  deactivatedAt: { type: Date, default: null },
+  // Set from the admin panel for owner accounts
+  state: { type: String, trim: true, default: '' },
+  district: { type: String, trim: true, default: '' },
+  planType: { type: String, enum: ['yearly', 'lifetime'] },
+  planPrice: { type: Number, min: 0, default: 0 },
+  planStartAt: { type: Date, default: null },
+  // Empty for a lifetime plan, which never ends
+  planEndAt: { type: Date, default: null },
+  lastLoginAt: { type: Date, default: null },
+  lastActivityAt: { type: Date, default: null },
 }, { timestamps: true });
 
 userSchema.pre('save', async function() {
