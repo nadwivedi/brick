@@ -9,6 +9,10 @@ const productionEntrySchema = new mongoose.Schema({
   // When entered by plates: quantityProduced = plates × bricksPerPlate (the rate used that day)
   plates: { type: Number, min: 0 },
   bricksPerPlate: { type: Number, min: 0 },
+  // Labour charges: labourCost = quantityProduced × labourRate (the brick type's rate when the entry was made)
+  labourCount: { type: Number, min: 0 },
+  labourRate: { type: Number, min: 0 },
+  labourCost: { type: Number, default: 0, min: 0 },
   shift: { type: String, enum: ['morning', 'evening', 'night', 'full_day'], default: 'full_day' },
   notes: { type: String },
   materials: [{

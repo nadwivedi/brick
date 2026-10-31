@@ -6,7 +6,7 @@ import ProductionFormModal from '../components/ProductionFormModal';
 import SearchInput from '../components/SearchInput';
 import StatCard from '../components/StatCard';
 import { LoadingState, EmptyState } from '../components/States';
-import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight, Hammer, CircleCheck, ShoppingBag, Package, Sun, Sunrise, Sunset, Moon, MapPin, Layers } from 'lucide-react';
+import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight, Hammer, CircleCheck, ShoppingBag, Package, Sun, Sunrise, Sunset, Moon, MapPin, Layers, Users } from 'lucide-react';
 import Segmented from '../components/Segmented';
 import CementRatioPanel from '../components/CementRatio';
 import { isCement, bricksPerBag, cementDiff, cementStatus, CEMENT_STATUS, fmtRatio, diffText, baselineOf } from '../lib/cement';
@@ -39,7 +39,7 @@ const rangeText = ({ from, to }) => (!from ? 'Since the first entry'
   : from === to ? dayjs(from).format('D MMM YYYY')
   : `${dayjs(from).format('D MMM')} – ${dayjs(to).format('D MMM YYYY')}`);
 
-const EMPTY = { produced: 0, damaged: 0, entries: 0, sold: 0, soldAmount: 0, bags: 0, cementBricks: 0, bricksPerBag: null };
+const EMPTY = { produced: 0, damaged: 0, entries: 0, sold: 0, soldAmount: 0, bags: 0, cementBricks: 0, bricksPerBag: null, labourCost: 0 };
 const plural = (n, one, many) => `${num(n)} ${n === 1 ? one : many}`;
 
 export default function ProductionPage() {
@@ -129,11 +129,14 @@ export default function ProductionPage() {
       </div>
 
       {/* Totals for the period (and the brick type picked below, or all) */}
-      <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2.5 md:gap-4 lg:grid-cols-5">
         <StatCard icon={Hammer} label="Produced" hint={plural(totals.entries, 'entry', 'entries')} value={`${num(totals.produced)} pcs`} tone="blue" />
         <StatCard icon={CircleCheck} label="Good Bricks" hint={totals.damaged ? `${num(totals.damaged)} damaged (${damagedPct.toFixed(1)}%)` : 'None damaged'} value={`${num(totals.produced - totals.damaged)} pcs`} tone="emerald" />
         <StatCard icon={ShoppingBag} label="Sold" hint={totals.sold ? `Worth ${money(totals.soldAmount)}` : 'No bricks sold'} value={`${num(totals.sold)} pcs`} tone="indigo" />
         <StatCard icon={Package} label="Avg Bricks / Bag" hint={totals.bags ? `${num(totals.cementBricks)} bricks from ${num(totals.bags)} bags of cement` : 'No cement recorded'} value={fmtRatio(totals.bricksPerBag)} tone="amber" />
+        <div className="col-span-2 lg:col-span-1">
+          <StatCard icon={Users} label="Labour Cost" hint={totals.produced ? `${money(totals.labourCost / totals.produced * 1000)} per 1,000 bricks` : 'No bricks made'} value={money(totals.labourCost)} tone="rose" />
+        </div>
       </section>
 
       {/* Each brick type for the period; picking one shows only that type on this page */}
@@ -142,7 +145,7 @@ export default function ProductionPage() {
           <div className="panel-header flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900">By Brick Type</h3>
-              <p className="text-xs text-slate-500">Made, sold and bricks per bag of cement · {periodLabel}. Pick one to see only that type.</p>
+              <p className="text-xs text-slate-500">Made, sold, labour cost and bricks per bag of cement · {periodLabel}. Pick one to see only that type.</p>
             </div>
             {productFilter && (
               <button type="button" className="text-xs font-semibold text-primary-600 hover:underline" onClick={() => pickProduct('')}>Show all types</button>
@@ -179,6 +182,10 @@ export default function ProductionPage() {
                     <span>{t.damaged > 0 ? `${num(t.damaged)} damaged` : 'None damaged'}</span>
                     <span><span className="font-semibold text-slate-700">{fmtRatio(t.bricksPerBag)}</span> bricks/bag</span>
                   </p>
+                  <p className="mt-1 flex justify-between gap-2 text-[11px] text-slate-500">
+                    <span>Labour cost</span>
+                    <span className="font-semibold text-rose-700">{money(t.labourCost)}</span>
+                  </p>
                 </button>
               );
             })}
@@ -213,13 +220,14 @@ export default function ProductionPage() {
           <EmptyState icon={Hammer} title="No production entries found" hint={search ? 'Try a different search.' : period !== 'all' ? `No ${pickedName ? `${pickedName} ` : ''}production ${periodLabel.toLowerCase()}. Pick another period above.` : pickedName ? `No ${pickedName} production yet.` : 'Add your first production entry to get started.'} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[940px] text-left">
+            <table className="w-full min-w-[1060px] text-left">
               <thead>
                 <tr>
                   <th className="table-header">Date</th>
                   <th className="table-header">Product</th>
                   <th className="table-header">Produced</th>
                   <th className="table-header">Good / Damaged</th>
+                  <th className="table-header">Labour</th>
                   <th className="table-header">Materials Used</th>
                   <th className="table-header">Cement Ratio</th>
                   <th className="table-header">Shift</th>
@@ -272,6 +280,17 @@ export default function ProductionPage() {
                             <div className="ml-auto h-full bg-rose-500" style={{ width: `${Math.min(damagedPct, 100)}%` }} />
                           </div>
                         </div>
+                      </td>
+                      <td className="table-cell whitespace-nowrap">
+                        {entry.labourCost > 0 ? (
+                          <>
+                            <p className="font-semibold text-slate-800">{money(entry.labourCost)}</p>
+                            <p className="text-xs text-slate-400">
+                              ₹{entry.labourRate}/brick{entry.labourCount > 0 ? ` · ${num(entry.labourCount)} labour` : ''}
+                            </p>
+                          </>
+                        ) : entry.labourCount > 0 ? <span className="text-xs text-slate-500">{num(entry.labourCount)} labour</span>
+                          : <span className="text-xs text-slate-400">Not recorded</span>}
                       </td>
                       <td className="table-cell">
                         {used.length === 0 ? <span className="text-xs text-slate-400">Not recorded</span> : (

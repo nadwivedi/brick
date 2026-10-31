@@ -189,7 +189,7 @@ export default function CRUDPage({ title, subtitle, endpoint, columns, fields, d
                     value={form[f.key] || ''} onChange={e => setForm({ ...form, [f.key]: e.target.value })} />
                 ) : (
                   <input
-                    type={f.type || 'text'} className="input"
+                    type={f.type || 'text'} className="input" step={f.step}
                     placeholder={f.placeholder || f.label}
                     value={form[f.key] || ''}
                     onChange={e => setForm({ ...form, [f.key]: f.clean ? f.clean(e.target.value) : e.target.value })}

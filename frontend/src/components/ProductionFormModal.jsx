@@ -16,6 +16,8 @@ const SHIFTS = ['full_day', 'morning', 'evening', 'night'];
 const SHIFT_ICONS = { full_day: Sun, morning: Sunrise, evening: Sunset, night: Moon };
 
 const num = (n) => new Intl.NumberFormat('en-IN').format(n || 0);
+const plural = (n) => `${num(n)} ${n === 1 ? 'labourer' : 'labourers'}`;
+const money = (n) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(n || 0)}`;
 
 /**
  * Add / edit popup for a production entry. Loads the brick types, plants, materials and stock it
@@ -67,6 +69,8 @@ export default function ProductionFormModal({ entry = null, onClose, onSaved }) 
         byPlates: entry.plates > 0,
         plates: entry.plates || '',
         bricksPerPlate: entry.bricksPerPlate || settings.bricksPerPlate || '',
+        labourCount: entry.labourCount || '',
+        labourRate: entry.labourRate ?? '',
         shift: entry.shift,
         notes: entry.notes || '',
         materials: (entry.materials || []).map(m => {
@@ -76,7 +80,7 @@ export default function ProductionFormModal({ entry = null, onClose, onSaved }) 
       } : {
         date: dayjs().format('YYYY-MM-DD'), plant: defaultPlantId(plantList), product: '', quantityProduced: '', quantityDamaged: 0,
         byPlates: settings.platesEnabled, plates: '', bricksPerPlate: settings.bricksPerPlate || '',
-        shift: 'full_day', notes: '', materials: [],
+        labourCount: '', labourRate: '', shift: 'full_day', notes: '', materials: [],
       });
     }).catch(e => { alert(e.message || 'Could not load the form'); onClose(); });
   }, []);
@@ -139,6 +143,8 @@ export default function ProductionFormModal({ entry = null, onClose, onSaved }) 
       // Sent as null when the entry is not by plates, so an edited entry drops old plate figures
       plates: byPlates ? Number(form.plates) : null,
       bricksPerPlate: byPlates ? Number(form.bricksPerPlate) : null,
+      labourCount: Number(form.labourCount) || null,
+      labourRate: Number(form.labourRate) || 0,
       materials: used.map(m => ({ material: m.material, quantity: Number(m.quantity), unit: unitOf(m.material) || m.unit }))
     };
     setSaving(true);
@@ -176,6 +182,9 @@ export default function ProductionFormModal({ entry = null, onClose, onSaved }) 
   const made = Number(form.quantityProduced) || 0;
   const damaged = Number(form.quantityDamaged) || 0;
   const tooManyDamaged = damaged > made;
+  const labourRate = Number(form.labourRate) || 0;
+  const labourCount = Number(form.labourCount) || 0;
+  const labourCost = made * labourRate;
   const manyPlants = hasManyPlants(plants);
 
   return (
@@ -201,7 +210,7 @@ export default function ProductionFormModal({ entry = null, onClose, onSaved }) 
             </div>
             <div>
               <label className="label">Brick Type <span className="text-rose-500">*</span></label>
-              <OptionPicker options={productOptions} value={form.product} onChange={product => setForm(f => ({ ...f, product }))}
+              <OptionPicker options={productOptions} value={form.product} onChange={product => setForm(f => ({ ...f, product, labourRate: products.find(p => p._id === product)?.labourRatePerBrick || '' }))}
                 placeholder="Select Brick Type" searchPlaceholder="Search brick types..." />
             </div>
             <PlantSelect plants={plants} value={form.plant} onChange={plant => setForm({ ...form, plant })} />
@@ -280,8 +289,40 @@ export default function ProductionFormModal({ entry = null, onClose, onSaved }) 
         </div>
       </ModalSection>
 
+      {/* Labour charges: commission per brick × bricks made */}
+      <ModalSection number={3} title="Labour Charges" tone="amber">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+          <div>
+            <label className="label">Labourers Worked Today</label>
+            <input type="number" {...NON_NEGATIVE} className="input font-semibold" placeholder="e.g. 8" value={form.labourCount} onChange={e => setForm({ ...form, labourCount: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Commission per Brick</label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-400">₹</span>
+              <input type="number" {...NON_NEGATIVE} step="0.01" className="input pl-7 font-semibold" placeholder="e.g. 0.5" value={form.labourRate} onChange={e => setForm({ ...form, labourRate: e.target.value })} />
+            </div>
+            {form.product && !products.find(p => p._id === form.product)?.labourRatePerBrick && (
+              <p className="mt-1 text-[11px] text-slate-400">Set it on the brick type to fill it in by itself</p>
+            )}
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 divide-x divide-slate-100 overflow-hidden rounded-lg bg-white text-center ring-1 ring-inset ring-amber-200 md:mt-4">
+          <div className="bg-amber-50/60 px-2 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Labour Cost</p>
+            <p className="text-lg font-bold leading-tight text-amber-700">{money(labourCost)}</p>
+            <p className="text-[11px] text-slate-400">{num(made)} bricks × {money(labourRate)}</p>
+          </div>
+          <div className="px-2 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Per Labourer</p>
+            <p className="font-bold text-slate-800">{labourCount ? money(labourCost / labourCount) : '—'}</p>
+            {labourCount > 0 && <p className="text-[11px] text-slate-400">{plural(labourCount)} · {num(Math.round(made / labourCount))} bricks each</p>}
+          </div>
+        </div>
+      </ModalSection>
+
       {/* Materials used */}
-      <ModalSection number={3} title="Materials Used" tone="purple">
+      <ModalSection number={4} title="Materials Used" tone="purple">
         {form.materials.length > 0 && (
           <div className="space-y-2">
             <div className="hidden grid-cols-[minmax(0,1fr)_9rem_2.25rem] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:grid">

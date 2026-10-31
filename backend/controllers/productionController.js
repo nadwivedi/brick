@@ -53,14 +53,29 @@ const readPlates = (body) => {
   return { plates: undefined, bricksPerPlate: undefined };
 };
 
+// Labour charges: the commission per brick (from the brick type, may be changed on the entry)
+// times the bricks made. Labourers who worked is only recorded, it does not change the cost.
+const readLabour = (body, quantityProduced) => {
+  const count = Number(body.labourCount);
+  const rate = Number(body.labourRate);
+  const labourRate = rate > 0 ? rate : 0;
+  return {
+    labourCount: count > 0 ? Math.round(count) : undefined,
+    labourRate,
+    labourCost: Math.round((Number(quantityProduced) || 0) * labourRate * 100) / 100,
+  };
+};
+
 // @route POST /api/production
 exports.create = async (req, res, next) => {
   try {
     const organization = req.user.organization._id;
     const materials = await readMaterials(req.body.materials, organization);
+    const plates = readPlates(req.body);
     const entry = await ProductionEntry.create({
       ...req.body,
-      ...readPlates(req.body),
+      ...plates,
+      ...readLabour(req.body, plates.quantityProduced ?? req.body.quantityProduced),
       materials,
       createdBy: req.user._id,
       organization
@@ -109,6 +124,15 @@ exports.update = async (req, res, next) => {
       if (plates.plates === undefined) body.$unset = { plates: 1, bricksPerPlate: 1 };
       else Object.assign(body, plates);
     }
+    if ('labourRate' in body || 'labourCount' in body) {
+      const labour = readLabour(body, body.quantityProduced);
+      body.labourRate = labour.labourRate;
+      body.labourCost = labour.labourCost;
+      if (labour.labourCount === undefined) {
+        delete body.labourCount;
+        body.$unset = { ...body.$unset, labourCount: 1 };
+      } else body.labourCount = labour.labourCount;
+    }
     if (Array.isArray(body.materials)) {
       body.materials = await readMaterials(body.materials, req.user.organization._id);
     }
@@ -154,7 +178,7 @@ exports.summary = async (req, res, next) => {
 };
 
 // @route GET /api/production/overview?from=YYYY-MM-DD&to=YYYY-MM-DD (both left out = all time)
-// Per brick type for the period: bricks made and damaged, bricks sold, and bricks per bag of cement
+// Per brick type for the period: bricks made and damaged, labour cost, bricks sold, and bricks per bag of cement
 // (only batches that recorded cement count towards that average). Draft and cancelled invoices are not sales.
 exports.overview = async (req, res, next) => {
   try {
@@ -170,7 +194,7 @@ exports.overview = async (req, res, next) => {
     const [products, cement, entries, sales] = await Promise.all([
       Product.find({ organization }).select('name size isActive createdAt').sort({ createdAt: 1, _id: 1 }).lean(),
       Material.find({ organization, name: /cement/i }).select('_id').lean(),
-      ProductionEntry.find({ organization, ...inRange }).select('product quantityProduced quantityDamaged materials').lean(),
+      ProductionEntry.find({ organization, ...inRange }).select('product quantityProduced quantityDamaged materials labourCost').lean(),
       Invoice.aggregate([
         { $match: { organization, ...inRange, status: { $nin: ['draft', 'cancelled'] } } },
         { $unwind: '$items' },
@@ -179,7 +203,7 @@ exports.overview = async (req, res, next) => {
     ]);
 
     const isCement = new Set(cement.map(c => String(c._id)));
-    const blank = () => ({ produced: 0, damaged: 0, entries: 0, sold: 0, soldAmount: 0, cementBricks: 0, bags: 0 });
+    const blank = () => ({ produced: 0, damaged: 0, entries: 0, sold: 0, soldAmount: 0, cementBricks: 0, bags: 0, labourCost: 0 });
     const byProduct = {};
     const rowOf = (id) => (byProduct[String(id)] ||= blank());
     for (const e of entries) {
@@ -187,6 +211,7 @@ exports.overview = async (req, res, next) => {
       row.produced += e.quantityProduced || 0;
       row.damaged += e.quantityDamaged || 0;
       row.entries += 1;
+      row.labourCost += e.labourCost || 0;
       const bags = (e.materials || []).filter(m => isCement.has(String(m.material))).reduce((s, m) => s + (m.quantity || 0), 0);
       if (bags > 0 && e.quantityProduced > 0) { row.cementBricks += e.quantityProduced; row.bags += bags; }
     }
